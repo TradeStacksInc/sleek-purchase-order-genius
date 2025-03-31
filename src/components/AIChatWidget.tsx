@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/context/AIChatContext';
 import { Button } from '@/components/ui/button';
@@ -35,7 +34,6 @@ const AIChatWidget: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -85,13 +83,11 @@ const AIChatWidget: React.FC = () => {
 
   return (
     <>
-      {/* Chat trigger button - floating in bottom-right */}
       <Button
         onClick={toggleChat}
-        className="fixed right-4 bottom-4 rounded-full w-12 h-12 p-0 shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 border border-purple-300/20 hover:from-purple-500 hover:to-indigo-500 transition-all duration-300 animate-pulse"
+        className="fixed right-4 bottom-4 rounded-full w-12 h-12 p-0 shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 border border-purple-300/20 hover:from-purple-500 hover:to-indigo-500 transition-all duration-300"
         aria-label="Open AI Chat"
       >
-        <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping"></div>
         {isOpen ? (
           <X className="h-5 w-5 text-white" />
         ) : (
@@ -99,11 +95,9 @@ const AIChatWidget: React.FC = () => {
         )}
       </Button>
 
-      {/* Centered chat modal with futuristic design */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <Card className="w-[90%] max-w-[500px] h-[80vh] max-h-[600px] rounded-xl overflow-hidden border-2 border-purple-500/30 shadow-[0_0_15px_rgba(139,92,246,0.3)] bg-gradient-to-b from-gray-900/90 to-gray-950/90">
-            {/* Chat header with alien-tech styling */}
             <div className="p-4 border-b border-purple-500/30 bg-gradient-to-r from-gray-800/90 to-indigo-900/40 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10 bg-gradient-to-br from-purple-500 to-blue-600 p-[2px]">
@@ -177,7 +171,6 @@ const AIChatWidget: React.FC = () => {
               </div>
             </div>
 
-            {/* Chat messages with futuristic styling */}
             <ScrollArea className="flex-1 p-4 bg-transparent">
               <div className="space-y-4">
                 {messages.map((msg) => (
@@ -216,7 +209,6 @@ const AIChatWidget: React.FC = () => {
               </div>
             </ScrollArea>
 
-            {/* Chat input with futuristic styling */}
             <form onSubmit={handleSendMessage} className="p-4 border-t border-purple-500/30 bg-gray-900/70">
               <div className="flex gap-2">
                 <Input
@@ -240,7 +232,6 @@ const AIChatWidget: React.FC = () => {
         </div>
       )}
 
-      {/* Fix the style tag that was causing the TypeScript error */}
       <style dangerouslySetInnerHTML={{
         __html: `
           @keyframes fadeIn {
