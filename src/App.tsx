@@ -9,8 +9,11 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import CreatePO from "./pages/CreatePO";
 import PODetail from "./pages/PODetail";
+import Orders from "./pages/Orders";
 import ActivityLog from "./pages/ActivityLog";
 import NotFound from "./pages/NotFound";
+import AIChatProvider from "./context/AIChatContext";
+import AIChatWidget from "./components/AIChatWidget";
 
 const queryClient = new QueryClient();
 
@@ -18,21 +21,25 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="create" element={<CreatePO />} />
-                <Route path="orders/:id" element={<PODetail />} />
-                <Route path="logs" element={<ActivityLog />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+        <AIChatProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Layout />}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="create" element={<CreatePO />} />
+                  <Route path="orders" element={<Orders />} />
+                  <Route path="orders/:id" element={<PODetail />} />
+                  <Route path="logs" element={<ActivityLog />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Routes>
+              <AIChatWidget />
+            </BrowserRouter>
+          </TooltipProvider>
+        </AIChatProvider>
       </AppProvider>
     </QueryClientProvider>
   );

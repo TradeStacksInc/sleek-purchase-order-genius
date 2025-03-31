@@ -35,6 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
         <nav className="px-2 space-y-1">
           <NavItem to="/" icon={<BarChart className="h-5 w-5" />} text="Dashboard" />
           <NavItem to="/create" icon={<ClipboardPlus className="h-5 w-5" />} text="Create New PO" />
+          <NavItem to="/orders" icon={<ClipboardList className="h-5 w-5" />} text="Orders" />
           <NavItem to="/logs" icon={<Activity className="h-5 w-5" />} text="Activity Log" />
         </nav>
       </ScrollArea>

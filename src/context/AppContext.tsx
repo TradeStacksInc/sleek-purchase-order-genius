@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState } from 'react';
 import { LogEntry, PurchaseOrder, Supplier } from '../types';
 import { appData } from '../data/mockData';
@@ -13,6 +12,7 @@ interface AppContextType {
   updateOrderStatus: (id: string, status: 'pending' | 'active' | 'fulfilled') => void;
   getOrderById: (id: string) => PurchaseOrder | undefined;
   getLogsByOrderId: (id: string) => LogEntry[];
+  logAIInteraction: (query: string, response: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -26,7 +26,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addPurchaseOrder = (order: PurchaseOrder) => {
     setPurchaseOrders((prevOrders) => [order, ...prevOrders]);
     
-    // Add log entry for new order
     const newLog: LogEntry = {
       id: `log-${Date.now()}`,
       poId: order.id,
@@ -46,7 +45,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addSupplier = (supplier: Supplier) => {
     setSuppliers((prevSuppliers) => [supplier, ...prevSuppliers]);
     
-    // Add log entry for new supplier
     const newLog: LogEntry = {
       id: `log-${Date.now()}`,
       poId: "system",
@@ -74,7 +72,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const order = purchaseOrders.find((po) => po.id === id);
     if (!order) return;
 
-    // Add log entry for status update
     const statusAction = 
       status === 'active' ? 'Active (Paid)' :
       status === 'fulfilled' ? 'Fulfilled (Delivered)' : 'Pending';
@@ -105,6 +102,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const logAIInteraction = (query: string, response: string) => {
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: "system",
+      action: `AI Interaction - User asked: "${query.substring(0, 50)}${query.length > 50 ? '...' : ''}" and received a response`,
+      user: 'Current User', // In a real app, get from auth
+      timestamp: new Date(),
+    };
+    
+    setLogs((prevLogs) => [newLog, ...prevLogs]);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -116,6 +125,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateOrderStatus,
         getOrderById,
         getLogsByOrderId,
+        logAIInteraction,
       }}
     >
       {children}
