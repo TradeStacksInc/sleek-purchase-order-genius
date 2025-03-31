@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -14,8 +13,6 @@ import { CalendarIcon, Trash2, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { OrderItem, PaymentTerm, Product } from '@/types';
-
-<lov-add-dependency>uuid@latest</lov-add-dependency>
 
 const CreatePO: React.FC = () => {
   const navigate = useNavigate();

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +13,7 @@ import {
   Truck
 } from 'lucide-react';
 import { OrderStatus } from '@/types';
+import { cn } from '@/lib/utils';
 
 const Dashboard: React.FC = () => {
   const { purchaseOrders, updateOrderStatus } = useApp();
