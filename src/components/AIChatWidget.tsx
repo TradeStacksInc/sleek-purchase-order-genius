@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAIChat } from '@/context/AIChatContext';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import AIChatButton from './AIChatButton';
 import AIChatHeader from './AIChatHeader';
 import AIChatMessages from './AIChatMessages';
@@ -16,6 +17,7 @@ const AIChatWidget: React.FC = () => {
   const [newApiKey, setNewApiKey] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +66,7 @@ const AIChatWidget: React.FC = () => {
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <Card className="w-[90%] max-w-[500px] h-[80vh] max-h-[600px] rounded-xl overflow-hidden border-2 border-purple-500/30 shadow-[0_0_15px_rgba(139,92,246,0.3)] bg-gradient-to-b from-gray-900/90 to-gray-950/90">
+          <Card className={`${isMobile ? 'w-[95%] h-[90vh]' : 'w-[90%] max-w-[500px] h-[80vh] max-h-[600px]'} rounded-xl overflow-hidden border-2 border-purple-500/30 shadow-[0_0_15px_rgba(139,92,246,0.3)] bg-gradient-to-b from-gray-900/90 to-gray-950/90`}>
             <AIChatHeader
               hasApiKey={hasApiKey}
               toggleChat={toggleChat}

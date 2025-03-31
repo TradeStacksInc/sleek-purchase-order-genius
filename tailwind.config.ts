@@ -108,14 +108,28 @@ export default {
 					to: {
 						transform: 'translateX(0)'
 					}
+				},
+				'ping': {
+					'0%': {
+						transform: 'scale(1)',
+						opacity: '1'
+					},
+					'75%, 100%': {
+						transform: 'scale(1.5)',
+						opacity: '0'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in': 'fade-in 0.3s ease-out',
-				'slide-in': 'slide-in 0.3s ease-out'
-			}
+				'slide-in': 'slide-in 0.3s ease-out',
+				'ping': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite'
+			},
+			screens: {
+				'xs': '480px',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

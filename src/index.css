@@ -76,6 +76,17 @@
   }
 }
 
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .po-form-section {
+    @apply pb-4 mb-4;
+  }
+  
+  .po-form-group {
+    @apply grid-cols-1 gap-3;
+  }
+}
+
 .po-form-section {
   @apply border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0;
 }
@@ -88,3 +99,28 @@
   content: " *";
   @apply text-destructive;
 }
+
+/* Animation classes for chat icon */
+@keyframes ping {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  75%, 100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.animate-ping-slow {
+  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-ping-slower {
+  animation: ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-ping-slowest {
+  animation: ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
