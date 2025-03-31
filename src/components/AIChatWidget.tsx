@@ -7,18 +7,31 @@ import {
   MessageCircle, 
   X, 
   Send,
-  Trash2
+  Trash2,
+  Settings
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 const AIChatWidget: React.FC = () => {
-  const { isOpen, messages, toggleChat, sendMessage, clearMessages } = useAIChat();
+  const { isOpen, messages, toggleChat, sendMessage, clearMessages, apiKey, setApiKey, hasApiKey } = useAIChat();
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [newApiKey, setNewApiKey] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -58,6 +71,18 @@ const AIChatWidget: React.FC = () => {
     });
   };
 
+  const handleSaveApiKey = () => {
+    if (newApiKey.trim()) {
+      setApiKey(newApiKey.trim());
+      setNewApiKey('');
+      setSettingsOpen(false);
+      toast({
+        title: "API Key Saved",
+        description: "Your API key has been saved successfully.",
+      });
+    }
+  };
+
   return (
     <>
       {/* Chat trigger button */}
@@ -85,10 +110,50 @@ const AIChatWidget: React.FC = () => {
               </Avatar>
               <div>
                 <h3 className="font-medium text-sm">AI Assistant</h3>
-                <p className="text-xs text-muted-foreground">How can I help you?</p>
+                <p className="text-xs text-muted-foreground">
+                  {hasApiKey ? "Connected" : "API Key Required"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
+              <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8" 
+                    aria-label="Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>API Configuration</DialogTitle>
+                    <DialogDescription>
+                      Enter your API key to enable the AI chat functionality.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="apiKey" className="text-right">
+                        API Key
+                      </Label>
+                      <Input
+                        id="apiKey"
+                        type="password"
+                        value={newApiKey}
+                        onChange={(e) => setNewApiKey(e.target.value)}
+                        className="col-span-3"
+                        placeholder={apiKey ? "••••••••" : "Enter your API key"}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" onClick={handleSaveApiKey}>Save changes</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -134,6 +199,17 @@ const AIChatWidget: React.FC = () => {
                   </div>
                 </div>
               ))}
+              {!hasApiKey && messages.length === 1 && (
+                <div className="flex justify-center my-4">
+                  <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        Configure API Key
+                      </Button>
+                    </DialogTrigger>
+                  </Dialog>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
@@ -144,11 +220,15 @@ const AIChatWidget: React.FC = () => {
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your message..."
-                disabled={isLoading}
+                placeholder={hasApiKey ? "Type your message..." : "Set API key to start chat"}
+                disabled={isLoading || !hasApiKey}
                 className="flex-1"
               />
-              <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+              <Button 
+                type="submit" 
+                size="icon" 
+                disabled={isLoading || !input.trim() || !hasApiKey}
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
