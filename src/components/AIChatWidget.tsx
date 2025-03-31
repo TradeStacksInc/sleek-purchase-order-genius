@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/context/AIChatContext';
 import { Button } from '@/components/ui/button';
@@ -85,9 +86,16 @@ const AIChatWidget: React.FC = () => {
     <>
       <Button
         onClick={toggleChat}
-        className="fixed right-4 bottom-4 rounded-full w-12 h-12 p-0 shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 border border-purple-300/20 hover:from-purple-500 hover:to-indigo-500 transition-all duration-300"
+        className="fixed right-4 bottom-4 rounded-full w-12 h-12 p-0 shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 border border-purple-300/20 hover:from-purple-500 hover:to-indigo-500 transition-all duration-300 relative"
         aria-label="Open AI Chat"
       >
+        {!isOpen && (
+          <>
+            <div className="absolute inset-0 rounded-full bg-purple-500/10 animate-ping-slow"></div>
+            <div className="absolute inset-[-4px] rounded-full bg-purple-500/10 animate-ping-slower"></div>
+            <div className="absolute inset-[-8px] rounded-full bg-purple-500/5 animate-ping-slowest"></div>
+          </>
+        )}
         {isOpen ? (
           <X className="h-5 w-5 text-white" />
         ) : (
@@ -240,6 +248,32 @@ const AIChatWidget: React.FC = () => {
           }
           .animate-fadeIn {
             animation: fadeIn 0.3s ease-out forwards;
+          }
+          @keyframes ping-slow {
+            0% { transform: scale(1); opacity: 0.8; }
+            70% { transform: scale(1.7); opacity: 0; }
+            100% { transform: scale(1.7); opacity: 0; }
+          }
+          @keyframes ping-slower {
+            0% { transform: scale(1); opacity: 0.5; }
+            70% { transform: scale(2); opacity: 0; }
+            100% { transform: scale(2); opacity: 0; }
+          }
+          @keyframes ping-slowest {
+            0% { transform: scale(1); opacity: 0.3; }
+            70% { transform: scale(2.3); opacity: 0; }
+            100% { transform: scale(2.3); opacity: 0; }
+          }
+          .animate-ping-slow {
+            animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+          }
+          .animate-ping-slower {
+            animation: ping-slower 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+            animation-delay: 0.3s;
+          }
+          .animate-ping-slowest {
+            animation: ping-slowest 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+            animation-delay: 0.5s;
           }
         `
       }} />
