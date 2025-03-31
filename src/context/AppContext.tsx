@@ -9,6 +9,7 @@ interface AppContextType {
   logs: LogEntry[];
   suppliers: Supplier[];
   addPurchaseOrder: (order: PurchaseOrder) => void;
+  addSupplier: (supplier: Supplier) => void;
   updateOrderStatus: (id: string, status: 'pending' | 'active' | 'fulfilled') => void;
   getOrderById: (id: string) => PurchaseOrder | undefined;
   getLogsByOrderId: (id: string) => LogEntry[];
@@ -19,6 +20,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(appData.purchaseOrders);
   const [logs, setLogs] = useState<LogEntry[]>(appData.logs);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(appData.suppliers);
   const { toast } = useToast();
 
   const addPurchaseOrder = (order: PurchaseOrder) => {
@@ -39,6 +41,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: "Purchase Order Created",
       description: `PO #${order.poNumber} has been created successfully.`,
     });
+  };
+
+  const addSupplier = (supplier: Supplier) => {
+    setSuppliers((prevSuppliers) => [supplier, ...prevSuppliers]);
+    
+    // Add log entry for new supplier
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: "system",
+      action: `New supplier "${supplier.name}" added to the system`,
+      user: 'Current User', // In a real app, get from auth
+      timestamp: new Date(),
+    };
+    
+    setLogs((prevLogs) => [newLog, ...prevLogs]);
   };
 
   const updateOrderStatus = (id: string, status: 'pending' | 'active' | 'fulfilled') => {
@@ -93,8 +110,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         purchaseOrders,
         logs,
-        suppliers: appData.suppliers,
+        suppliers,
         addPurchaseOrder,
+        addSupplier,
         updateOrderStatus,
         getOrderById,
         getLogsByOrderId,

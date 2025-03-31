@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -9,10 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Trash2, Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { CalendarIcon, Trash2, Plus, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { OrderItem, PaymentTerm, Product } from '@/types';
+import { OrderItem, PaymentTerm, Product, Company } from '@/types';
+import AddSupplierForm from '@/components/AddSupplierForm';
 
 const CreatePO: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +23,12 @@ const CreatePO: React.FC = () => {
   
   // Form state
   const [supplierId, setSupplierId] = useState('');
+  const [company, setCompany] = useState<Company>({
+    name: '',
+    address: '',
+    contact: '',
+    taxId: '',
+  });
   const [items, setItems] = useState<OrderItem[]>([
     {
       id: uuidv4(),
@@ -33,6 +42,7 @@ const CreatePO: React.FC = () => {
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default to 7 days from now
   );
+  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   
   // Calculate grand total
   const grandTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -77,11 +87,19 @@ const CreatePO: React.FC = () => {
     );
   };
   
+  // Update company information
+  const updateCompany = (field: keyof Company, value: string) => {
+    setCompany(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!supplierId || !deliveryDate) {
+    if (!supplierId || !deliveryDate || !company.name || !company.address || !company.contact || !company.taxId) {
       alert('Please fill in all required fields');
       return;
     }
@@ -94,12 +112,7 @@ const CreatePO: React.FC = () => {
     const newPO = {
       id: uuidv4(),
       poNumber: `PO-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-      company: {
-        name: 'EcoFuel Filling Station',
-        address: '123 Petroleum Way, Lagos',
-        contact: '+234 801 234 5678',
-        taxId: 'RC-12345678',
-      },
+      company,
       supplier,
       items,
       grandTotal,
@@ -129,52 +142,76 @@ const CreatePO: React.FC = () => {
         <CardContent>
           <form onSubmit={handleSubmit}>
             {/* Company Details Section */}
-            <div className="po-form-section">
+            <div className="po-form-section mb-8">
               <h3 className="text-lg font-medium mb-4">Company Details</h3>
-              <div className="po-form-group">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="company-name">Filling Station Name</Label>
+                  <Label htmlFor="company-name" className="required">Filling Station Name</Label>
                   <Input
                     id="company-name"
-                    value="EcoFuel Filling Station"
-                    disabled
+                    value={company.name}
+                    onChange={(e) => updateCompany('name', e.target.value)}
+                    placeholder="Enter filling station name"
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="company-address">Address</Label>
+                  <Label htmlFor="company-address" className="required">Address</Label>
                   <Input
                     id="company-address"
-                    value="123 Petroleum Way, Lagos"
-                    disabled
+                    value={company.address}
+                    onChange={(e) => updateCompany('address', e.target.value)}
+                    placeholder="Enter address"
+                    required
                   />
                 </div>
               </div>
-              <div className="po-form-group">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
-                  <Label htmlFor="company-contact">Contact Information</Label>
+                  <Label htmlFor="company-contact" className="required">Contact Information</Label>
                   <Input
                     id="company-contact"
-                    value="+234 801 234 5678"
-                    disabled
+                    value={company.contact}
+                    onChange={(e) => updateCompany('contact', e.target.value)}
+                    placeholder="Phone number, email, etc."
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="company-tax">Tax ID / RC Number</Label>
+                  <Label htmlFor="company-tax" className="required">Tax ID / RC Number</Label>
                   <Input
                     id="company-tax"
-                    value="RC-12345678"
-                    disabled
+                    value={company.taxId}
+                    onChange={(e) => updateCompany('taxId', e.target.value)}
+                    placeholder="Enter Tax ID or RC Number"
+                    required
                   />
                 </div>
               </div>
             </div>
             
             {/* Supplier Details Section */}
-            <div className="po-form-section">
-              <h3 className="text-lg font-medium mb-4">Supplier Details</h3>
-              <div className="po-form-group">
+            <div className="po-form-section mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">Supplier Details</h3>
+                <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add Supplier
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Add New Supplier</DialogTitle>
+                    </DialogHeader>
+                    <AddSupplierForm onClose={() => setIsAddSupplierOpen(false)} />
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <Label htmlFor="supplier">Supplier</Label>
+                  <Label htmlFor="supplier" className="required">Supplier</Label>
                   <Select value={supplierId} onValueChange={setSupplierId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select supplier" />
@@ -203,7 +240,7 @@ const CreatePO: React.FC = () => {
             </div>
             
             {/* Order Items Section */}
-            <div className="po-form-section">
+            <div className="po-form-section mb-8">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium">Order Items</h3>
                 <Button type="button" variant="outline" size="sm" onClick={addItem}>
@@ -282,7 +319,7 @@ const CreatePO: React.FC = () => {
             </div>
             
             {/* Order Summary Section */}
-            <div className="po-form-section">
+            <div className="po-form-section mb-8">
               <h3 className="text-lg font-medium mb-4">Order Summary</h3>
               <div className="flex justify-between items-center py-2 border-b border-muted">
                 <span>Grand Total:</span>
@@ -291,7 +328,7 @@ const CreatePO: React.FC = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
-                  <Label htmlFor="payment-term">Payment Terms</Label>
+                  <Label htmlFor="payment-term" className="required">Payment Terms</Label>
                   <Select value={paymentTerm} onValueChange={(value) => setPaymentTerm(value as PaymentTerm)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -305,7 +342,7 @@ const CreatePO: React.FC = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="delivery-date">Expected Delivery Date</Label>
+                  <Label htmlFor="delivery-date" className="required">Expected Delivery Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -326,7 +363,6 @@ const CreatePO: React.FC = () => {
                         onSelect={setDeliveryDate}
                         initialFocus
                         disabled={(date) => date < new Date()}
-                        className="pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
