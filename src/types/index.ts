@@ -66,6 +66,32 @@ export interface DeliveryDetails {
   totalDistance?: number;
 }
 
+export interface OffloadingDetails {
+  id: string;
+  deliveryId: string;
+  initialTankVolume: number;
+  finalTankVolume: number;
+  loadedVolume: number;
+  deliveredVolume: number;
+  measuredBy: string;
+  measuredByRole: string;
+  discrepancyPercentage: number;
+  isDiscrepancyFlagged: boolean;
+  status: 'pending' | 'approved' | 'under_investigation';
+  notes?: string;
+  timestamp: Date;
+}
+
+export interface Incident {
+  id: string;
+  deliveryId: string;
+  type: 'delay' | 'mechanical' | 'accident' | 'feedback' | 'other';
+  description: string;
+  impact: 'positive' | 'negative' | 'neutral';
+  reportedBy: string;
+  timestamp: Date;
+}
+
 export interface PurchaseOrder {
   id: string;
   poNumber: string;
@@ -79,6 +105,8 @@ export interface PurchaseOrder {
   createdAt: Date;
   updatedAt: Date;
   deliveryDetails?: DeliveryDetails;
+  offloadingDetails?: OffloadingDetails;
+  incidents?: Incident[];
 }
 
 export interface LogEntry {

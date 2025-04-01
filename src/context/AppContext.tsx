@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useState } from 'react';
-import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData } from '../types';
+import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData, OffloadingDetails, Incident } from '../types';
 import { appData } from '../data/mockData';
 import { useToast } from '../hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,11 +29,14 @@ interface AppContextType {
   getTruckById: (id: string) => Truck | undefined;
   getAvailableDrivers: () => Driver[];
   getAvailableTrucks: () => Truck[];
+  recordOffloadingDetails: (orderId: string, offloadingData: Omit<OffloadingDetails, 'id' | 'deliveryId' | 'timestamp' | 'discrepancyPercentage' | 'isDiscrepancyFlagged' | 'status'>) => void;
+  addIncident: (orderId: string, incident: Omit<Incident, 'id' | 'deliveryId' | 'timestamp'>) => void;
+  getOrdersWithDeliveryStatus: (status: 'pending' | 'in_transit' | 'delivered') => PurchaseOrder[];
+  getOrdersWithDiscrepancies: () => PurchaseOrder[];
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Initial mock data for drivers and trucks
 const initialDrivers: Driver[] = [
   {
     id: "driver-1",
@@ -171,7 +173,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLogs((prevLogs) => [newLog, ...prevLogs]);
   };
 
-  // Driver management functions
   const addDriver = (driverData: Omit<Driver, 'id'>) => {
     const newDriver: Driver = {
       ...driverData,
@@ -198,7 +199,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newDriver;
   };
 
-  // Truck management functions
   const addTruck = (truckData: Omit<Truck, 'id'>) => {
     const newTruck: Truck = {
       ...truckData,
@@ -225,7 +225,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newTruck;
   };
 
-  // Assign driver to order
   const assignDriverToOrder = (orderId: string, driverId: string, truckId: string) => {
     const order = purchaseOrders.find(po => po.id === orderId);
     const driver = drivers.find(d => d.id === driverId);
@@ -240,7 +239,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     
-    // Check if order is paid (active)
     if (order.status !== 'active') {
       toast({
         title: "Assignment Failed",
@@ -250,22 +248,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     
-    // Create or update delivery details
     const deliveryDetails: DeliveryDetails = {
       id: order.deliveryDetails?.id || `delivery-${uuidv4().substring(0, 8)}`,
       poId: orderId,
       driverId,
       truckId,
       status: 'pending',
-      expectedArrivalTime: new Date(Date.now() + 24 * 60 * 60 * 1000) // Default ETA: 24 hours
+      expectedArrivalTime: new Date(Date.now() + 24 * 60 * 60 * 1000)
     };
     
-    // Update purchase order with delivery details
     setPurchaseOrders(prevOrders =>
       prevOrders.map(po => po.id === orderId ? { ...po, deliveryDetails } : po)
     );
     
-    // Update driver and truck availability
     setDrivers(prevDrivers =>
       prevDrivers.map(d => d.id === driverId ? { ...d, isAvailable: false } : d)
     );
@@ -274,7 +269,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prevTrucks.map(t => t.id === truckId ? { ...t, isAvailable: false } : t)
     );
     
-    // Log the assignment
     const newLog: LogEntry = {
       id: `log-${Date.now()}`,
       poId: orderId,
@@ -291,7 +285,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Update delivery status
   const updateDeliveryStatus = (
     orderId: string, 
     updates: Partial<DeliveryDetails>
@@ -307,13 +300,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     
-    // Update purchase order delivery details
     setPurchaseOrders(prevOrders =>
       prevOrders.map(po => {
         if (po.id === orderId && po.deliveryDetails) {
           const updatedDetails = { ...po.deliveryDetails, ...updates };
           
-          // If status changed to delivered, update order status to fulfilled
           if (updates.status === 'delivered' && po.status !== 'fulfilled') {
             return { 
               ...po, 
@@ -329,7 +320,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
     
-    // Log the update
     let actionDescription = "Delivery details updated";
     
     if (updates.depotDepartureTime) {
@@ -352,7 +342,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     setLogs(prev => [newLog, ...prev]);
     
-    // If delivery completed, make driver and truck available again
     if (updates.status === 'delivered') {
       const { driverId, truckId } = order.deliveryDetails;
       
@@ -380,7 +369,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Update GPS data
   const updateGPSData = (truckId: string, latitude: number, longitude: number, speed: number) => {
     const newGPSData: GPSData = {
       id: `gps-${Date.now()}`,
@@ -393,16 +381,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     setGPSData(prev => [newGPSData, ...prev]);
     
-    // Find all orders with this truck and update their distance/ETA
     setPurchaseOrders(prevOrders =>
       prevOrders.map(po => {
         if (po.deliveryDetails?.truckId === truckId && po.deliveryDetails.status === 'in_transit') {
-          // This is simplified - in a real app, you'd calculate actual distance from GPS coordinates
           const distanceCovered = po.deliveryDetails.distanceCovered || 0;
           const totalDistance = po.deliveryDetails.totalDistance || 100;
           const newDistanceCovered = Math.min(distanceCovered + (speed / 10), totalDistance);
           
-          // Recalculate ETA based on new distance and speed
           const remainingDistance = totalDistance - newDistanceCovered;
           const estimatedTimeInHours = remainingDistance / (speed > 0 ? speed : 10);
           const expectedArrivalTime = new Date(Date.now() + estimatedTimeInHours * 60 * 60 * 1000);
@@ -421,24 +406,156 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Get a driver by ID
   const getDriverById = (id: string): Driver | undefined => {
     return drivers.find(driver => driver.id === id);
   };
 
-  // Get a truck by ID
   const getTruckById = (id: string): Truck | undefined => {
     return trucks.find(truck => truck.id === id);
   };
 
-  // Get available drivers
   const getAvailableDrivers = (): Driver[] => {
     return drivers.filter(driver => driver.isAvailable);
   };
 
-  // Get available trucks
   const getAvailableTrucks = (): Truck[] => {
     return trucks.filter(truck => truck.isAvailable);
+  };
+
+  const recordOffloadingDetails = (
+    orderId: string, 
+    offloadingData: Omit<OffloadingDetails, 'id' | 'deliveryId' | 'timestamp' | 'discrepancyPercentage' | 'isDiscrepancyFlagged' | 'status'>
+  ) => {
+    const order = purchaseOrders.find(po => po.id === orderId);
+    
+    if (!order || !order.deliveryDetails) {
+      toast({
+        title: "Error Recording Offloading",
+        description: "Could not find order or delivery details.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const loadedVolume = offloadingData.loadedVolume;
+    const deliveredVolume = offloadingData.deliveredVolume;
+    const discrepancyPercentage = ((loadedVolume - deliveredVolume) / loadedVolume) * 100;
+    
+    const isDiscrepancyFlagged = discrepancyPercentage > 5;
+    
+    const newOffloadingDetails: OffloadingDetails = {
+      id: `offloading-${uuidv4().substring(0, 8)}`,
+      deliveryId: order.deliveryDetails.id,
+      ...offloadingData,
+      discrepancyPercentage,
+      isDiscrepancyFlagged,
+      status: isDiscrepancyFlagged ? 'under_investigation' : 'approved',
+      timestamp: new Date()
+    };
+    
+    setPurchaseOrders(prevOrders =>
+      prevOrders.map(po => {
+        if (po.id === orderId) {
+          return { 
+            ...po, 
+            offloadingDetails: newOffloadingDetails,
+            updatedAt: new Date() 
+          };
+        }
+        return po;
+      })
+    );
+    
+    let actionDescription = `Offloading details recorded for Purchase Order ${order.poNumber}`;
+    
+    if (isDiscrepancyFlagged) {
+      actionDescription += ` - FLAGGED for investigation (${discrepancyPercentage.toFixed(2)}% discrepancy)`;
+    }
+    
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: orderId,
+      action: actionDescription,
+      user: 'Current User',
+      timestamp: new Date(),
+    };
+    
+    setLogs(prev => [newLog, ...prev]);
+    
+    if (isDiscrepancyFlagged) {
+      toast({
+        title: "Discrepancy Detected",
+        description: `A ${discrepancyPercentage.toFixed(2)}% volume discrepancy has been flagged for investigation.`,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Offloading Recorded",
+        description: `Offloading details have been successfully recorded.`,
+      });
+    }
+  };
+
+  const addIncident = (
+    orderId: string, 
+    incident: Omit<Incident, 'id' | 'deliveryId' | 'timestamp'>
+  ) => {
+    const order = purchaseOrders.find(po => po.id === orderId);
+    
+    if (!order || !order.deliveryDetails) {
+      toast({
+        title: "Error Adding Incident",
+        description: "Could not find order or delivery details.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const newIncident: Incident = {
+      id: `incident-${uuidv4().substring(0, 8)}`,
+      deliveryId: order.deliveryDetails.id,
+      ...incident,
+      timestamp: new Date()
+    };
+    
+    setPurchaseOrders(prevOrders =>
+      prevOrders.map(po => {
+        if (po.id === orderId) {
+          return { 
+            ...po, 
+            incidents: [...(po.incidents || []), newIncident],
+            updatedAt: new Date() 
+          };
+        }
+        return po;
+      })
+    );
+    
+    const impactIcon = incident.impact === 'positive' ? '+' : incident.impact === 'negative' ? '-' : '';
+    const actionDescription = `${impactIcon} Incident reported: ${incident.type} - ${incident.description}`;
+    
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: orderId,
+      action: actionDescription,
+      user: 'Current User',
+      timestamp: new Date(),
+    };
+    
+    setLogs(prev => [newLog, ...prev]);
+    
+    toast({
+      title: "Incident Recorded",
+      description: `${incident.type} incident has been added to the delivery log.`,
+    });
+  };
+
+  const getOrdersWithDeliveryStatus = (status: 'pending' | 'in_transit' | 'delivered'): PurchaseOrder[] => {
+    return purchaseOrders.filter(po => po.deliveryDetails?.status === status);
+  };
+
+  const getOrdersWithDiscrepancies = (): PurchaseOrder[] => {
+    return purchaseOrders.filter(po => po.offloadingDetails?.isDiscrepancyFlagged);
   };
 
   return (
@@ -464,7 +581,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getDriverById,
         getTruckById,
         getAvailableDrivers,
-        getAvailableTrucks
+        getAvailableTrucks,
+        recordOffloadingDetails,
+        addIncident,
+        getOrdersWithDeliveryStatus,
+        getOrdersWithDiscrepancies
       }}
     >
       {children}

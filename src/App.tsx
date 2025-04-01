@@ -13,6 +13,7 @@ import Orders from "./pages/Orders";
 import ActivityLog from "./pages/ActivityLog";
 import AssignDriver from "./pages/AssignDriver";
 import GPSTracking from "./pages/GPSTracking";
+import DeliveryLog from "./pages/DeliveryLog";
 import NotFound from "./pages/NotFound";
 import AIChatProvider from "./context/AIChatContext";
 import AIChatWidget from "./components/AIChatWidget";
@@ -36,6 +37,7 @@ const App = () => {
                   <Route path="orders/:id" element={<PODetail />} />
                   <Route path="assign-driver" element={<AssignDriver />} />
                   <Route path="gps-tracking" element={<GPSTracking />} />
+                  <Route path="delivery-log" element={<DeliveryLog />} />
                   <Route path="logs" element={<ActivityLog />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
