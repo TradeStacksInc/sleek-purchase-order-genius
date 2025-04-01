@@ -12,6 +12,7 @@ import { useAIActions } from './aiActions';
 import { loadAppState, saveToLocalStorage, STORAGE_KEYS } from '../utils/localStorage';
 import { useToast } from '@/hooks/use-toast';
 
+// Create the context with an undefined initial value
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
