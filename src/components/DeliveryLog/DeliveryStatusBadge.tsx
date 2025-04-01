@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Truck, Clock, PackageOpen, CheckCircle, HourglassClock } from 'lucide-react';
+import { Truck, Clock, PackageOpen, CheckCircle, Hourglass } from 'lucide-react';
 
 const DeliveryStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   switch (status) {
@@ -22,7 +22,7 @@ const DeliveryStatusBadge: React.FC<{ status: string }> = ({ status }) => {
     case 'pending':
       return (
         <Badge className="bg-yellow-500 hover:bg-yellow-500 text-white flex items-center gap-1">
-          <HourglassClock className="h-3 w-3" />
+          <Hourglass className="h-3 w-3" />
           <span>Pending</span>
         </Badge>
       );
