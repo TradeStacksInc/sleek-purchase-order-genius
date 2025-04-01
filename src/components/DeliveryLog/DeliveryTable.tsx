@@ -17,6 +17,8 @@ import DetailsDialog from './DetailsDialog';
 import OffloadingDialog from './OffloadingDialog';
 import IncidentDialog from './IncidentDialog';
 import { useApp } from '@/context/AppContext';
+import { Truck, MapPin, Clock, ChevronRight } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 interface DeliveryTableProps {
   deliveries: PurchaseOrder[];
@@ -41,7 +43,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
             <TableHead>PO Number</TableHead>
             <TableHead>Driver & Truck</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Delivery Time</TableHead>
+            <TableHead>Tracking</TableHead>
             <TableHead>Volume</TableHead>
             <TableHead>Discrepancy</TableHead>
             <TableHead>Incidents</TableHead>
@@ -74,14 +76,44 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                 }
               }
               
+              // Calculate progress percentage for in-transit deliveries
+              let progressPercentage = 0;
+              let eta = "";
+              
+              if (delivery.status === 'in_transit') {
+                const totalDistance = delivery.totalDistance || 100;
+                const distanceCovered = delivery.distanceCovered || 0;
+                progressPercentage = Math.min(Math.round((distanceCovered / totalDistance) * 100), 100);
+                
+                if (delivery.expectedArrivalTime) {
+                  eta = format(new Date(delivery.expectedArrivalTime), 'h:mm a, MMM d');
+                }
+              } else if (delivery.status === 'delivered') {
+                progressPercentage = 100;
+              }
+              
               return (
                 <TableRow key={order.id} className={rowColorClass}>
-                  <TableCell className="font-medium">{order.poNumber}</TableCell>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>{order.poNumber}</div>
+                      <div className="text-xs text-muted-foreground">{order.supplier.name}</div>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {driver ? (
                       <div>
-                        <div>{driver.name}</div>
-                        <div className="text-xs text-muted-foreground">{truck?.plateNumber}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                            <Truck className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div>{driver.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {truck?.plateNumber} {truck?.isGPSTagged && <Badge variant="outline" className="text-xs ml-1">GPS</Badge>}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <span className="text-muted-foreground">Not assigned</span>
@@ -90,11 +122,56 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   <TableCell>
                     <DeliveryStatusBadge status={delivery.status} />
                   </TableCell>
-                  <TableCell>
-                    {delivery.destinationArrivalTime && delivery.depotDepartureTime ? (
-                      calculateDeliveryTime(delivery.depotDepartureTime, delivery.destinationArrivalTime)
+                  <TableCell className="min-w-[180px]">
+                    {delivery.status === 'in_transit' ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1">
+                            <Truck className="h-3 w-3" /> Depot
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" /> Site
+                          </span>
+                        </div>
+                        <div className="relative pt-1">
+                          <Progress value={progressPercentage} className="h-2" />
+                          <div className="absolute" 
+                               style={{ left: `${progressPercentage}%`, transform: 'translateX(-50%)' }}>
+                            <Truck className="h-4 w-4 text-blue-600 animate-pulse" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end mt-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3 mr-1" /> ETA: {eta || "Calculating..."}
+                        </div>
+                      </div>
+                    ) : delivery.status === 'delivered' ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1">
+                            <Truck className="h-3 w-3" /> Depot
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" /> Site
+                          </span>
+                        </div>
+                        <div className="relative pt-1">
+                          <Progress value={100} className="h-2 bg-green-100" />
+                          <div className="absolute" style={{ right: '0%', transform: 'translateX(50%)' }}>
+                            <Truck className="h-4 w-4 text-green-600" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end mt-1 text-xs text-green-600">
+                          {delivery.destinationArrivalTime && delivery.depotDepartureTime ? (
+                            <span>Completed in {calculateDeliveryTime(delivery.depotDepartureTime, delivery.destinationArrivalTime)}</span>
+                          ) : (
+                            <span>Completed</span>
+                          )}
+                        </div>
+                      </div>
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <div className="text-muted-foreground text-xs">
+                        {delivery.status === 'pending' ? 'Awaiting departure' : 'Status unknown'}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>

@@ -4,7 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { saveAppState } from '@/utils/localStorage';
 
 /**
- * AutoSave component that periodically saves app state
+ * AutoSave component that silently saves app state periodically
  * and handles beforeunload event to prevent data loss
  */
 const AutoSave: React.FC = () => {
@@ -41,8 +41,14 @@ const AutoSave: React.FC = () => {
         aiInsights: appState.aiInsights
       };
       
-      saveAppState(dataToSave);
-      console.log('Auto-saved app state', new Date().toLocaleTimeString());
+      // Silently save without showing error notifications
+      try {
+        saveAppState(dataToSave);
+        console.log('Auto-saved app state', new Date().toLocaleTimeString());
+      } catch (error) {
+        // Log errors to console but don't show to user
+        console.error('Auto-save failed:', error);
+      }
     }, 30000);
     
     // Add event listener for page unload

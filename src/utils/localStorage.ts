@@ -26,10 +26,17 @@ export interface StoredAppData {
 // Save data to local storage with silent error handling
 export const saveToLocalStorage = <T>(key: string, data: T): boolean => {
   try {
+    if (!Array.isArray(data)) {
+      console.info(`Cannot save ${key}: value is not an array`);
+      return false;
+    }
+    
     const serializedData = JSON.stringify(data);
     localStorage.setItem(key, serializedData);
+    console.info(`Successfully saved data to ${key}`);
     return true;
   } catch (error) {
+    // Log error to console but don't surface to user
     console.error(`Error saving to local storage (${key}):`, error);
     return false;
   }
@@ -40,11 +47,13 @@ export const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
   try {
     const serializedData = localStorage.getItem(key);
     if (serializedData === null) {
+      console.info(`No data found in local storage for ${key}, using default value`);
       return defaultValue;
     }
 
     // Parse JSON with date reviver
     const parsedData = JSON.parse(serializedData, dateReviver);
+    console.info(`Successfully loaded data from ${key}`);
     return parsedData;
   } catch (error) {
     console.error(`Error retrieving from local storage (${key}):`, error);
@@ -66,6 +75,7 @@ const dateReviver = (_key: string, value: any): any => {
 // Save entire app state to local storage with silent error handling
 export const saveAppState = (state: StoredAppData): boolean => {
   let success = true;
+  let anySuccess = false;
   
   // Validate data before saving
   if (!state || Object.keys(state).length === 0) {
@@ -79,9 +89,14 @@ export const saveAppState = (state: StoredAppData): boolean => {
     
     if (Array.isArray(stateValue)) {
       const saveSuccess = saveToLocalStorage(storageKey, stateValue);
-      if (!saveSuccess) success = false;
+      if (saveSuccess) anySuccess = true;
+      else success = false;
     }
   });
+  
+  if (!anySuccess) {
+    console.error(`Failed to auto-save app state ${new Date().toLocaleTimeString()}`);
+  }
   
   return success;
 };
@@ -97,6 +112,16 @@ export const loadAppState = (defaultState: StoredAppData): StoredAppData => {
     gpsData: getFromLocalStorage(STORAGE_KEYS.GPS_DATA, defaultState.gpsData),
     aiInsights: getFromLocalStorage(STORAGE_KEYS.AI_INSIGHTS, defaultState.aiInsights)
   };
+  
+  // Check if we're using all defaults, which means no saved data was found
+  const usingAllDefaults = Object.keys(loadedState).every(key => 
+    JSON.stringify(loadedState[key as keyof StoredAppData]) === 
+    JSON.stringify(defaultState[key as keyof StoredAppData])
+  );
+  
+  if (usingAllDefaults) {
+    console.info('Using all default data - no saved data found in local storage');
+  }
   
   return loadedState;
 };
