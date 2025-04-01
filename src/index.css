@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -34,6 +33,13 @@
     --ring: 222.2 84% 4.9%;
  
     --radius: 0.5rem;
+    
+    --sidebar: 220 14% 96%;
+    --sidebar-foreground: 222.2 84% 4.9%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-accent: 210 40% 90%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-ring: 222.2 84% 4.9%;
   }
  
   .dark {
@@ -124,3 +130,53 @@
   animation: ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+/* Tooltip styling */
+.tooltip {
+  @apply relative inline-block;
+}
+
+.tooltip .tooltip-text {
+  @apply invisible absolute z-50 w-48 rounded-md bg-gray-800 p-2 text-xs text-white opacity-0 transition-opacity duration-300;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tooltip:hover .tooltip-text {
+  @apply visible opacity-100;
+}
+
+.tooltip .tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1f2937 transparent transparent transparent;
+}
+
+/* Improved delivery log card styling */
+.delivery-log-card {
+  @apply p-5 space-y-3 border rounded-lg transition-all duration-200 hover:shadow-md;
+}
+
+/* Status badge styling */
+.status-badge {
+  @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium;
+}
+
+/* Tracking progress line styling */
+.tracking-progress-line {
+  @apply relative h-2 w-full rounded-full bg-gray-200 mt-3;
+}
+
+.tracking-progress-fill {
+  @apply absolute top-0 left-0 h-full rounded-full transition-all duration-500;
+}
+
+/* Incident button styling */
+.incident-button {
+  @apply flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-md border transition-colors;
+}

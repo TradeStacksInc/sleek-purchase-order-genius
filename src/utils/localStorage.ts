@@ -96,6 +96,7 @@ export const saveAppState = (state: StoredAppData): boolean => {
   
   if (!anySuccess) {
     console.error(`Failed to auto-save app state ${new Date().toLocaleTimeString()}`);
+    // We're not showing any error notifications to the user, just logging to console
   }
   
   return success;

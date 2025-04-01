@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Flag } from 'lucide-react';
+import { Flag, AlertTriangle, MessageSquare, ThumbsUp, AlertCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/context/AppContext';
+import { useToast } from '@/hooks/use-toast';
 
 const incidentFormSchema = z.object({
   type: z.enum(['delay', 'mechanical', 'accident', 'feedback', 'other'], {
@@ -50,6 +51,7 @@ interface IncidentDialogProps {
 
 const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId }) => {
   const { addIncident } = useApp();
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   
   const form = useForm<z.infer<typeof incidentFormSchema>>({
@@ -73,14 +75,46 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId }) => {
     addIncident(orderId, incidentData);
     setIsOpen(false);
     form.reset();
+    
+    toast({
+      title: "Incident reported",
+      description: `The ${values.type} incident has been recorded successfully.`,
+      variant: values.impact === 'negative' ? 'destructive' : 'default',
+    });
   }
+  
+  const getIncidentIcon = (type: string) => {
+    switch (type) {
+      case 'delay':
+        return <AlertCircle className="h-4 w-4 mr-2" />;
+      case 'mechanical':
+        return <AlertTriangle className="h-4 w-4 mr-2" />;
+      case 'accident':
+        return <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />;
+      case 'feedback':
+        return <MessageSquare className="h-4 w-4 mr-2" />;
+      default:
+        return <Flag className="h-4 w-4 mr-2" />;
+    }
+  };
+  
+  const getImpactColor = (impact: string) => {
+    switch (impact) {
+      case 'positive':
+        return 'bg-green-50 border-green-200 text-green-700';
+      case 'negative':
+        return 'bg-red-50 border-red-200 text-red-700';
+      default:
+        return 'bg-gray-50 border-gray-200 text-gray-700';
+    }
+  };
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Flag className="h-4 w-4 mr-2" />
-          Report
+        <Button variant="outline" size="sm" className="incident-button hover:bg-gray-100">
+          <Flag className="h-4 w-4 mr-1" />
+          Report Incident
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
@@ -110,11 +144,36 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId }) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="delay">Delay</SelectItem>
-                        <SelectItem value="mechanical">Mechanical Issue</SelectItem>
-                        <SelectItem value="accident">Accident</SelectItem>
-                        <SelectItem value="feedback">Customer Feedback</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="delay" className="flex items-center">
+                          <div className="flex items-center">
+                            {getIncidentIcon('delay')}
+                            <span>Delay</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="mechanical" className="flex items-center">
+                          <div className="flex items-center">
+                            {getIncidentIcon('mechanical')}
+                            <span>Mechanical Issue</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="accident" className="flex items-center">
+                          <div className="flex items-center">
+                            {getIncidentIcon('accident')}
+                            <span>Accident</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="feedback" className="flex items-center">
+                          <div className="flex items-center">
+                            {getIncidentIcon('feedback')}
+                            <span>Customer Feedback</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="other" className="flex items-center">
+                          <div className="flex items-center">
+                            {getIncidentIcon('other')}
+                            <span>Other</span>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -138,9 +197,24 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId }) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="positive">Positive (+)</SelectItem>
-                        <SelectItem value="negative">Negative (-)</SelectItem>
-                        <SelectItem value="neutral">Neutral</SelectItem>
+                        <SelectItem value="positive" className="flex items-center">
+                          <div className="flex items-center">
+                            <ThumbsUp className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Positive (+)</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="negative" className="flex items-center">
+                          <div className="flex items-center">
+                            <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />
+                            <span>Negative (-)</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="neutral" className="flex items-center">
+                          <div className="flex items-center">
+                            <Flag className="h-4 w-4 mr-2 text-gray-500" />
+                            <span>Neutral</span>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -159,6 +233,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId }) => {
                     <Textarea 
                       {...field}
                       placeholder="Describe the incident or feedback"
+                      className="min-h-[100px]"
                     />
                   </FormControl>
                   <FormMessage />
@@ -180,7 +255,10 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId }) => {
               )}
             />
             
-            <DialogFooter>
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+                Cancel
+              </Button>
               <Button type="submit">Record Incident</Button>
             </DialogFooter>
           </form>

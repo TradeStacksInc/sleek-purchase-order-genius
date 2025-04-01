@@ -41,7 +41,7 @@ const AutoSave: React.FC = () => {
         aiInsights: appState.aiInsights
       };
       
-      // Silently save without showing error notifications
+      // Silently save without showing any notifications regardless of success/failure
       try {
         saveAppState(dataToSave);
         console.log('Auto-saved app state', new Date().toLocaleTimeString());

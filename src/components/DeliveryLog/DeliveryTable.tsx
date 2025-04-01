@@ -17,8 +17,14 @@ import DetailsDialog from './DetailsDialog';
 import OffloadingDialog from './OffloadingDialog';
 import IncidentDialog from './IncidentDialog';
 import { useApp } from '@/context/AppContext';
-import { Truck, MapPin, Clock, ChevronRight } from 'lucide-react';
+import { Truck, MapPin, Clock, ChevronRight, Info, FileText, Droplet } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DeliveryTableProps {
   deliveries: PurchaseOrder[];
@@ -44,7 +50,21 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
             <TableHead>Driver & Truck</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Tracking</TableHead>
-            <TableHead>Volume</TableHead>
+            <TableHead>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1">
+                      <Droplet className="h-4 w-4" /> 
+                      <span>Volume</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>Product volume information</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </TableHead>
             <TableHead>Discrepancy</TableHead>
             <TableHead>Incidents</TableHead>
             <TableHead>Actions</TableHead>
@@ -71,8 +91,8 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   rowColorClass = 'bg-red-50';
                 } else if (discrepancyPercent > 0) {
                   rowColorClass = 'bg-yellow-50';
-                } else {
-                  rowColorClass = 'bg-green-50';
+                } else if (delivery.status === 'delivered') {
+                  rowColorClass = 'bg-green-50/50';
                 }
               }
               
@@ -92,25 +112,46 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                 progressPercentage = 100;
               }
               
+              // Get product type from the order items (first item for simplicity)
+              const productType = order.items && order.items.length > 0 
+                ? order.items[0].description 
+                : "Unknown Product";
+
               return (
-                <TableRow key={order.id} className={rowColorClass}>
+                <TableRow key={order.id} className={`${rowColorClass} delivery-log-card`}>
                   <TableCell className="font-medium">
                     <div>
-                      <div>{order.poNumber}</div>
-                      <div className="text-xs text-muted-foreground">{order.supplier.name}</div>
+                      <div className="text-base">{order.poNumber}</div>
+                      <div className="text-sm text-muted-foreground mt-1">{order.supplier.name}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-3.5 w-3.5" /> {productType}
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     {driver ? (
                       <div>
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                            <Truck className="h-4 w-4 text-blue-600" />
+                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            <Truck className="h-5 w-5 text-blue-600" />
                           </div>
                           <div>
-                            <div>{driver.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {truck?.plateNumber} {truck?.isGPSTagged && <Badge variant="outline" className="text-xs ml-1">GPS</Badge>}
+                            <div className="font-medium">{driver.name}</div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              {truck?.plateNumber} {truck?.isGPSTagged && 
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge variant="outline" className="text-xs ml-1">GPS</Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      <p>This truck is equipped with GPS tracking</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              }
                             </div>
                           </div>
                         </div>
@@ -122,9 +163,9 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   <TableCell>
                     <DeliveryStatusBadge status={delivery.status} />
                   </TableCell>
-                  <TableCell className="min-w-[180px]">
+                  <TableCell className="min-w-[200px]">
                     {delivery.status === 'in_transit' ? (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <div className="flex items-center justify-between text-xs">
                           <span className="flex items-center gap-1">
                             <Truck className="h-3 w-3" /> Depot
@@ -134,10 +175,10 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                           </span>
                         </div>
                         <div className="relative pt-1">
-                          <Progress value={progressPercentage} className="h-2" />
+                          <Progress value={progressPercentage} className="h-2.5" />
                           <div className="absolute" 
-                               style={{ left: `${progressPercentage}%`, transform: 'translateX(-50%)' }}>
-                            <Truck className="h-4 w-4 text-blue-600 animate-pulse" />
+                               style={{ left: `${progressPercentage}%`, transform: 'translateX(-50%) translateY(-50%)', top: '50%' }}>
+                            <Truck className="h-5 w-5 text-blue-600 animate-pulse" />
                           </div>
                         </div>
                         <div className="flex items-center justify-end mt-1 text-xs text-muted-foreground">
@@ -145,7 +186,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                         </div>
                       </div>
                     ) : delivery.status === 'delivered' ? (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <div className="flex items-center justify-between text-xs">
                           <span className="flex items-center gap-1">
                             <Truck className="h-3 w-3" /> Depot
@@ -155,12 +196,12 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                           </span>
                         </div>
                         <div className="relative pt-1">
-                          <Progress value={100} className="h-2 bg-green-100" />
-                          <div className="absolute" style={{ right: '0%', transform: 'translateX(50%)' }}>
-                            <Truck className="h-4 w-4 text-green-600" />
+                          <Progress value={100} className="h-2.5 bg-green-100" />
+                          <div className="absolute" style={{ right: '0%', transform: 'translateX(50%) translateY(-50%)', top: '50%' }}>
+                            <Truck className="h-5 w-5 text-green-600" />
                           </div>
                         </div>
-                        <div className="flex items-center justify-end mt-1 text-xs text-green-600">
+                        <div className="flex items-center justify-end mt-1 text-xs text-green-600 font-medium">
                           {delivery.destinationArrivalTime && delivery.depotDepartureTime ? (
                             <span>Completed in {calculateDeliveryTime(delivery.depotDepartureTime, delivery.destinationArrivalTime)}</span>
                           ) : (
@@ -169,19 +210,31 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                         </div>
                       </div>
                     ) : (
-                      <div className="text-muted-foreground text-xs">
+                      <div className="text-muted-foreground text-sm">
                         {delivery.status === 'pending' ? 'Awaiting departure' : 'Status unknown'}
                       </div>
                     )}
                   </TableCell>
                   <TableCell>
                     {offloading ? (
-                      <div>
-                        <div>{offloading.deliveredVolume.toLocaleString()} L</div>
-                        <div className="text-xs text-muted-foreground">of {offloading.loadedVolume.toLocaleString()} L</div>
+                      <div className="space-y-1">
+                        <div className="font-medium text-base">{offloading.deliveredVolume.toLocaleString()} L</div>
+                        <div className="text-sm text-muted-foreground">of {offloading.loadedVolume.toLocaleString()} L</div>
+                        {order.items && order.items.length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            {order.items[0].description}
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <div className="space-y-1">
+                        <span className="text-muted-foreground">Volume pending</span>
+                        {order.items && order.items.length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            {order.items[0].description}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>
@@ -195,14 +248,32 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                     {order.incidents && order.incidents.length > 0 ? (
                       <div className="flex gap-1">
                         {order.incidents.some(inc => inc.impact === 'negative') && (
-                          <Badge variant="destructive" className="h-6 w-6 p-0 flex items-center justify-center rounded-full">
-                            <span>-</span>
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="destructive" className="h-7 w-7 p-0 flex items-center justify-center rounded-full">
+                                  <span>-</span>
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p>This delivery has negative incidents reported</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                         {order.incidents.some(inc => inc.impact === 'positive') && (
-                          <Badge variant="outline" className="bg-green-100 h-6 w-6 p-0 flex items-center justify-center rounded-full">
-                            <span>+</span>
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="bg-green-100 h-7 w-7 p-0 flex items-center justify-center rounded-full">
+                                  <span>+</span>
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p>This delivery has positive feedback</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </div>
                     ) : (
@@ -211,13 +282,40 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <DetailsDialog order={order} />
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <DetailsDialog order={order} />
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p>View detailed information about this delivery</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                       
                       {delivery.status === 'delivered' && !offloading && (
-                        <OffloadingDialog orderId={order.id} />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <OffloadingDialog orderId={order.id} />
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p>Record offloading details for this delivery</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       
-                      <IncidentDialog orderId={order.id} />
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IncidentDialog orderId={order.id} />
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p>Report an incident for this delivery</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -226,7 +324,10 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
           ) : (
             <TableRow>
               <TableCell colSpan={8} className="h-24 text-center">
-                No deliveries found matching your filter criteria.
+                <div className="flex flex-col items-center justify-center">
+                  <Truck className="h-12 w-12 text-muted-foreground/30 mb-2" />
+                  <p className="text-muted-foreground">No deliveries found matching your filter criteria.</p>
+                </div>
               </TableCell>
             </TableRow>
           )}
