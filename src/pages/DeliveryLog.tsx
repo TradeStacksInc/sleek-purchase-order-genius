@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,11 +67,9 @@ const DeliveryLog: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Filter deliveries based on status and date
   const filteredDeliveries = useMemo(() => {
     let filtered = purchaseOrders.filter(order => order.deliveryDetails);
 
-    // Filter by tab/status
     if (activeTab === 'delivered') {
       filtered = filtered.filter(order => order.deliveryDetails?.status === 'delivered');
     } else if (activeTab === 'in-transit') {
@@ -83,7 +80,6 @@ const DeliveryLog: React.FC = () => {
       filtered = filtered.filter(order => order.offloadingDetails?.isDiscrepancyFlagged);
     }
 
-    // Apply date filter
     if (dateFilter === 'all') return filtered;
 
     const today = new Date();
@@ -119,13 +115,11 @@ const DeliveryLog: React.FC = () => {
     });
   }, [purchaseOrders, activeTab, dateFilter, dateRange]);
 
-  // Calculate pagination
   const totalPages = Math.ceil(filteredDeliveries.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentDeliveries = filteredDeliveries.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Handle page change
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
@@ -357,7 +351,6 @@ const DeliveryLog: React.FC = () => {
   );
 };
 
-// Helper function to calculate delivery time
 const calculateDeliveryTime = (start: Date, end: Date) => {
   const diffMs = end.getTime() - start.getTime();
   const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
@@ -366,7 +359,6 @@ const calculateDeliveryTime = (start: Date, end: Date) => {
   return `${diffHrs}h ${diffMins}m`;
 };
 
-// Delivery Status Badge Component
 const DeliveryStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   switch (status) {
     case 'delivered':
@@ -392,7 +384,6 @@ const DeliveryStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   }
 };
 
-// Discrepancy Badge Component
 const DiscrepancyBadge: React.FC<{ discrepancyPercent: number }> = ({ discrepancyPercent }) => {
   if (discrepancyPercent > 5) {
     return (
@@ -418,7 +409,6 @@ const DiscrepancyBadge: React.FC<{ discrepancyPercent: number }> = ({ discrepanc
   }
 };
 
-// Details Dialog Component
 const DetailsDialog: React.FC<{ order: PurchaseOrder }> = ({ order }) => {
   const { getDriverById, getTruckById } = useApp();
   
@@ -601,7 +591,6 @@ const DetailsDialog: React.FC<{ order: PurchaseOrder }> = ({ order }) => {
   );
 };
 
-// Offloading Form Schema
 const offloadingFormSchema = z.object({
   loadedVolume: z.coerce.number().min(1, "Volume must be greater than 0"),
   deliveredVolume: z.coerce.number().min(1, "Volume must be greater than 0"),
@@ -612,7 +601,6 @@ const offloadingFormSchema = z.object({
   notes: z.string().optional(),
 });
 
-// Offloading Dialog Component
 const OffloadingDialog: React.FC<{ orderId: string }> = ({ orderId }) => {
   const { recordOffloadingDetails } = useApp();
   const [isOpen, setIsOpen] = useState(false);
@@ -631,7 +619,17 @@ const OffloadingDialog: React.FC<{ orderId: string }> = ({ orderId }) => {
   });
   
   function onSubmit(values: z.infer<typeof offloadingFormSchema>) {
-    recordOffloadingDetails(orderId, values);
+    const offloadingData = {
+      loadedVolume: values.loadedVolume,
+      deliveredVolume: values.deliveredVolume,
+      initialTankVolume: values.initialTankVolume,
+      finalTankVolume: values.finalTankVolume,
+      measuredBy: values.measuredBy,
+      measuredByRole: values.measuredByRole,
+      notes: values.notes || '',
+    };
+    
+    recordOffloadingDetails(orderId, offloadingData);
     setIsOpen(false);
     form.reset();
   }
@@ -789,7 +787,6 @@ const OffloadingDialog: React.FC<{ orderId: string }> = ({ orderId }) => {
   );
 };
 
-// Incident Form Schema
 const incidentFormSchema = z.object({
   type: z.enum(['delay', 'mechanical', 'accident', 'feedback', 'other'], {
     required_error: "Please select an incident type",
@@ -801,7 +798,6 @@ const incidentFormSchema = z.object({
   reportedBy: z.string().min(2, "Name must be at least 2 characters"),
 });
 
-// Incident Dialog Component
 const IncidentDialog: React.FC<{ orderId: string }> = ({ orderId }) => {
   const { addIncident } = useApp();
   const [isOpen, setIsOpen] = useState(false);
@@ -809,15 +805,22 @@ const IncidentDialog: React.FC<{ orderId: string }> = ({ orderId }) => {
   const form = useForm<z.infer<typeof incidentFormSchema>>({
     resolver: zodResolver(incidentFormSchema),
     defaultValues: {
-      type: 'feedback',
+      type: 'feedback' as const,
       description: "",
-      impact: 'neutral',
+      impact: 'neutral' as const,
       reportedBy: "",
     },
   });
   
   function onSubmit(values: z.infer<typeof incidentFormSchema>) {
-    addIncident(orderId, values);
+    const incidentData = {
+      type: values.type,
+      description: values.description,
+      impact: values.impact,
+      reportedBy: values.reportedBy,
+    };
+    
+    addIncident(orderId, incidentData);
     setIsOpen(false);
     form.reset();
   }
