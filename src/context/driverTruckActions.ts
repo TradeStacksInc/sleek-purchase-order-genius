@@ -84,24 +84,28 @@ export const useDriverTruckActions = (
     return trucks.filter(truck => truck.isAvailable);
   };
 
+  const getGPSTaggedTrucks = (): Truck[] => {
+    return trucks.filter(truck => truck.hasGPS && truck.isGPSTagged);
+  };
+
+  const getNonTaggedTrucks = (): Truck[] => {
+    return trucks.filter(truck => truck.hasGPS && !truck.isGPSTagged);
+  };
+
+  const getNonGPSTrucks = (): Truck[] => {
+    return trucks.filter(truck => !truck.hasGPS);
+  };
+
   const tagTruckWithGPS = (truckId: string, gpsDeviceId: string, initialLatitude: number, initialLongitude: number) => {
     const truck = trucks.find(t => t.id === truckId);
     
     if (!truck) {
-      toast({
-        title: "GPS Tagging Failed",
-        description: "Could not find truck with the provided ID.",
-        variant: "destructive"
-      });
+      console.error("Could not find truck with the provided ID.");
       return;
     }
     
     if (!truck.hasGPS) {
-      toast({
-        title: "GPS Tagging Failed",
-        description: "This truck does not have GPS capability.",
-        variant: "destructive"
-      });
+      console.error("This truck does not have GPS capability.");
       return;
     }
     
@@ -140,6 +144,40 @@ export const useDriverTruckActions = (
     toast({
       title: "GPS Tagged Successfully",
       description: `Truck ${truck.plateNumber} is now GPS-enabled and ready for tracking.`,
+    });
+  };
+
+  const untagTruckGPS = (truckId: string) => {
+    const truck = trucks.find(t => t.id === truckId);
+    
+    if (!truck) {
+      console.error("Could not find truck with the provided ID.");
+      return;
+    }
+    
+    // Update truck to remove GPS tagging
+    setTrucks(prevTrucks =>
+      prevTrucks.map(t => 
+        t.id === truckId 
+          ? { ...t, isGPSTagged: false, gpsDeviceId: undefined } 
+          : t
+      )
+    );
+    
+    // Log the GPS untagging
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: "system",
+      action: `GPS device untagged from truck ${truck.plateNumber}`,
+      user: 'Current User',
+      timestamp: new Date(),
+    };
+    
+    setLogs(prev => [newLog, ...prev]);
+    
+    toast({
+      title: "GPS Untagged",
+      description: `GPS device has been removed from truck ${truck.plateNumber}.`,
     });
   };
 
@@ -187,7 +225,11 @@ export const useDriverTruckActions = (
     getTruckById,
     getAvailableDrivers,
     getAvailableTrucks,
+    getGPSTaggedTrucks,
+    getNonTaggedTrucks,
+    getNonGPSTrucks,
     tagTruckWithGPS,
+    untagTruckGPS,
     updateGPSData
   };
 };

@@ -2,7 +2,6 @@
 import { useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { saveAppState } from '@/utils/localStorage';
-import { toast } from "@/components/ui/use-toast";
 
 /**
  * AutoSave component that periodically saves app state
@@ -27,15 +26,7 @@ const AutoSave: React.FC = () => {
         aiInsights: appState.aiInsights
       };
       
-      const saveSuccess = saveAppState(dataToSave);
-      
-      // If save was unsuccessful, prompt the user before leaving
-      if (!saveSuccess) {
-        // This message might not be displayed in some browsers due to security restrictions
-        const message = "Changes you made may not be saved.";
-        e.returnValue = message;
-        return message;
-      }
+      saveAppState(dataToSave);
     };
     
     // Set up periodic auto-save (every 30 seconds)
@@ -50,18 +41,8 @@ const AutoSave: React.FC = () => {
         aiInsights: appState.aiInsights
       };
       
-      const saveSuccess = saveAppState(dataToSave);
-      
-      if (saveSuccess) {
-        console.log('Auto-saved app state', new Date().toLocaleTimeString());
-      } else {
-        console.error('Failed to auto-save app state', new Date().toLocaleTimeString());
-        toast({
-          title: "Auto-save Failed",
-          description: "There was an issue saving your data. Please save manually before leaving the page.",
-          variant: "destructive"
-        });
-      }
+      saveAppState(dataToSave);
+      console.log('Auto-saved app state', new Date().toLocaleTimeString());
     }, 30000);
     
     // Add event listener for page unload

@@ -27,6 +27,9 @@ export interface AppContextType {
   getTruckById: (id: string) => Truck | undefined;
   getAvailableDrivers: () => Driver[];
   getAvailableTrucks: () => Truck[];
+  getGPSTaggedTrucks: () => Truck[];
+  getNonTaggedTrucks: () => Truck[];
+  getNonGPSTrucks: () => Truck[];
   recordOffloadingDetails: (orderId: string, offloadingData: Omit<OffloadingDetails, 'id' | 'deliveryId' | 'timestamp' | 'discrepancyPercentage' | 'isDiscrepancyFlagged' | 'status'>) => void;
   addIncident: (orderId: string, incident: Omit<Incident, 'id' | 'deliveryId' | 'timestamp'>) => void;
   getOrdersWithDeliveryStatus: (status: 'pending' | 'in_transit' | 'delivered') => PurchaseOrder[];
@@ -34,6 +37,7 @@ export interface AppContextType {
   generateDiscrepancyInsights: () => void;
   markInsightAsRead: (id: string) => void;
   tagTruckWithGPS: (truckId: string, gpsDeviceId: string, initialLatitude: number, initialLongitude: number) => void;
+  untagTruckGPS: (truckId: string) => void;
   startDelivery: (orderId: string) => void;
   completeDelivery: (orderId: string) => void;
 }

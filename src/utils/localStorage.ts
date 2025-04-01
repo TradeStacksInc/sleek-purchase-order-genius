@@ -23,12 +23,11 @@ export interface StoredAppData {
   aiInsights: AIInsight[];
 }
 
-// Save data to local storage with error handling
+// Save data to local storage with silent error handling
 export const saveToLocalStorage = <T>(key: string, data: T): boolean => {
   try {
     const serializedData = JSON.stringify(data);
     localStorage.setItem(key, serializedData);
-    console.log(`Successfully saved data to ${key}`);
     return true;
   } catch (error) {
     console.error(`Error saving to local storage (${key}):`, error);
@@ -36,18 +35,16 @@ export const saveToLocalStorage = <T>(key: string, data: T): boolean => {
   }
 };
 
-// Get data from local storage with proper date parsing and error handling
+// Get data from local storage with proper date parsing and silent error handling
 export const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
   try {
     const serializedData = localStorage.getItem(key);
     if (serializedData === null) {
-      console.log(`No data found in local storage for ${key}, using default value`);
       return defaultValue;
     }
 
     // Parse JSON with date reviver
     const parsedData = JSON.parse(serializedData, dateReviver);
-    console.log(`Successfully loaded data from ${key}`);
     return parsedData;
   } catch (error) {
     console.error(`Error retrieving from local storage (${key}):`, error);
@@ -66,7 +63,7 @@ const dateReviver = (_key: string, value: any): any => {
   return value;
 };
 
-// Save entire app state to local storage with validation
+// Save entire app state to local storage with silent error handling
 export const saveAppState = (state: StoredAppData): boolean => {
   let success = true;
   
@@ -83,19 +80,14 @@ export const saveAppState = (state: StoredAppData): boolean => {
     if (Array.isArray(stateValue)) {
       const saveSuccess = saveToLocalStorage(storageKey, stateValue);
       if (!saveSuccess) success = false;
-    } else {
-      console.warn(`Cannot save ${stateKey}: value is not an array`);
-      success = false;
     }
   });
   
   return success;
 };
 
-// Load entire app state from local storage with validation
+// Load entire app state from local storage with silent handling
 export const loadAppState = (defaultState: StoredAppData): StoredAppData => {
-  console.log('Loading app state from local storage');
-  
   const loadedState: StoredAppData = {
     purchaseOrders: getFromLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, defaultState.purchaseOrders),
     logs: getFromLocalStorage(STORAGE_KEYS.LOGS, defaultState.logs),
@@ -105,19 +97,6 @@ export const loadAppState = (defaultState: StoredAppData): StoredAppData => {
     gpsData: getFromLocalStorage(STORAGE_KEYS.GPS_DATA, defaultState.gpsData),
     aiInsights: getFromLocalStorage(STORAGE_KEYS.AI_INSIGHTS, defaultState.aiInsights)
   };
-  
-  // Check if we got any data or using all defaults
-  const isUsingAllDefaults = Object.entries(loadedState).every(
-    ([key, value]) => 
-      Array.isArray(value) && 
-      value.length === defaultState[key as keyof StoredAppData].length
-  );
-  
-  if (isUsingAllDefaults) {
-    console.log('Using all default data - no saved data found in local storage');
-  } else {
-    console.log('Successfully loaded saved data from local storage');
-  }
   
   return loadedState;
 };

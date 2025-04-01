@@ -24,8 +24,8 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <AutoSave />
           <AppRoutes />
+          <AutoSave />
         </TooltipProvider>
       </AppProvider>
     </QueryClientProvider>

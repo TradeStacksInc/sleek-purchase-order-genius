@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData, OffloadingDetails, Incident, AIInsight } from '../types';
+import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData, Incident, AIInsight } from '../types';
 import { AppContextType } from './appContextTypes';
 import { defaultInitialState } from './initialState';
 import { usePurchaseOrderActions } from './purchaseOrderActions';
@@ -43,25 +43,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
-  // Setup persistent state handlers with error handling and validation
+  // Setup persistent state handlers with silent error handling
   const persistentSetPurchaseOrders: typeof setPurchaseOrders = (value) => {
     setPurchaseOrders((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       
       if (!Array.isArray(newValue)) {
         console.error('Cannot save purchase orders: value is not an array');
-        toast({
-          title: "Data Error",
-          description: "Invalid purchase orders data format. Contact support if this persists.",
-          variant: "destructive"
-        });
         return prev;
       }
       
-      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newValue);
-      if (!saveSuccess) {
-        console.error('Failed to save purchase orders to localStorage');
-      }
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newValue);
       return newValue;
     });
   };
