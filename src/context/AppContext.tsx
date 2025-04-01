@@ -1,18 +1,8 @@
 import React, { createContext, useContext, useState } from 'react';
-import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData, OffloadingDetails, Incident } from '../types';
+import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData, OffloadingDetails, Incident, AIInsight } from '../types';
 import { appData } from '../data/mockData';
 import { useToast } from '../hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
-
-interface AIInsight {
-  id: string;
-  type: string;
-  description: string;
-  severity: 'high' | 'medium' | 'low';
-  relatedEntityIds: string[];
-  generatedAt: Date;
-  isRead: boolean;
-}
 
 interface AppContextType {
   purchaseOrders: PurchaseOrder[];
