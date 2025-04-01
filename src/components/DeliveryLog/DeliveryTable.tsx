@@ -114,7 +114,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
               
               // Get product type from the order items (first item for simplicity)
               const productType = order.items && order.items.length > 0 
-                ? order.items[0].description 
+                ? order.items[0].product 
                 : "Unknown Product";
 
               return (
@@ -222,7 +222,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                         <div className="text-sm text-muted-foreground">of {offloading.loadedVolume.toLocaleString()} L</div>
                         {order.items && order.items.length > 0 && (
                           <div className="text-xs text-muted-foreground">
-                            {order.items[0].description}
+                            {order.items[0].product}
                           </div>
                         )}
                       </div>
@@ -231,7 +231,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                         <span className="text-muted-foreground">Volume pending</span>
                         {order.items && order.items.length > 0 && (
                           <div className="text-xs text-muted-foreground">
-                            {order.items[0].description}
+                            {order.items[0].product}
                           </div>
                         )}
                       </div>
