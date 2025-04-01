@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState } from 'react';
 import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData, OffloadingDetails, Incident, AIInsight } from '../types';
 import { appData } from '../data/mockData';
@@ -36,6 +37,9 @@ interface AppContextType {
   aiInsights: AIInsight[];
   generateDiscrepancyInsights: () => void;
   markInsightAsRead: (id: string) => void;
+  tagTruckWithGPS: (truckId: string, gpsDeviceId: string, initialLatitude: number, initialLongitude: number) => void;
+  startDelivery: (orderId: string) => void;
+  completeDelivery: (orderId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -64,7 +68,8 @@ const initialTrucks: Truck[] = [
     capacity: 33000,
     model: "MAN Diesel 2018",
     hasGPS: true,
-    isAvailable: true
+    isAvailable: true,
+    isGPSTagged: false
   },
   {
     id: "truck-2",
@@ -72,7 +77,8 @@ const initialTrucks: Truck[] = [
     capacity: 45000,
     model: "Scania P410 2020",
     hasGPS: true,
-    isAvailable: true
+    isAvailable: true,
+    isGPSTagged: false
   }
 ];
 
@@ -252,13 +258,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     
+    // Check if truck with GPS capability is properly tagged
+    if (truck.hasGPS && !truck.isGPSTagged) {
+      toast({
+        title: "GPS Tagging Required",
+        description: "This truck has GPS capability but hasn't been tagged with a GPS device yet.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const deliveryDetails: DeliveryDetails = {
       id: order.deliveryDetails?.id || `delivery-${uuidv4().substring(0, 8)}`,
       poId: orderId,
       driverId,
       truckId,
       status: 'pending',
-      expectedArrivalTime: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      expectedArrivalTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      isGPSTagged: truck.isGPSTagged,
+      gpsDeviceId: truck.gpsDeviceId
     };
     
     setPurchaseOrders(prevOrders =>
@@ -289,6 +307,198 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const tagTruckWithGPS = (truckId: string, gpsDeviceId: string, initialLatitude: number, initialLongitude: number) => {
+    const truck = trucks.find(t => t.id === truckId);
+    
+    if (!truck) {
+      toast({
+        title: "GPS Tagging Failed",
+        description: "Could not find truck with the provided ID.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!truck.hasGPS) {
+      toast({
+        title: "GPS Tagging Failed",
+        description: "This truck does not have GPS capability.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Update truck with GPS device information
+    setTrucks(prevTrucks =>
+      prevTrucks.map(t => 
+        t.id === truckId 
+          ? { ...t, isGPSTagged: true, gpsDeviceId } 
+          : t
+      )
+    );
+    
+    // Create initial GPS data point
+    const newGPSData: GPSData = {
+      id: `gps-${Date.now()}`,
+      truckId,
+      latitude: initialLatitude,
+      longitude: initialLongitude,
+      speed: 0,
+      timestamp: new Date()
+    };
+    
+    setGPSData(prev => [newGPSData, ...prev]);
+    
+    // Log the GPS tagging
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: "system",
+      action: `Truck ${truck.plateNumber} tagged with GPS device ${gpsDeviceId}`,
+      user: 'Current User',
+      timestamp: new Date(),
+    };
+    
+    setLogs(prev => [newLog, ...prev]);
+    
+    toast({
+      title: "GPS Tagged Successfully",
+      description: `Truck ${truck.plateNumber} is now GPS-enabled and ready for tracking.`,
+    });
+  };
+
+  const startDelivery = (orderId: string) => {
+    const order = purchaseOrders.find(po => po.id === orderId);
+    
+    if (!order || !order.deliveryDetails) {
+      toast({
+        title: "Start Delivery Failed",
+        description: "Could not find order or delivery details.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check if the assigned truck has GPS tagging
+    const truck = trucks.find(t => t.id === order.deliveryDetails?.truckId);
+    
+    if (!truck) {
+      toast({
+        title: "Start Delivery Failed",
+        description: "Could not find the assigned truck.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (truck.hasGPS && !truck.isGPSTagged) {
+      toast({
+        title: "GPS Tagging Required",
+        description: "The assigned truck requires GPS tagging before starting delivery.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Update delivery status to in_transit
+    const depotDepartureTime = new Date();
+    const expectedArrivalTime = new Date(depotDepartureTime.getTime() + 24 * 60 * 60 * 1000);
+    
+    setPurchaseOrders(prevOrders =>
+      prevOrders.map(po => {
+        if (po.id === orderId && po.deliveryDetails) {
+          return {
+            ...po,
+            deliveryDetails: {
+              ...po.deliveryDetails,
+              status: 'in_transit',
+              depotDepartureTime,
+              expectedArrivalTime,
+              distanceCovered: 0,
+              totalDistance: 100 // Placeholder for real distance calculation
+            },
+            updatedAt: new Date()
+          };
+        }
+        return po;
+      })
+    );
+    
+    // Log the delivery start
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: orderId,
+      action: `Delivery started for Purchase Order ${order.poNumber}. Truck departed from depot.`,
+      user: 'Current User',
+      timestamp: new Date(),
+    };
+    
+    setLogs(prev => [newLog, ...prev]);
+    
+    toast({
+      title: "Delivery Started",
+      description: `Truck departed from depot for PO #${order.poNumber}.`,
+    });
+  };
+
+  const completeDelivery = (orderId: string) => {
+    const order = purchaseOrders.find(po => po.id === orderId);
+    
+    if (!order || !order.deliveryDetails) {
+      toast({
+        title: "Complete Delivery Failed",
+        description: "Could not find order or delivery details.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (order.deliveryDetails.status !== 'in_transit') {
+      toast({
+        title: "Complete Delivery Failed",
+        description: "Only deliveries in transit can be marked as delivered.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Update delivery status to delivered
+    const destinationArrivalTime = new Date();
+    
+    setPurchaseOrders(prevOrders =>
+      prevOrders.map(po => {
+        if (po.id === orderId && po.deliveryDetails) {
+          return {
+            ...po,
+            deliveryDetails: {
+              ...po.deliveryDetails,
+              status: 'delivered',
+              destinationArrivalTime,
+              distanceCovered: po.deliveryDetails.totalDistance || 100
+            },
+            updatedAt: new Date()
+          };
+        }
+        return po;
+      })
+    );
+    
+    // Log the delivery completion
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: orderId,
+      action: `Delivery completed for Purchase Order ${order.poNumber}. Truck arrived at destination.`,
+      user: 'Current User',
+      timestamp: new Date(),
+    };
+    
+    setLogs(prev => [newLog, ...prev]);
+    
+    toast({
+      title: "Delivery Completed",
+      description: `Truck arrived at destination for PO #${order.poNumber}. Please record offloading details.`,
+    });
+  };
+
   const updateDeliveryStatus = (
     orderId: string, 
     updates: Partial<DeliveryDetails>
@@ -302,6 +512,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         variant: "destructive"
       });
       return;
+    }
+
+    // If changing to in_transit, check if GPS is tagged for trucks with GPS
+    if (updates.status === 'in_transit') {
+      const truck = trucks.find(t => t.id === order.deliveryDetails?.truckId);
+      
+      if (truck && truck.hasGPS && !truck.isGPSTagged) {
+        toast({
+          title: "GPS Tagging Required",
+          description: "This truck requires GPS tagging before it can be marked as in transit.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // If starting delivery, set departure time
+      if (!updates.depotDepartureTime) {
+        updates.depotDepartureTime = new Date();
+      }
     }
     
     setPurchaseOrders(prevOrders =>
@@ -709,7 +938,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getOrdersWithDiscrepancies,
         aiInsights,
         generateDiscrepancyInsights,
-        markInsightAsRead
+        markInsightAsRead,
+        tagTruckWithGPS,
+        startDelivery,
+        completeDelivery
       }}
     >
       {children}

@@ -43,6 +43,8 @@ export interface Truck {
   model: string;
   hasGPS: boolean;
   isAvailable: boolean;
+  isGPSTagged?: boolean;
+  gpsDeviceId?: string;
 }
 
 export interface GPSData {
@@ -65,6 +67,8 @@ export interface DeliveryDetails {
   status: 'pending' | 'in_transit' | 'delivered';
   distanceCovered?: number;
   totalDistance?: number;
+  isGPSTagged?: boolean;
+  gpsDeviceId?: string;
 }
 
 export interface OffloadingDetails {
@@ -127,3 +131,4 @@ export interface AIInsight {
   generatedAt: Date;
   isRead: boolean;
 }
+

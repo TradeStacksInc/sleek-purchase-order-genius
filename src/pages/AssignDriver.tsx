@@ -17,7 +17,43 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
-import { ArrowRight, Plus, Truck as TruckIcon, User } from 'lucide-react';
+import { 
+  AlertTriangle, 
+  ArrowRight, 
+  Truck as TruckIcon, 
+  User, 
+  Plus, 
+  MapPin, 
+  Info, 
+  Check
+} from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
 const AssignDriver: React.FC = () => {
   const { 
@@ -28,7 +64,8 @@ const AssignDriver: React.FC = () => {
     addTruck, 
     assignDriverToOrder, 
     getAvailableDrivers, 
-    getAvailableTrucks 
+    getAvailableTrucks,
+    tagTruckWithGPS
   } = useApp();
   
   // State for the assign tab
@@ -46,6 +83,9 @@ const AssignDriver: React.FC = () => {
   const [newTruckCapacity, setNewTruckCapacity] = useState('');
   const [newTruckModel, setNewTruckModel] = useState('');
   const [newTruckHasGPS, setNewTruckHasGPS] = useState('true');
+
+  // State for GPS tagging dialog
+  const [isGPSDialogOpen, setIsGPSDialogOpen] = useState(false);
   
   // Get only active (paid) orders that don't have a driver assigned
   const eligibleOrders = purchaseOrders.filter(
@@ -67,12 +107,25 @@ const AssignDriver: React.FC = () => {
       return;
     }
     
+    const selectedTruck = trucks.find(truck => truck.id === selectedTruckId);
+    
+    if (selectedTruck && selectedTruck.hasGPS && !selectedTruck.isGPSTagged) {
+      // If truck has GPS capability but isn't tagged yet, open the GPS tagging dialog
+      setIsGPSDialogOpen(true);
+      return;
+    }
+    
+    completeAssignment();
+  };
+
+  const completeAssignment = () => {
     assignDriverToOrder(selectedOrderId, selectedDriverId, selectedTruckId);
     
     // Reset form
     setSelectedOrderId('');
     setSelectedDriverId('');
     setSelectedTruckId('');
+    setIsGPSDialogOpen(false);
   };
   
   // Handle add driver
@@ -115,7 +168,8 @@ const AssignDriver: React.FC = () => {
       capacity: parseInt(newTruckCapacity),
       model: newTruckModel,
       hasGPS: newTruckHasGPS === 'true',
-      isAvailable: true
+      isAvailable: true,
+      isGPSTagged: false
     });
     
     // Reset form
@@ -124,7 +178,7 @@ const AssignDriver: React.FC = () => {
     setNewTruckModel('');
     setNewTruckHasGPS('true');
   };
-  
+
   return (
     <div className="animate-fade-in space-y-6">
       <h1 className="text-2xl font-bold">Driver & Truck Management</h1>
@@ -156,7 +210,17 @@ const AssignDriver: React.FC = () => {
                 <div className="space-y-6">
                   <div className="grid gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="order">Purchase Order</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="order">Purchase Order</Label>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="w-80">Select a paid purchase order to assign a driver and truck for delivery.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
                       <Select
                         value={selectedOrderId}
                         onValueChange={setSelectedOrderId}
@@ -190,7 +254,17 @@ const AssignDriver: React.FC = () => {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <Label htmlFor="driver">Driver</Label>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="driver">Driver</Label>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="w-80">Select an available driver to handle this delivery.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                         <Select
                           value={selectedDriverId}
                           onValueChange={setSelectedDriverId}
@@ -225,7 +299,17 @@ const AssignDriver: React.FC = () => {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <Label htmlFor="truck">Truck</Label>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="truck">Truck</Label>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="w-80">Select an available truck for this delivery. Trucks with GPS capability will require GPS tagging before transport.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                         <Select
                           value={selectedTruckId}
                           onValueChange={setSelectedTruckId}
@@ -237,6 +321,8 @@ const AssignDriver: React.FC = () => {
                             {availableTrucks.map((truck) => (
                               <SelectItem key={truck.id} value={truck.id}>
                                 {truck.plateNumber} - {truck.model} ({truck.capacity.toLocaleString()} liters)
+                                {truck.hasGPS && !truck.isGPSTagged && " - GPS Tagging Required"}
+                                {truck.hasGPS && truck.isGPSTagged && " - GPS Active"}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -271,7 +357,17 @@ const AssignDriver: React.FC = () => {
               <div className="space-y-6">
                 <div className="grid gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="driverName">Driver Name</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="driverName">Driver Name</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Enter the full name of the driver</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <Input 
                       id="driverName" 
                       placeholder="Full Name"
@@ -281,7 +377,17 @@ const AssignDriver: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="contactNumber">Contact Number</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="contactNumber">Contact Number</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Enter the driver's phone number</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <Input 
                       id="contactNumber" 
                       placeholder="+234 800-000-0000"
@@ -291,7 +397,17 @@ const AssignDriver: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="licenseNumber">License Number</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="licenseNumber">License Number</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Enter the driver's license number</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <Input 
                       id="licenseNumber" 
                       placeholder="DL-12345-NG"
@@ -337,7 +453,17 @@ const AssignDriver: React.FC = () => {
               <div className="space-y-6">
                 <div className="grid gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="plateNumber">Plate Number</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="plateNumber">Plate Number</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Enter the truck's license plate number</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <Input 
                       id="plateNumber" 
                       placeholder="LG-234-KJA"
@@ -347,7 +473,17 @@ const AssignDriver: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="truckModel">Truck Model</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="truckModel">Truck Model</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Enter the truck's make and model</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <Input 
                       id="truckModel" 
                       placeholder="MAN Diesel 2018"
@@ -357,7 +493,17 @@ const AssignDriver: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="capacity">Capacity (liters)</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="capacity">Capacity (liters)</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Enter the maximum fuel capacity of the truck in liters</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <Input 
                       id="capacity" 
                       type="number"
@@ -368,7 +514,17 @@ const AssignDriver: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="hasGPS">GPS Tracking</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="hasGPS">GPS Capability</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Indicate whether this truck has GPS tracking capability</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <Select
                       value={newTruckHasGPS}
                       onValueChange={setNewTruckHasGPS}
@@ -408,7 +564,143 @@ const AssignDriver: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* GPS Tagging Dialog */}
+      <GPSTaggingDialog 
+        isOpen={isGPSDialogOpen} 
+        setIsOpen={setIsGPSDialogOpen} 
+        truckId={selectedTruckId}
+        onComplete={completeAssignment}
+      />
     </div>
+  );
+};
+
+// GPS Tagging Dialog Component
+const gpsFormSchema = z.object({
+  gpsDeviceId: z.string().min(3, "Please enter a valid GPS device ID"),
+  latitude: z.coerce.number().min(-90).max(90, "Latitude must be between -90 and 90"),
+  longitude: z.coerce.number().min(-180).max(180, "Longitude must be between -180 and 180"),
+});
+
+const GPSTaggingDialog = ({ 
+  isOpen, 
+  setIsOpen, 
+  truckId,
+  onComplete 
+}: { 
+  isOpen: boolean; 
+  setIsOpen: (open: boolean) => void; 
+  truckId: string;
+  onComplete: () => void;
+}) => {
+  const { tagTruckWithGPS, getTruckById } = useApp();
+  const truck = getTruckById(truckId);
+  
+  const form = useForm<z.infer<typeof gpsFormSchema>>({
+    resolver: zodResolver(gpsFormSchema),
+    defaultValues: {
+      gpsDeviceId: "",
+      latitude: 6.5244, // Default to Lagos, Nigeria
+      longitude: 3.3792,
+    },
+  });
+
+  const onSubmit = (values: z.infer<typeof gpsFormSchema>) => {
+    if (truckId) {
+      tagTruckWithGPS(
+        truckId, 
+        values.gpsDeviceId,
+        values.latitude,
+        values.longitude
+      );
+      
+      setIsOpen(false);
+      form.reset();
+      onComplete();
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-primary" />
+            GPS Tagging Required
+          </DialogTitle>
+          <DialogDescription>
+            {truck ? `Tag truck ${truck.plateNumber} with a GPS device before assigning it to this order.` : 'Tag truck with a GPS device before assigning it to this order.'}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="gpsDeviceId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>GPS Device ID</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter GPS device ID" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Enter the unique identifier of the GPS tracking device
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="latitude"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Initial Latitude</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.0001" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="longitude"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Initial Longitude</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.0001" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <DialogFooter>
+              <Button type="submit">
+                <Check className="mr-2 h-4 w-4" />
+                Confirm GPS Tagging
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+        
+        <div className="text-xs text-muted-foreground mt-4">
+          <div className="flex items-center gap-1 mb-1">
+            <AlertTriangle className="h-3 w-3 text-amber-500" />
+            <span className="font-medium">Important:</span>
+          </div>
+          <p>A GPS-tagged truck can be tracked in real-time during delivery and is required for marking a delivery "In Transit".</p>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -444,7 +736,9 @@ const TruckCard: React.FC<{ truck: Truck }> = ({ truck }) => {
           <p className="text-sm text-muted-foreground">{truck.model}</p>
           <p className="text-xs text-muted-foreground mt-1">
             Capacity: {truck.capacity.toLocaleString()} liters
-            {truck.hasGPS && ' • GPS Enabled'}
+            {truck.hasGPS && !truck.isGPSTagged && ' • GPS Ready'}
+            {truck.hasGPS && truck.isGPSTagged && ' • GPS Active'}
+            {!truck.hasGPS && ' • No GPS'}
           </p>
         </div>
         <div>
