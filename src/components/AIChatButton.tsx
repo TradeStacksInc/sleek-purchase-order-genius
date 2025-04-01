@@ -15,7 +15,7 @@ const AIChatButton: React.FC<AIChatButtonProps> = ({ isOpen, toggleChat }) => {
   return (
     <Button
       onClick={toggleChat}
-      className={`fixed z-50 ${isMobile ? 'right-4 bottom-4 w-10 h-10' : 'right-8 bottom-8 w-12 h-12'} rounded-full p-0 shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 border border-purple-300/20 hover:from-purple-500 hover:to-indigo-500 transition-all duration-300 relative`}
+      className={`fixed z-50 ${isMobile ? 'right-4 bottom-4 w-12 h-12' : 'right-8 bottom-8 w-14 h-14'} rounded-full p-0 shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 border border-purple-300/20 hover:from-purple-500 hover:to-indigo-500 transition-all duration-300 relative`}
       aria-label="Open AI Chat"
     >
       {!isOpen && (
@@ -26,9 +26,9 @@ const AIChatButton: React.FC<AIChatButtonProps> = ({ isOpen, toggleChat }) => {
         </>
       )}
       {isOpen ? (
-        <X className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-white`} />
+        <X className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
       ) : (
-        <MessageCircle className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-white`} />
+        <MessageCircle className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
       )}
     </Button>
   );
