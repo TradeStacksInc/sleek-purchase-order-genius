@@ -7,7 +7,8 @@ import {
   ClipboardPlus, 
   ClipboardList, 
   Activity,
-  ChevronLeft
+  ChevronLeft,
+  Truck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -36,6 +37,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
           <NavItem to="/" icon={<BarChart className="h-5 w-5" />} text="Dashboard" />
           <NavItem to="/create" icon={<ClipboardPlus className="h-5 w-5" />} text="Create New PO" />
           <NavItem to="/orders" icon={<ClipboardList className="h-5 w-5" />} text="Orders" />
+          <NavItem to="/assign-driver" icon={<Truck className="h-5 w-5" />} text="Assign Driver" />
           <NavItem to="/logs" icon={<Activity className="h-5 w-5" />} text="Activity Log" />
         </nav>
       </ScrollArea>

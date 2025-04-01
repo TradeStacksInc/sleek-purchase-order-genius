@@ -11,6 +11,8 @@ import CreatePO from "./pages/CreatePO";
 import PODetail from "./pages/PODetail";
 import Orders from "./pages/Orders";
 import ActivityLog from "./pages/ActivityLog";
+import AssignDriver from "./pages/AssignDriver";
+import GPSTracking from "./pages/GPSTracking";
 import NotFound from "./pages/NotFound";
 import AIChatProvider from "./context/AIChatContext";
 import AIChatWidget from "./components/AIChatWidget";
@@ -32,6 +34,8 @@ const App = () => {
                   <Route path="create" element={<CreatePO />} />
                   <Route path="orders" element={<Orders />} />
                   <Route path="orders/:id" element={<PODetail />} />
+                  <Route path="assign-driver" element={<AssignDriver />} />
+                  <Route path="gps-tracking" element={<GPSTracking />} />
                   <Route path="logs" element={<ActivityLog />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
