@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,6 +57,7 @@ import * as z from 'zod';
 import { Check, Flag, Info, Truck, AlertTriangle } from 'lucide-react';
 import { OffloadingDetails, PurchaseOrder, Incident } from '@/types';
 import { cn } from '@/lib/utils';
+import { AIInsightsPanel } from '@/components/AIInsightsPanel';
 
 type DateFilter = 'all' | 'today' | 'week' | 'month' | 'custom';
 
@@ -170,6 +172,11 @@ const DeliveryLog: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
+          {/* AI Insights Panel */}
+          <div className="mb-6">
+            <AIInsightsPanel />
+          </div>
+          
           <Tabs 
             defaultValue="all" 
             value={activeTab} 

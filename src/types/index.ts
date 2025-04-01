@@ -1,4 +1,3 @@
-
 export type Product = 'PMS' | 'AGO' | 'DPK';
 
 export type OrderStatus = 'pending' | 'active' | 'fulfilled';
@@ -115,4 +114,14 @@ export interface LogEntry {
   action: string;
   user: string;
   timestamp: Date;
+}
+
+export interface AIInsight {
+  id: string;
+  type: 'discrepancy_pattern' | 'driver_analysis' | 'efficiency_recommendation';
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+  relatedEntityIds: string[]; // Can be driver IDs, truck IDs, etc.
+  generatedAt: Date;
+  isRead: boolean;
 }
