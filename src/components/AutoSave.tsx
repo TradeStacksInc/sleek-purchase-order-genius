@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { saveAppState } from '@/utils/localStorage';
+import { toast } from "@/components/ui/use-toast";
 
 /**
  * AutoSave component that periodically saves app state
@@ -11,6 +12,8 @@ const AutoSave: React.FC = () => {
   const appState = useApp();
   
   useEffect(() => {
+    console.log("AutoSave component mounted");
+    
     // Save current state when user navigates away
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       // Extract only the data properties, not functions
@@ -24,11 +27,16 @@ const AutoSave: React.FC = () => {
         aiInsights: appState.aiInsights
       };
       
-      saveAppState(dataToSave);
+      const saveSuccess = saveAppState(dataToSave);
+      
+      // If save was unsuccessful, prompt the user before leaving
+      if (!saveSuccess) {
+        // This message might not be displayed in some browsers due to security restrictions
+        const message = "Changes you made may not be saved.";
+        e.returnValue = message;
+        return message;
+      }
     };
-    
-    // Add event listener for page unload
-    window.addEventListener('beforeunload', handleBeforeUnload);
     
     // Set up periodic auto-save (every 30 seconds)
     const autoSaveInterval = setInterval(() => {
@@ -42,9 +50,22 @@ const AutoSave: React.FC = () => {
         aiInsights: appState.aiInsights
       };
       
-      saveAppState(dataToSave);
-      console.log('Auto-saved app state', new Date().toLocaleTimeString());
+      const saveSuccess = saveAppState(dataToSave);
+      
+      if (saveSuccess) {
+        console.log('Auto-saved app state', new Date().toLocaleTimeString());
+      } else {
+        console.error('Failed to auto-save app state', new Date().toLocaleTimeString());
+        toast({
+          title: "Auto-save Failed",
+          description: "There was an issue saving your data. Please save manually before leaving the page.",
+          variant: "destructive"
+        });
+      }
     }, 30000);
+    
+    // Add event listener for page unload
+    window.addEventListener('beforeunload', handleBeforeUnload);
     
     // Clean up
     return () => {

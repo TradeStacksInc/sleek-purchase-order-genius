@@ -7,7 +7,15 @@ import { AppProvider } from "./context/AppContext";
 import AppRoutes from "./components/AppRoutes";
 import AutoSave from "./components/AutoSave";
 
-const queryClient = new QueryClient();
+// Create a client for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60000, // 1 minute
+      retry: 1,
+    },
+  },
+});
 
 const App = () => {
   return (

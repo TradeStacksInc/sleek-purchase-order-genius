@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { PurchaseOrder, LogEntry } from '../types';
 import { useToast } from '@/hooks/use-toast';
+import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
 
 export const usePurchaseOrderActions = (
   purchaseOrders: PurchaseOrder[],
@@ -12,8 +13,25 @@ export const usePurchaseOrderActions = (
   const { toast } = useToast();
 
   const addPurchaseOrder = (order: PurchaseOrder) => {
-    setPurchaseOrders((prevOrders) => [order, ...prevOrders]);
+    // Add to state
+    setPurchaseOrders((prevOrders) => {
+      const newOrders = [order, ...prevOrders];
+      
+      // Save to localStorage immediately
+      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      if (!saveSuccess) {
+        toast({
+          title: "Save Error",
+          description: "There was a problem saving your purchase order. Please try again.",
+          variant: "destructive"
+        });
+      }
+      
+      return newOrders;
+    });
     
+    // Create log entry
     const newLog: LogEntry = {
       id: `log-${Date.now()}`,
       poId: order.id,
@@ -22,26 +40,42 @@ export const usePurchaseOrderActions = (
       timestamp: new Date(),
     };
     
-    setLogs((prevLogs) => [newLog, ...prevLogs]);
+    // Add log entry
+    setLogs((prevLogs) => {
+      const newLogs = [newLog, ...prevLogs];
+      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
+      return newLogs;
+    });
     
     toast({
       title: "Purchase Order Created",
       description: `PO #${order.poNumber} has been created successfully.`,
     });
+    
+    return order;
   };
 
   const updateOrderStatus = (id: string, status: 'pending' | 'active' | 'fulfilled') => {
-    setPurchaseOrders((prevOrders) =>
-      prevOrders.map((order) =>
-        order.id === id
-          ? {
-              ...order,
-              status,
-              updatedAt: new Date(),
-            }
-          : order
-      )
-    );
+    let updatedOrder: PurchaseOrder | undefined;
+    
+    setPurchaseOrders((prevOrders) => {
+      const newOrders = prevOrders.map((order) => {
+        if (order.id === id) {
+          updatedOrder = {
+            ...order,
+            status,
+            updatedAt: new Date(),
+          };
+          return updatedOrder;
+        }
+        return order;
+      });
+      
+      // Save to localStorage immediately
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      return newOrders;
+    });
 
     const order = purchaseOrders.find((po) => po.id === id);
     if (!order) return;
@@ -58,12 +92,18 @@ export const usePurchaseOrderActions = (
       timestamp: new Date(),
     };
     
-    setLogs((prevLogs) => [newLog, ...prevLogs]);
+    setLogs((prevLogs) => {
+      const newLogs = [newLog, ...prevLogs];
+      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
+      return newLogs;
+    });
     
     toast({
       title: "Status Updated",
       description: `PO #${order.poNumber} is now ${status}.`,
     });
+    
+    return updatedOrder;
   };
 
   const getOrderById = (id: string) => {

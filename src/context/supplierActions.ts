@@ -1,6 +1,7 @@
 
 import { Supplier, LogEntry } from '../types';
 import { useToast } from '@/hooks/use-toast';
+import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
 
 export const useSupplierActions = (
   suppliers: Supplier[],
@@ -10,7 +11,21 @@ export const useSupplierActions = (
   const { toast } = useToast();
 
   const addSupplier = (supplier: Supplier) => {
-    setSuppliers((prevSuppliers) => [supplier, ...prevSuppliers]);
+    // Add to state and save to localStorage immediately
+    setSuppliers((prevSuppliers) => {
+      const newSuppliers = [supplier, ...prevSuppliers];
+      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
+      
+      if (!saveSuccess) {
+        toast({
+          title: "Save Error",
+          description: "There was a problem saving your supplier. Please try again.",
+          variant: "destructive"
+        });
+      }
+      
+      return newSuppliers;
+    });
     
     const newLog: LogEntry = {
       id: `log-${Date.now()}`,
@@ -20,12 +35,18 @@ export const useSupplierActions = (
       timestamp: new Date(),
     };
     
-    setLogs((prevLogs) => [newLog, ...prevLogs]);
+    setLogs((prevLogs) => {
+      const newLogs = [newLog, ...prevLogs];
+      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
+      return newLogs;
+    });
     
     toast({
       title: "Supplier Added",
       description: `${supplier.name} has been added to your suppliers list.`,
     });
+    
+    return supplier;
   };
 
   const getSupplierById = (id: string): Supplier | undefined => {

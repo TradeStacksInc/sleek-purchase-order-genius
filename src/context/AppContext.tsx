@@ -10,13 +10,17 @@ import { useDriverTruckActions } from './driverTruckActions';
 import { useDeliveryActions } from './deliveryActions';
 import { useAIActions } from './aiActions';
 import { loadAppState, saveToLocalStorage, STORAGE_KEYS } from '../utils/localStorage';
+import { useToast } from '@/hooks/use-toast';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { toast } = useToast();
+  
   // Load data from local storage or use default initial state
   const loadedState = loadAppState(defaultInitialState);
   
+  // Initialize state with loaded data
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(loadedState.purchaseOrders);
   const [logs, setLogs] = useState<LogEntry[]>(loadedState.logs);
   const [suppliers, setSuppliers] = useState<Supplier[]>(loadedState.suppliers);
@@ -25,12 +29,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [gpsData, setGPSData] = useState<GPSData[]>(loadedState.gpsData);
   const [aiInsights, setAIInsights] = useState<AIInsight[]>(loadedState.aiInsights);
 
-  // Setup persistent state handlers
+  // Log state load completion
+  useEffect(() => {
+    console.log('AppContext initialized with data:', {
+      purchaseOrders: purchaseOrders.length,
+      logs: logs.length,
+      suppliers: suppliers.length,
+      drivers: drivers.length,
+      trucks: trucks.length,
+      gpsData: gpsData.length,
+      aiInsights: aiInsights.length
+    });
+  }, []);
+
+  // Setup persistent state handlers with error handling and validation
   const persistentSetPurchaseOrders: typeof setPurchaseOrders = (value) => {
-    // Handle both direct value and function updates
     setPurchaseOrders((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newValue);
+      
+      if (!Array.isArray(newValue)) {
+        console.error('Cannot save purchase orders: value is not an array');
+        toast({
+          title: "Data Error",
+          description: "Invalid purchase orders data format. Contact support if this persists.",
+          variant: "destructive"
+        });
+        return prev;
+      }
+      
+      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newValue);
+      if (!saveSuccess) {
+        console.error('Failed to save purchase orders to localStorage');
+      }
       return newValue;
     });
   };
@@ -38,7 +68,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const persistentSetLogs: typeof setLogs = (value) => {
     setLogs((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      saveToLocalStorage(STORAGE_KEYS.LOGS, newValue);
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.LOGS, newValue);
+      }
       return newValue;
     });
   };
@@ -46,7 +78,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const persistentSetSuppliers: typeof setSuppliers = (value) => {
     setSuppliers((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newValue);
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newValue);
+      }
       return newValue;
     });
   };
@@ -54,7 +88,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const persistentSetDrivers: typeof setDrivers = (value) => {
     setDrivers((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      saveToLocalStorage(STORAGE_KEYS.DRIVERS, newValue);
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.DRIVERS, newValue);
+      }
       return newValue;
     });
   };
@@ -62,7 +98,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const persistentSetTrucks: typeof setTrucks = (value) => {
     setTrucks((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      saveToLocalStorage(STORAGE_KEYS.TRUCKS, newValue);
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.TRUCKS, newValue);
+      }
       return newValue;
     });
   };
@@ -70,7 +108,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const persistentSetGPSData: typeof setGPSData = (value) => {
     setGPSData((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      saveToLocalStorage(STORAGE_KEYS.GPS_DATA, newValue);
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.GPS_DATA, newValue);
+      }
       return newValue;
     });
   };
@@ -78,7 +118,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const persistentSetAIInsights: typeof setAIInsights = (value) => {
     setAIInsights((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, newValue);
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, newValue);
+      }
       return newValue;
     });
   };
