@@ -114,7 +114,7 @@ const InsightItem: React.FC<{
     }
   };
   
-  const getIcon = (type: string) => {
+  const getIcon = (type: 'discrepancy_pattern' | 'driver_analysis' | 'efficiency_recommendation') => {
     switch (type) {
       case 'discrepancy_pattern':
         return <AlertTriangle className="h-5 w-5 text-red-500" />;
