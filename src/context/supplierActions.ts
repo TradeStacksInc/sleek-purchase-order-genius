@@ -21,9 +21,19 @@ export const useSupplierActions = (
     };
     
     setLogs((prevLogs) => [newLog, ...prevLogs]);
+    
+    toast({
+      title: "Supplier Added",
+      description: `${supplier.name} has been added to your suppliers list.`,
+    });
+  };
+
+  const getSupplierById = (id: string): Supplier | undefined => {
+    return suppliers.find(supplier => supplier.id === id);
   };
 
   return {
-    addSupplier
+    addSupplier,
+    getSupplierById
   };
 };

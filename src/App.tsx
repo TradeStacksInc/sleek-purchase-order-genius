@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProvider } from "./context/AppContext";
 import AppRoutes from "./components/AppRoutes";
+import AutoSave from "./components/AutoSave";
 
 const queryClient = new QueryClient();
 
@@ -15,6 +16,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <AutoSave />
           <AppRoutes />
         </TooltipProvider>
       </AppProvider>

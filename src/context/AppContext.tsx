@@ -1,45 +1,124 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData, OffloadingDetails, Incident, AIInsight } from '../types';
-import { appData } from '../data/mockData';
 import { AppContextType } from './appContextTypes';
-import { initialDrivers, initialTrucks } from './initialState';
+import { defaultInitialState } from './initialState';
 import { usePurchaseOrderActions } from './purchaseOrderActions';
 import { useLogActions } from './logActions';
 import { useSupplierActions } from './supplierActions';
 import { useDriverTruckActions } from './driverTruckActions';
 import { useDeliveryActions } from './deliveryActions';
 import { useAIActions } from './aiActions';
+import { loadAppState, saveToLocalStorage, STORAGE_KEYS } from '../utils/localStorage';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(appData.purchaseOrders);
-  const [logs, setLogs] = useState<LogEntry[]>(appData.logs);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(appData.suppliers);
-  const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
-  const [trucks, setTrucks] = useState<Truck[]>(initialTrucks);
-  const [gpsData, setGPSData] = useState<GPSData[]>([]);
-  const [aiInsights, setAIInsights] = useState<AIInsight[]>([]);
+  // Load data from local storage or use default initial state
+  const loadedState = loadAppState(defaultInitialState);
+  
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(loadedState.purchaseOrders);
+  const [logs, setLogs] = useState<LogEntry[]>(loadedState.logs);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(loadedState.suppliers);
+  const [drivers, setDrivers] = useState<Driver[]>(loadedState.drivers);
+  const [trucks, setTrucks] = useState<Truck[]>(loadedState.trucks);
+  const [gpsData, setGPSData] = useState<GPSData[]>(loadedState.gpsData);
+  const [aiInsights, setAIInsights] = useState<AIInsight[]>(loadedState.aiInsights);
 
-  // Initialize action hooks
-  const purchaseOrderActions = usePurchaseOrderActions(purchaseOrders, setPurchaseOrders, logs, setLogs);
-  const logActions = useLogActions(logs, setLogs);
-  const supplierActions = useSupplierActions(suppliers, setSuppliers, setLogs);
+  // Setup persistent state handlers
+  const persistentSetPurchaseOrders: typeof setPurchaseOrders = (value) => {
+    // Handle both direct value and function updates
+    setPurchaseOrders((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newValue);
+      return newValue;
+    });
+  };
+
+  const persistentSetLogs: typeof setLogs = (value) => {
+    setLogs((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      saveToLocalStorage(STORAGE_KEYS.LOGS, newValue);
+      return newValue;
+    });
+  };
+
+  const persistentSetSuppliers: typeof setSuppliers = (value) => {
+    setSuppliers((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newValue);
+      return newValue;
+    });
+  };
+
+  const persistentSetDrivers: typeof setDrivers = (value) => {
+    setDrivers((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      saveToLocalStorage(STORAGE_KEYS.DRIVERS, newValue);
+      return newValue;
+    });
+  };
+
+  const persistentSetTrucks: typeof setTrucks = (value) => {
+    setTrucks((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      saveToLocalStorage(STORAGE_KEYS.TRUCKS, newValue);
+      return newValue;
+    });
+  };
+
+  const persistentSetGPSData: typeof setGPSData = (value) => {
+    setGPSData((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      saveToLocalStorage(STORAGE_KEYS.GPS_DATA, newValue);
+      return newValue;
+    });
+  };
+
+  const persistentSetAIInsights: typeof setAIInsights = (value) => {
+    setAIInsights((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, newValue);
+      return newValue;
+    });
+  };
+
+  // Initialize action hooks with persistent state handlers
+  const purchaseOrderActions = usePurchaseOrderActions(
+    purchaseOrders, 
+    persistentSetPurchaseOrders, 
+    logs, 
+    persistentSetLogs
+  );
+  
+  const logActions = useLogActions(logs, persistentSetLogs);
+  
+  const supplierActions = useSupplierActions(
+    suppliers, 
+    persistentSetSuppliers, 
+    persistentSetLogs
+  );
+  
   const driverTruckActions = useDriverTruckActions(
-    drivers, setDrivers, trucks, setTrucks, 
-    purchaseOrders, setPurchaseOrders, setLogs, 
-    gpsData, setGPSData
+    drivers, persistentSetDrivers, 
+    trucks, persistentSetTrucks, 
+    purchaseOrders, persistentSetPurchaseOrders, 
+    persistentSetLogs, 
+    gpsData, persistentSetGPSData
   );
+  
   const deliveryActions = useDeliveryActions(
-    purchaseOrders, setPurchaseOrders, 
-    drivers, setDrivers, 
-    trucks, setTrucks, 
-    setLogs
+    purchaseOrders, persistentSetPurchaseOrders, 
+    drivers, persistentSetDrivers, 
+    trucks, persistentSetTrucks, 
+    persistentSetLogs
   );
+  
   const aiActions = useAIActions(
-    purchaseOrders, aiInsights, setAIInsights, 
-    driverTruckActions.getDriverById, driverTruckActions.getTruckById
+    purchaseOrders, 
+    aiInsights, persistentSetAIInsights, 
+    driverTruckActions.getDriverById, 
+    driverTruckActions.getTruckById
   );
 
   // Combine all actions and state into the context value

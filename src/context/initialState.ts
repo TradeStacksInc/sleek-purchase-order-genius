@@ -1,40 +1,22 @@
 
-import { Driver, Truck } from '../types';
+import { Driver, Truck, Supplier, PurchaseOrder, LogEntry, GPSData, AIInsight } from '../types';
 
-export const initialDrivers: Driver[] = [
-  {
-    id: "driver-1",
-    name: "John Doe",
-    contact: "+234 801-234-5678",
-    licenseNumber: "DL-12345-NG",
-    isAvailable: true
-  },
-  {
-    id: "driver-2",
-    name: "Sarah Johnson",
-    contact: "+234 802-345-6789",
-    licenseNumber: "DL-67890-NG",
-    isAvailable: true
-  }
-];
+// Initial empty states for all data types
+export const initialDrivers: Driver[] = [];
+export const initialTrucks: Truck[] = [];
+export const initialSuppliers: Supplier[] = [];
+export const initialPurchaseOrders: PurchaseOrder[] = [];
+export const initialLogs: LogEntry[] = [];
+export const initialGPSData: GPSData[] = [];
+export const initialAIInsights: AIInsight[] = [];
 
-export const initialTrucks: Truck[] = [
-  {
-    id: "truck-1",
-    plateNumber: "LG-234-KJA",
-    capacity: 33000,
-    model: "MAN Diesel 2018",
-    hasGPS: true,
-    isAvailable: true,
-    isGPSTagged: false
-  },
-  {
-    id: "truck-2",
-    plateNumber: "AJ-567-LGS",
-    capacity: 45000,
-    model: "Scania P410 2020",
-    hasGPS: true,
-    isAvailable: true,
-    isGPSTagged: false
-  }
-];
+// Default initial state for the entire app
+export const defaultInitialState = {
+  purchaseOrders: initialPurchaseOrders,
+  logs: initialLogs,
+  suppliers: initialSuppliers,
+  drivers: initialDrivers,
+  trucks: initialTrucks,
+  gpsData: initialGPSData,
+  aiInsights: initialAIInsights
+};
