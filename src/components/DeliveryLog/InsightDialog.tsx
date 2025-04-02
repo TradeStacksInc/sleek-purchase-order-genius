@@ -1,27 +1,12 @@
-
 import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileText, TrendingUp, Ban, AlertCircle, Check, ChevronRight, BarChart, Clock, Truck, MapPin, Droplet } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { FileText, Lightbulb, BarChart, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/hooks/use-toast';
-import { Progress } from '@/components/ui/progress';
-import { PurchaseOrder } from '@/types';
 
 interface InsightDialogProps {
   orderId: string;
@@ -29,310 +14,384 @@ interface InsightDialogProps {
 }
 
 const InsightDialog: React.FC<InsightDialogProps> = ({ orderId, children }) => {
-  const { purchaseOrders } = useApp();
   const { toast } = useToast();
-  const [isOpen, setIsOpen] = useState(false);
+  const { getOrderById } = useApp();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isGenerated, setIsGenerated] = useState(false);
+  const [activeTab, setActiveTab] = useState('summary');
   
-  // Find the current order
-  const currentOrder = purchaseOrders.find(order => order.id === orderId);
+  const order = getOrderById(orderId);
   
-  // Get all delivered orders
-  const deliveredOrders = purchaseOrders.filter(order => 
-    order.deliveryDetails?.status === 'delivered' && order.offloadingDetails
-  );
-  
-  const generateInsights = () => {
+  const handleGenerateInsights = () => {
     setIsGenerating(true);
     
-    // Simulate API call for generating insights
+    // Simulate AI insight generation
     setTimeout(() => {
       setIsGenerating(false);
-      setIsGenerated(true);
-      
       toast({
         title: "Insights generated",
-        description: "Delivery insights have been generated successfully.",
+        description: "AI analysis has been completed for this delivery.",
       });
-    }, 2000);
-  };
-  
-  const resetState = () => {
-    setIsGenerated(false);
-  };
-  
-  const getRandomPercentage = () => {
-    return Math.floor(Math.random() * 100);
-  };
-  
-  const getRandomValue = (min: number, max: number) => {
-    return (Math.random() * (max - min) + min).toFixed(1);
+    }, 2500);
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      setIsOpen(open);
-      if (!open) {
-        resetState();
-      }
-    }}>
+    <Dialog>
       <DialogTrigger asChild>
         {children || (
-          <Button variant="default" size="sm" className="gap-1">
-            <FileText className="h-4 w-4" />
-            <span>Generate Insight</span>
+          <Button variant="default" size="sm">
+            <FileText className="h-4 w-4 mr-2" />
+            Generate Insight
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Delivery Insights</DialogTitle>
+          <DialogTitle>Delivery Insights & Analysis</DialogTitle>
           <DialogDescription>
-            Generate data-driven insights and analysis for this delivery.
+            AI-powered insights and recommendations for this delivery.
           </DialogDescription>
         </DialogHeader>
         
-        {!isGenerated ? (
-          <div className="space-y-6">
-            {/* Explanation of what insights will be generated */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">What insights will be generated?</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex items-start gap-2">
-                  <TrendingUp className="h-4 w-4 text-blue-500 mt-0.5" />
-                  <div>
-                    <span className="font-medium">Performance Analysis:</span> Compare this delivery against historical data to identify patterns and anomalies.
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
-                  <div>
-                    <span className="font-medium">Risk Assessment:</span> Identify potential risks and disruptions based on route and timing analysis.
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <BarChart className="h-4 w-4 text-purple-500 mt-0.5" />
-                  <div>
-                    <span className="font-medium">Efficiency Metrics:</span> Calculate key performance indicators including fuel efficiency, time management, and volume accuracy.
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* Order basic info */}
-            <div className="p-4 border rounded-lg bg-gray-50">
-              <h3 className="font-medium mb-2">Delivery Information</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">PO: {currentOrder?.poNumber || 'Unknown'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">
-                    Status: {currentOrder?.deliveryDetails?.status 
-                      ? currentOrder.deliveryDetails.status.charAt(0).toUpperCase() + 
-                        currentOrder.deliveryDetails.status.slice(1).replace('_', ' ') 
-                      : 'Unknown'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">Supplier: {currentOrder?.supplier.name || 'Unknown'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Droplet className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">
-                    Volume: {currentOrder?.items?.reduce((sum, item) => sum + (item.quantity || 0), 0).toLocaleString() || 0} L
-                  </span>
-                </div>
+        <div className="mt-4">
+          {isGenerating ? (
+            <div className="space-y-4 py-8">
+              <div className="text-center">
+                <Lightbulb className="h-12 w-12 text-amber-500 mx-auto mb-4 animate-pulse" />
+                <h3 className="text-lg font-medium mb-2">Generating Insights</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Our AI is analyzing delivery data and generating recommendations...
+                </p>
+              </div>
+              <Progress value={65} className="h-2 w-2/3 mx-auto" />
+            </div>
+          ) : (
+            <div>
+              <Tabs defaultValue="summary" value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid grid-cols-4 mb-4">
+                  <TabsTrigger value="summary">Summary</TabsTrigger>
+                  <TabsTrigger value="efficiency">Efficiency</TabsTrigger>
+                  <TabsTrigger value="risks">Risks</TabsTrigger>
+                  <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="summary" className="space-y-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Delivery Overview</CardTitle>
+                      <CardDescription>Key metrics and performance indicators</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-muted rounded-lg p-3">
+                          <div className="text-sm font-medium text-muted-foreground mb-1">Delivery Time</div>
+                          <div className="text-2xl font-bold">5h 23m</div>
+                          <div className="text-xs text-muted-foreground mt-1 flex items-center">
+                            <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+                            <span>12% faster than average</span>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-muted rounded-lg p-3">
+                          <div className="text-sm font-medium text-muted-foreground mb-1">Fuel Efficiency</div>
+                          <div className="text-2xl font-bold">8.2 km/L</div>
+                          <div className="text-xs text-muted-foreground mt-1 flex items-center">
+                            <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+                            <span>5% better than fleet average</span>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-muted rounded-lg p-3">
+                          <div className="text-sm font-medium text-muted-foreground mb-1">Volume Accuracy</div>
+                          <div className="text-2xl font-bold">98.7%</div>
+                          <div className="text-xs text-muted-foreground mt-1 flex items-center">
+                            <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                            <span>Within acceptable range</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6">
+                        <h4 className="text-sm font-medium mb-2">Key Observations</h4>
+                        <ul className="space-y-2 text-sm">
+                          <li className="flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>Driver maintained optimal speed throughout the journey, contributing to fuel efficiency.</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>Route selection avoided major traffic congestion areas, saving approximately 45 minutes.</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                            <span>Minor delay at checkpoint due to documentation verification (15 minutes).</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                <TabsContent value="efficiency" className="space-y-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Efficiency Analysis</CardTitle>
+                      <CardDescription>Detailed breakdown of operational efficiency</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        <div>
+                          <h4 className="text-sm font-medium mb-3">Route Efficiency</h4>
+                          <div className="space-y-2">
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <span className="text-sm">Optimal Route Adherence</span>
+                                <span className="text-sm font-medium">92%</span>
+                              </div>
+                              <Progress value={92} className="h-2" />
+                            </div>
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <span className="text-sm">Traffic Avoidance</span>
+                                <span className="text-sm font-medium">85%</span>
+                              </div>
+                              <Progress value={85} className="h-2" />
+                            </div>
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <span className="text-sm">Stop Duration Optimization</span>
+                                <span className="text-sm font-medium">78%</span>
+                              </div>
+                              <Progress value={78} className="h-2" />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm font-medium mb-3">Time Efficiency</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-muted rounded-lg p-3">
+                              <div className="text-sm font-medium">Loading Time</div>
+                              <div className="text-xl font-bold mt-1">32 min</div>
+                              <div className="text-xs text-green-600 mt-1">8 min below average</div>
+                            </div>
+                            <div className="bg-muted rounded-lg p-3">
+                              <div className="text-sm font-medium">Offloading Time</div>
+                              <div className="text-xl font-bold mt-1">45 min</div>
+                              <div className="text-xs text-amber-600 mt-1">5 min above average</div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm font-medium mb-3">Resource Utilization</h4>
+                          <div className="space-y-2">
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <span className="text-sm">Truck Capacity Utilization</span>
+                                <span className="text-sm font-medium">94%</span>
+                              </div>
+                              <Progress value={94} className="h-2" />
+                            </div>
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <span className="text-sm">Fuel Efficiency</span>
+                                <span className="text-sm font-medium">88%</span>
+                              </div>
+                              <Progress value={88} className="h-2" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                <TabsContent value="risks" className="space-y-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Risk Assessment</CardTitle>
+                      <CardDescription>Identified risks and mitigation status</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="min-w-full divide-y divide-border">
+                            <thead className="bg-muted">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Risk Factor</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Severity</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Probability</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-card divide-y divide-border">
+                              <tr>
+                                <td className="px-4 py-3 text-sm">Volume Discrepancy</td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Low</span>
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Low</span>
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="flex items-center">
+                                    <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                                    <span>Mitigated</span>
+                                  </span>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="px-4 py-3 text-sm">Route Safety</td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-800">Medium</span>
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Low</span>
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="flex items-center">
+                                    <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                                    <span>Mitigated</span>
+                                  </span>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="px-4 py-3 text-sm">Weather Impact</td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-800">Medium</span>
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-800">Medium</span>
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="flex items-center">
+                                    <AlertTriangle className="h-4 w-4 text-amber-500 mr-1" />
+                                    <span>Monitored</span>
+                                  </span>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="px-4 py-3 text-sm">Documentation Compliance</td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">High</span>
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Low</span>
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className="flex items-center">
+                                    <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                                    <span>Verified</span>
+                                  </span>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <h4 className="text-sm font-medium text-amber-800 mb-1">Weather Risk Note</h4>
+                              <p className="text-sm text-amber-700">
+                                Seasonal rain patterns may affect future deliveries on this route. Consider scheduling deliveries earlier in the day to avoid afternoon showers.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                <TabsContent value="recommendations" className="space-y-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">AI Recommendations</CardTitle>
+                      <CardDescription>Suggested actions to improve future deliveries</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <h4 className="text-sm font-medium text-green-800 mb-2 flex items-center">
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Positive Patterns to Maintain
+                          </h4>
+                          <ul className="space-y-2 text-sm text-green-700">
+                            <li className="flex items-start gap-2">
+                              <span className="font-medium">•</span>
+                              <span>Continue using the current route which has proven efficient and avoids major traffic areas.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-medium">•</span>
+                              <span>Maintain the current loading procedures which are 8 minutes faster than average.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-medium">•</span>
+                              <span>Keep the same driver assignment as their performance is above average for this route.</span>
+                            </li>
+                          </ul>
+                        </div>
+                        
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <h4 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
+                            <Lightbulb className="h-4 w-4 mr-2" />
+                            Improvement Opportunities
+                          </h4>
+                          <ul className="space-y-2 text-sm text-blue-700">
+                            <li className="flex items-start gap-2">
+                              <span className="font-medium">•</span>
+                              <span>Optimize offloading procedures to reduce time by 5-10 minutes. Consider additional training for offloading staff.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-medium">•</span>
+                              <span>Pre-verify documentation before departure to avoid checkpoint delays.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-medium">•</span>
+                              <span>Consider adjusting departure time by 30 minutes earlier to avoid morning traffic patterns.</span>
+                            </li>
+                          </ul>
+                        </div>
+                        
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                          <h4 className="text-sm font-medium text-purple-800 mb-2 flex items-center">
+                            <BarChart className="h-4 w-4 mr-2" />
+                            Data-Driven Insights
+                          </h4>
+                          <ul className="space-y-2 text-sm text-purple-700">
+                            <li className="flex items-start gap-2">
+                              <span className="font-medium">•</span>
+                              <span>Based on 12 similar deliveries, this route performs 8% better when departing between 6:00-7:00 AM.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-medium">•</span>
+                              <span>Historical data suggests fuel consumption could be reduced by 3-5% with more consistent cruising speeds.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-medium">•</span>
+                              <span>Weather pattern analysis indicates potential for delays during the upcoming rainy season (next month).</span>
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+              
+              <div className="flex justify-end mt-6">
+                <Button onClick={handleGenerateInsights}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Regenerate Insights
+                </Button>
               </div>
             </div>
-            
-            {isGenerating ? (
-              <div className="space-y-4 py-6">
-                <div className="text-center">
-                  <BarChart className="h-10 w-10 mx-auto text-blue-500 animate-pulse mb-2" />
-                  <p className="text-sm text-muted-foreground">Analyzing delivery data and generating insights...</p>
-                </div>
-                <Progress value={45} className="h-2" />
-              </div>
-            ) : (
-              <Button 
-                onClick={generateInsights} 
-                className="w-full"
-                disabled={isGenerating}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Generate Delivery Insights
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Performance Analysis */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-blue-500" />
-                    Performance Analysis
-                  </CardTitle>
-                  <Badge 
-                    variant={getRandomPercentage() > 50 ? "outline" : "secondary"} 
-                    className={`bg-${getRandomPercentage() > 50 ? "green" : "amber"}-50`}
-                  >
-                    {getRandomPercentage() > 50 ? "Above Average" : "Below Average"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Delivery Time</span>
-                    <span className="font-medium">{getRandomValue(2, 5)} hours (Average: 3.2 hours)</span>
-                  </div>
-                  <Progress value={getRandomPercentage()} className="h-2" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Fuel Efficiency</span>
-                    <span className="font-medium">{getRandomValue(8, 12)} km/L (Average: 10.5 km/L)</span>
-                  </div>
-                  <Progress value={getRandomPercentage()} className="h-2" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Volume Accuracy</span>
-                    <span className="font-medium">{getRandomValue(96, 99.9)}% (Average: 98.2%)</span>
-                  </div>
-                  <Progress value={getRandomPercentage()} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* Risk Assessment */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-500" />
-                    Risk Assessment
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className={`p-3 rounded-lg border flex items-start gap-3 ${getRandomPercentage() > 70 ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
-                    {getRandomPercentage() > 70 ? (
-                      <Check className="h-5 w-5 text-green-500 mt-0.5" />
-                    ) : (
-                      <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5" />
-                    )}
-                    <div>
-                      <h4 className="font-medium text-sm">Route Risk</h4>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {getRandomPercentage() > 70 
-                          ? "No significant risks identified on the current route. Traffic conditions are normal."
-                          : "Moderate traffic congestion expected on parts of the route. Consider alternative paths."}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className={`p-3 rounded-lg border flex items-start gap-3 ${getRandomPercentage() > 50 ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-                    {getRandomPercentage() > 50 ? (
-                      <Check className="h-5 w-5 text-green-500 mt-0.5" />
-                    ) : (
-                      <Ban className="h-5 w-5 text-red-500 mt-0.5" />
-                    )}
-                    <div>
-                      <h4 className="font-medium text-sm">Weather Impact</h4>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {getRandomPercentage() > 50 
-                          ? "Weather conditions are favorable for delivery. No delays expected."
-                          : "Heavy rainfall expected along the route. Potential for delays and reduced visibility."}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className={`p-3 rounded-lg border flex items-start gap-3 ${getRandomPercentage() > 60 ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
-                    {getRandomPercentage() > 60 ? (
-                      <Check className="h-5 w-5 text-green-500 mt-0.5" />
-                    ) : (
-                      <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5" />
-                    )}
-                    <div>
-                      <h4 className="font-medium text-sm">Vehicle Condition</h4>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {getRandomPercentage() > 60 
-                          ? "Vehicle is in optimal condition based on maintenance records."
-                          : "Vehicle is due for maintenance in the next 500km. Schedule service after this delivery."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* Recommendations */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Recommendations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <ChevronRight className="h-4 w-4 text-blue-500 mt-0.5" />
-                    <p className="text-sm">Optimize departure time to avoid peak traffic hours (recommended: 6:00 AM - 7:00 AM).</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <ChevronRight className="h-4 w-4 text-blue-500 mt-0.5" />
-                    <p className="text-sm">Fuel efficiency is {getRandomPercentage() > 50 ? "above" : "below"} average. {getRandomPercentage() > 50 ? "Maintain current driving patterns." : "Consider driver training on fuel-efficient driving techniques."}</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <ChevronRight className="h-4 w-4 text-blue-500 mt-0.5" />
-                    <p className="text-sm">Based on historical data, this route typically experiences {getRandomValue(1, 3)} incidents per month. Ensure driver is briefed on emergency procedures.</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-        
-        <DialogFooter className="mt-6">
-          <Button onClick={() => setIsOpen(false)} variant="outline">Close</Button>
-          {isGenerated && (
-            <Button>
-              <FileText className="h-4 w-4 mr-2" />
-              Export Report
-            </Button>
           )}
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
-  );
-};
-
-// Import Badge component
-const Badge = ({ children, variant = "default", className = "" }) => {
-  const baseStyle = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold";
-  
-  const variantStyles = {
-    default: "bg-primary text-primary-foreground",
-    secondary: "bg-secondary text-secondary-foreground",
-    destructive: "bg-destructive text-destructive-foreground",
-    outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-  };
-  
-  const selectedVariant = variantStyles[variant] || variantStyles.default;
-  
-  return (
-    <span className={`${baseStyle} ${selectedVariant} ${className}`}>
-      {children}
-    </span>
   );
 };
 

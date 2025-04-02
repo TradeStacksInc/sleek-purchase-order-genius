@@ -47,9 +47,10 @@ const incidentFormSchema = z.object({
 
 interface IncidentDialogProps {
   orderId: string;
+  children?: React.ReactNode;
 }
 
-const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId }) => {
+const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId, children }) => {
   const { addIncident } = useApp();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -112,10 +113,12 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId }) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="incident-button hover:bg-gray-100">
-          <Flag className="h-4 w-4 mr-1" />
-          Report Incident
-        </Button>
+        {children || (
+          <Button variant="outline" size="sm" className="incident-button hover:bg-gray-100">
+            <Flag className="h-4 w-4 mr-1" />
+            Report Incident
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>

@@ -55,9 +55,10 @@ const offloadingFormSchema = z.object({
 
 interface OffloadingDialogProps {
   orderId: string;
+  children?: React.ReactNode;
 }
 
-const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId }) => {
+const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }) => {
   const { recordOffloadingDetails } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
@@ -105,10 +106,12 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId }) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Truck className="h-4 w-4 mr-2" />
-          Offload
-        </Button>
+        {children || (
+          <Button variant="outline" size="sm">
+            <Truck className="h-4 w-4 mr-2" />
+            Offload
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-5xl">
         <DialogHeader>

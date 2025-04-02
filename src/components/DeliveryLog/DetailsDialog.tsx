@@ -12,9 +12,10 @@ import { useApp } from '@/context/AppContext';
 
 interface DetailsDialogProps {
   order: PurchaseOrder;
+  children?: React.ReactNode;
 }
 
-const DetailsDialog: React.FC<DetailsDialogProps> = ({ order }) => {
+const DetailsDialog: React.FC<DetailsDialogProps> = ({ order, children }) => {
   const { getDriverById, getTruckById } = useApp();
   
   if (!order.deliveryDetails) return null;
@@ -34,10 +35,12 @@ const DetailsDialog: React.FC<DetailsDialogProps> = ({ order }) => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Info className="h-4 w-4 mr-2" />
-          Details
-        </Button>
+        {children || (
+          <Button variant="outline" size="sm">
+            <Info className="h-4 w-4 mr-2" />
+            Details
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
