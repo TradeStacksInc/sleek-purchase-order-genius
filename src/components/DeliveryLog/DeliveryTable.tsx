@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -15,9 +16,8 @@ import DiscrepancyBadge from './DiscrepancyBadge';
 import DetailsDialog from './DetailsDialog';
 import OffloadingDialog from './OffloadingDialog';
 import IncidentDialog from './IncidentDialog';
-import InsightDialog from './InsightDialog';
 import { useApp } from '@/context/AppContext';
-import { Truck, MapPin, Clock, Info, FileText, Droplet, AlertTriangle, ChevronRight, Clipboard, Thermometer, Cloud, Wind } from 'lucide-react';
+import { Truck, MapPin, Clock, Info, AlertTriangle, ChevronRight, Clipboard, Thermometer, Cloud, Wind, Star, Route, Package } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import {
   Tooltip,
@@ -25,8 +25,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface DeliveryTableProps {
   deliveries: PurchaseOrder[];
@@ -43,6 +45,8 @@ interface RouteLocation {
 
 const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
   const { getDriverById, getTruckById } = useApp();
+  const { toast } = useToast();
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
   const calculateDeliveryTime = (start: Date, end: Date) => {
     const diffMs = end.getTime() - start.getTime();
@@ -155,6 +159,65 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
         return <Thermometer className="h-4 w-4 text-amber-500" />;
     }
   };
+
+  const getSafetyRating = (order: PurchaseOrder): number => {
+    // Calculate based on:
+    // 1. Presence of incidents (negative impact)
+    // 2. Discrepancy percentage (negative impact)
+    // 3. On-time delivery (positive impact)
+    let rating = 4.5; // Default good rating
+    
+    if (order.incidents && order.incidents.length > 0) {
+      // Each incident reduces rating
+      rating -= order.incidents.length * 0.5;
+    }
+    
+    if (order.offloadingDetails?.discrepancyPercentage) {
+      // Discrepancy reduces rating
+      rating -= order.offloadingDetails.discrepancyPercentage > 3 ? 1 : 0.5;
+    }
+    
+    // Ensure rating is between 1 and 5
+    return Math.max(1, Math.min(5, rating));
+  };
+
+  const renderStarRating = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    return (
+      <div className="flex items-center">
+        {[...Array(5)].map((_, i) => {
+          if (i < fullStars) {
+            return <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />;
+          } else if (i === fullStars && hasHalfStar) {
+            return (
+              <div key={i} className="relative">
+                <Star className="h-4 w-4 text-gray-300" />
+                <div className="absolute top-0 left-0 w-1/2 overflow-hidden">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                </div>
+              </div>
+            );
+          } else {
+            return <Star key={i} className="h-4 w-4 text-gray-300" />;
+          }
+        })}
+        <span className="ml-1 text-sm font-medium">{rating.toFixed(1)}</span>
+      </div>
+    );
+  };
+
+  const handleTruckManagement = () => {
+    toast({
+      title: "Truck Management",
+      description: "Redirecting to truck management dashboard...",
+    });
+  };
+
+  const handleViewDetails = (order: PurchaseOrder) => {
+    setExpandedCardId(expandedCardId === order.id ? null : order.id);
+  };
   
   if (deliveries.length === 0) {
     return (
@@ -222,14 +285,21 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
         const routeStart = "Lagos";
         const routeEnd = "Abakaliki";
         const waypoints = getRouteLocations(routeStart, routeEnd, progressPercentage);
+        
+        const safetyRating = getSafetyRating(order);
+        const isExpanded = expandedCardId === order.id;
 
         return (
-          <Card key={order.id} className={`overflow-hidden transition-all duration-200 hover:shadow-md ${cardColorClass}`}>
-            <CardContent className="p-0">
-              <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-4 md:gap-6 border-b">
-                <div className="flex items-center gap-4">
+          <Card 
+            key={order.id} 
+            className={`overflow-hidden transition-all duration-200 hover:shadow-md ${cardColorClass}`}
+          >
+            {/* Order Overview Section */}
+            <CardHeader className="p-5 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex flex-col md:flex-row md:items-center gap-4">
+                <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Truck className="h-6 w-6 text-blue-600" />
+                    <Package className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -240,9 +310,9 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2 md:mt-0 md:ml-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2 md:mt-0 md:ml-auto">
                   <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground uppercase">Product Type</span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase">Product</span>
                     <span className="text-sm font-medium">{productType}</span>
                   </div>
                   <div className="flex flex-col">
@@ -255,18 +325,35 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   </div>
                 </div>
                 
-                <div className="flex flex-wrap md:flex-nowrap gap-2 mt-2 md:mt-0">
+                <div className="flex gap-2 mt-2 md:mt-0 ml-auto">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={() => handleViewDetails(order)}
+                        >
+                          <Info className="h-4 w-4" />
+                          <span className="hidden sm:inline">
+                            {isExpanded ? "Hide Details" : "View Details"}
+                          </span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>{isExpanded ? "Hide details" : "Show more details"}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
                   <DetailsDialog order={order}>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-1"
-                          >
+                          <Button variant="outline" size="sm" className="gap-1">
                             <Info className="h-4 w-4" />
-                            <span className="hidden sm:inline">Details</span>
+                            <span className="hidden sm:inline">Full Details</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top">
@@ -275,231 +362,330 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                       </Tooltip>
                     </TooltipProvider>
                   </DetailsDialog>
-                  
-                  {delivery.status === 'delivered' && !offloading && (
-                    <OffloadingDialog orderId={order.id}>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                </div>
+              </div>
+            </CardHeader>
+            
+            {/* Main Content Area */}
+            <CardContent className="p-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-5 bg-white">
+                {/* Vehicle & Load Information Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center">
+                      <Truck className="h-4 w-4 mr-2 text-blue-500" />
+                      Vehicle & Load Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <h4 className="text-xs text-muted-foreground uppercase">Vehicle Info</h4>
+                        <div className="space-y-1 mt-1">
+                          <div className="text-sm font-medium">{truck?.model || "Unknown"}</div>
+                          <Badge variant="outline" className="mt-1">
+                            {truck?.plateNumber || "No plate"}
+                          </Badge>
+                          {truck?.isGPSTagged && (
+                            <Badge variant="secondary" className="text-xs ml-1">
+                              GPS Tracked
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-xs text-muted-foreground uppercase">Load Info</h4>
+                        <div className="space-y-2 mt-1">
+                          <div className="text-sm">
+                            {offloading 
+                              ? `${offloading.deliveredVolume.toLocaleString()} / ${offloading.loadedVolume.toLocaleString()} L`
+                              : `${totalVolume.toLocaleString()} L planned`
+                            }
+                          </div>
+                          
+                          {offloading ? (
+                            <>
+                              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-green-500" 
+                                  style={{width: `${(offloading.deliveredVolume / offloading.loadedVolume) * 100}%`}}
+                                ></div>
+                              </div>
+                              <DiscrepancyBadge discrepancyPercent={discrepancyPercent} />
+                            </>
+                          ) : (
+                            <div className="h-2 w-full bg-gray-200 rounded-full">
+                              <div className="h-full bg-blue-500 rounded-full" style={{width: '100%'}}></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <h4 className="text-xs text-muted-foreground uppercase">Safety Rating</h4>
+                      <div className="flex items-center mt-1">
+                        {renderStarRating(safetyRating)}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Timing & Progress Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center">
+                      <Clock className="h-4 w-4 mr-2 text-amber-500" />
+                      Timing & Progress
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-muted-foreground">Progress:</div>
+                        <div className="text-sm font-medium">{progressPercentage}%</div>
+                      </div>
+                      
+                      <Progress 
+                        value={progressPercentage} 
+                        className="h-2"
+                      />
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Departure:</div>
+                          <div className="text-sm">
+                            {delivery.depotDepartureTime 
+                              ? format(new Date(delivery.depotDepartureTime), 'h:mm a, MMM d')
+                              : "Not departed"
+                            }
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <div className="text-xs text-muted-foreground">
+                            {delivery.status === 'delivered' ? 'Arrival:' : 'ETA:'}
+                          </div>
+                          <div className="text-sm">
+                            {delivery.status === 'delivered' && delivery.destinationArrivalTime
+                              ? format(new Date(delivery.destinationArrivalTime), 'h:mm a, MMM d')
+                              : delivery.status === 'in_transit' && delivery.expectedArrivalTime
+                                ? eta
+                                : "Pending"
+                            }
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Total Distance:</div>
+                          <div className="text-sm">{formatDistance(delivery.totalDistance)}</div>
+                        </div>
+                        
+                        <div>
+                          <div className="text-xs text-muted-foreground">Covered:</div>
+                          <div className="text-sm">{formatDistance(delivery.distanceCovered)}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Est. Total Time:</div>
+                          <div className="text-sm">
+                            {delivery.destinationArrivalTime && delivery.depotDepartureTime
+                              ? calculateDeliveryTime(delivery.depotDepartureTime, delivery.destinationArrivalTime)
+                              : "Calculating..."
+                            }
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <div className="text-xs text-muted-foreground">Remaining:</div>
+                          <div className="text-sm">
+                            {delivery.status === 'in_transit' 
+                              ? delivery.expectedArrivalTime 
+                                ? calculateDeliveryTime(new Date(), new Date(delivery.expectedArrivalTime))
+                                : "Calculating..."
+                              : delivery.status === 'delivered'
+                              ? "Completed"
+                              : "Not started"
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Incidents and Actions Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center">
+                      <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
+                      Actions & Incidents
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-3">
+                      {/* Action Buttons */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {delivery.status === 'delivered' && !offloading && (
+                          <OffloadingDialog orderId={order.id}>
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              className="gap-1"
+                              className="w-full gap-1"
                             >
                               <Clipboard className="h-4 w-4" />
-                              <span className="hidden sm:inline">Offload</span>
+                              <span>Record Offload</span>
                             </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            <p>Record offloading details for this delivery</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </OffloadingDialog>
-                  )}
-                  
-                  <IncidentDialog orderId={order.id}>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
+                          </OffloadingDialog>
+                        )}
+                        
+                        <IncidentDialog orderId={order.id}>
                           <Button 
-                            variant="destructive" 
+                            variant="outline" 
                             size="sm" 
-                            className="gap-1"
+                            className="w-full gap-1 border-red-200 hover:bg-red-50 text-red-600"
                           >
                             <AlertTriangle className="h-4 w-4" />
-                            <span className="hidden sm:inline">Report Incident</span>
+                            <span>Report Incident</span>
                           </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          <p>Report an incident for this delivery</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </IncidentDialog>
-                  
-                  <InsightDialog orderId={order.id}>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
+                        </IncidentDialog>
+                        
+                        {truck && (
                           <Button 
-                            variant="default" 
+                            variant="outline" 
                             size="sm" 
-                            className="gap-1"
+                            className="w-full gap-1"
+                            onClick={handleTruckManagement}
                           >
-                            <FileText className="h-4 w-4" />
-                            <span className="hidden sm:inline">Generate Insight</span>
+                            <Truck className="h-4 w-4" />
+                            <span>Manage Truck</span>
                           </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          <p>Generate delivery insights and analysis</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </InsightDialog>
-                </div>
-              </div>
-              
-              <div className="p-5 md:p-6 border-b">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Vehicle Information</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Truck className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{truck?.model || "Unknown model"}</span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          {truck?.plateNumber || "No plate"}
-                        </Badge>
-                        {truck?.isGPSTagged && (
-                          <Badge variant="secondary" className="text-xs">GPS Enabled</Badge>
+                      
+                      {/* Incidents Section */}
+                      <div>
+                        <h4 className="text-xs text-muted-foreground uppercase mb-2">Incidents</h4>
+                        {order.incidents && order.incidents.length > 0 ? (
+                          <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                            {order.incidents.map((incident, idx) => (
+                              <div 
+                                key={idx} 
+                                className={cn(
+                                  "p-2 rounded-md border text-sm",
+                                  incident.impact === 'positive' ? "bg-green-50 border-green-200" :
+                                  incident.impact === 'negative' ? "bg-red-50 border-red-200" :
+                                  "bg-gray-50 border-gray-200"
+                                )}
+                              >
+                                <div className="flex justify-between">
+                                  <span className="font-medium">{incident.type}</span>
+                                  <span className="text-xs">{format(new Date(incident.timestamp), 'MMM dd, HH:mm')}</span>
+                                </div>
+                                <p className="text-xs mt-1">{incident.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-md">
+                            <AlertTriangle className="h-8 w-8 text-gray-300 mb-2" />
+                            <p className="text-sm text-muted-foreground">No incidents reported</p>
+                          </div>
                         )}
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Route Tracking Map - Expandable */}
+              {isExpanded && (
+                <div className="p-5 bg-gray-50 border-t">
+                  <div className="mb-3 flex justify-between items-center">
+                    <h3 className="text-sm font-medium flex items-center">
+                      <Route className="h-4 w-4 mr-2 text-blue-500" />
+                      Route Tracking: {routeStart} to {routeEnd}
+                    </h3>
                   </div>
                   
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Load Information</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Droplet className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm">
-                          {offloading 
-                            ? `${offloading.deliveredVolume.toLocaleString()} / ${offloading.loadedVolume.toLocaleString()} L`
-                            : `${totalVolume.toLocaleString()} L planned`
-                          }
-                        </span>
+                  {/* Route Progress Visualization */}
+                  <div className="bg-white p-5 rounded-lg shadow-sm">
+                    <div className="relative mb-8">
+                      {/* Progress Bar with Truck Position */}
+                      <div className="relative pt-1 mb-8">
+                        <Progress 
+                          value={progressPercentage} 
+                          className="h-3 rounded-full"
+                        />
+                        
+                        <div 
+                          className="absolute top-0 transform -translate-y-1/2"
+                          style={{ left: `${Math.min(progressPercentage, 100)}%`, transform: 'translateX(-50%)' }}
+                        >
+                          <div className="relative">
+                            <Truck className={`h-6 w-6 text-blue-600 ${delivery.status === 'in_transit' ? 'animate-pulse' : ''}`} />
+                          </div>
+                        </div>
                       </div>
-                      {offloading && (
-                        <div className="flex items-center gap-2">
-                          <DiscrepancyBadge discrepancyPercent={discrepancyPercent} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Timing Information</h4>
-                    <div className="space-y-2">
-                      {delivery.depotDepartureTime && (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="bg-blue-50">
-                            Departed: {format(new Date(delivery.depotDepartureTime), 'h:mm a, MMM d')}
-                          </Badge>
-                        </div>
-                      )}
-                      {delivery.status === 'in_transit' && (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="bg-yellow-50">
-                            ETA: {eta || "Calculating..."}
-                          </Badge>
-                        </div>
-                      )}
-                      {delivery.destinationArrivalTime && (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="bg-green-50">
-                            Arrived: {format(new Date(delivery.destinationArrivalTime), 'h:mm a, MMM d')}
-                          </Badge>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Incidents</h4>
-                    {order.incidents && order.incidents.length > 0 ? (
-                      <div className="space-y-2">
-                        {order.incidents.map((incident, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <Badge 
-                              variant={incident.impact === 'negative' ? "destructive" : 
-                                      incident.impact === 'positive' ? "outline" : "secondary"}
-                              className={incident.impact === 'positive' ? "bg-green-50" : ""}
-                            >
-                              {incident.type}
-                            </Badge>
+                      
+                      {/* Waypoints with Weather and Traffic */}
+                      <div className="flex justify-between mt-8">
+                        {waypoints.map((waypoint, index) => (
+                          <div key={index} className="flex flex-col items-center max-w-[100px]">
+                            <div className={`w-3 h-3 rounded-full ${waypoint.passed ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                            <span className="text-xs mt-1 font-medium text-center">{waypoint.name}</span>
+                            <div className="flex items-center mt-1">
+                              {getWeatherIcon(waypoint.weather || '')}
+                              <span className="text-xs ml-1">{waypoint.temperature}</span>
+                            </div>
+                            <div className="mt-1">
+                              {getTrafficIcon(waypoint.traffic || '')}
+                            </div>
+                            <span className="text-xs text-muted-foreground mt-1">{waypoint.distance}</span>
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">No incidents reported</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-5 md:p-6">
-                <h4 className="text-sm font-semibold mb-4">Delivery Route: {routeStart} to {routeEnd}</h4>
-                
-                <div className="relative pt-1 mb-8">
-                  <Progress 
-                    value={progressPercentage} 
-                    className="h-3 rounded-full"
-                    style={{ 
-                      background: delivery.status === 'delivered' ? 'linear-gradient(to right, #10B981, #10B981)' : 'linear-gradient(to right, #3B82F6, #E5E7EB)' 
-                    }}
-                  />
-                  
-                  <div 
-                    className="absolute top-0 transform -translate-y-1/2"
-                    style={{ left: `${Math.min(progressPercentage, 100)}%`, transform: 'translateX(-50%)' }}
-                  >
-                    <div className="relative">
-                      <Truck className={`h-6 w-6 text-blue-600 ${delivery.status === 'in_transit' ? 'animate-pulse' : ''}`} />
                     </div>
-                  </div>
-                  
-                  <div className="flex justify-between mt-8">
-                    {waypoints.map((waypoint, index) => (
-                      <div key={index} className="flex flex-col items-center max-w-[100px]">
-                        <div className={`w-3 h-3 rounded-full ${waypoint.passed ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                        <span className="text-xs mt-1 font-medium text-center">{waypoint.name}</span>
-                        <div className="flex items-center mt-1">
-                          {getWeatherIcon(waypoint.weather || '')}
-                          <span className="text-xs ml-1">{waypoint.temperature}</span>
-                        </div>
-                        <div className="mt-1">
-                          {getTrafficIcon(waypoint.traffic || '')}
-                        </div>
-                        <span className="text-xs text-muted-foreground mt-1">{waypoint.distance}</span>
+                    
+                    {/* Distance and Time Stats */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center mt-8">
+                      <div className="bg-gray-50 rounded-md p-3">
+                        <div className="text-sm font-medium text-muted-foreground">Total Distance</div>
+                        <div className="text-lg font-bold mt-1">{formatDistance(delivery.totalDistance)}</div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                  <div className="bg-gray-50 rounded-md p-3">
-                    <div className="text-sm font-medium text-muted-foreground">Total Distance</div>
-                    <div className="text-lg font-bold mt-1">{formatDistance(delivery.totalDistance)}</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-md p-3">
-                    <div className="text-sm font-medium text-muted-foreground">Distance Covered</div>
-                    <div className="text-lg font-bold mt-1">{formatDistance(delivery.distanceCovered)}</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-md p-3">
-                    <div className="text-sm font-medium text-muted-foreground">Est. Total Time</div>
-                    <div className="text-lg font-bold mt-1">
-                      {delivery.destinationArrivalTime && delivery.depotDepartureTime
-                        ? calculateDeliveryTime(delivery.depotDepartureTime, delivery.destinationArrivalTime)
-                        : "Calculating..."}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-md p-3">
-                    <div className="text-sm font-medium text-muted-foreground">Time Remaining</div>
-                    <div className="text-lg font-bold mt-1">
-                      {delivery.status === 'in_transit' 
-                        ? delivery.expectedArrivalTime 
-                          ? calculateDeliveryTime(new Date(), new Date(delivery.expectedArrivalTime))
-                          : "Calculating..."
-                        : delivery.status === 'delivered'
-                        ? "Completed"
-                        : "Not started"}
+                      <div className="bg-gray-50 rounded-md p-3">
+                        <div className="text-sm font-medium text-muted-foreground">Distance Covered</div>
+                        <div className="text-lg font-bold mt-1">{formatDistance(delivery.distanceCovered)}</div>
+                      </div>
+                      <div className="bg-gray-50 rounded-md p-3">
+                        <div className="text-sm font-medium text-muted-foreground">Est. Total Time</div>
+                        <div className="text-lg font-bold mt-1">
+                          {delivery.destinationArrivalTime && delivery.depotDepartureTime
+                            ? calculateDeliveryTime(delivery.depotDepartureTime, delivery.destinationArrivalTime)
+                            : "Calculating..."}
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 rounded-md p-3">
+                        <div className="text-sm font-medium text-muted-foreground">Time Remaining</div>
+                        <div className="text-lg font-bold mt-1">
+                          {delivery.status === 'in_transit' 
+                            ? delivery.expectedArrivalTime 
+                              ? calculateDeliveryTime(new Date(), new Date(delivery.expectedArrivalTime))
+                              : "Calculating..."
+                            : delivery.status === 'delivered'
+                            ? "Completed"
+                            : "Not started"}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         );

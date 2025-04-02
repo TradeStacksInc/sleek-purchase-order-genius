@@ -117,10 +117,24 @@ const DeliveryLog: React.FC = () => {
     });
   };
 
+  const handleManageTrucks = () => {
+    toast({
+      title: "Manage Trucks",
+      description: "Redirecting to truck management...",
+    });
+  };
+
+  const handleViewAnalytics = () => {
+    toast({
+      title: "View Analytics",
+      description: "Redirecting to analytics dashboard...",
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <Card>
-        <CardHeader className="pb-3">
+      <Card className="shadow-md">
+        <CardHeader className="pb-3 bg-gradient-to-r from-gray-50 to-white">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <CardTitle>Delivery Log</CardTitle>
@@ -227,11 +241,11 @@ const DeliveryLog: React.FC = () => {
                       <MenubarShortcut>E</MenubarShortcut>
                     </MenubarItem>
                     <MenubarSeparator />
-                    <MenubarItem>
+                    <MenubarItem onClick={handleManageTrucks}>
                       <Truck className="h-4 w-4 mr-2" />
                       Manage Trucks
                     </MenubarItem>
-                    <MenubarItem>
+                    <MenubarItem onClick={handleViewAnalytics}>
                       <Info className="h-4 w-4 mr-2" />
                       View Analytics
                     </MenubarItem>
