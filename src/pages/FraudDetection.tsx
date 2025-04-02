@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ShieldAlert, ShieldCheck, UserX, BarChart3, AlertTriangle, FileText, Calendar, User, ArrowUpRight, Fuel, DollarSign } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, UserX, BarChart3, AlertTriangle, FileText, Calendar, User, ArrowUpRight, Fuel, DollarSign, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -220,7 +219,7 @@ const FraudDetection: React.FC = () => {
       case 'investigating':
         return 'default';
       case 'resolved':
-        return 'success';
+        return 'secondary'; // Changed from 'success' to 'secondary'
       case 'dismissed':
         return 'outline';
       default:
@@ -726,19 +725,19 @@ const FraudDetection: React.FC = () => {
                         <CardContent>
                           <ul className="space-y-2 text-sm">
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Real-time dispenser data integration</span>
                             </li>
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Automatic volume discrepancy detection</span>
                             </li>
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Anomaly detection algorithms</span>
                             </li>
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Daily reconciliation reports</span>
                             </li>
                           </ul>
@@ -758,19 +757,19 @@ const FraudDetection: React.FC = () => {
                         <CardContent>
                           <ul className="space-y-2 text-sm">
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Staff rotation policies</span>
                             </li>
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Dual verification for high value transactions</span>
                             </li>
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Training on fraud awareness</span>
                             </li>
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Random spot checks</span>
                             </li>
                           </ul>
@@ -790,19 +789,19 @@ const FraudDetection: React.FC = () => {
                         <CardContent>
                           <ul className="space-y-2 text-sm">
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Regular dispenser calibration</span>
                             </li>
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Tamper-evident seals</span>
                             </li>
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>CCTV monitoring of dispensers</span>
                             </li>
                             <li className="flex gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                               <span>Secure access controls</span>
                             </li>
                           </ul>
@@ -830,107 +829,4 @@ const FraudDetection: React.FC = () => {
                           </p>
                         </div>
                         
-                        <div className="p-3 bg-white rounded-md">
-                          <h4 className="font-medium mb-1">Update Calibration Schedule</h4>
-                          <p className="text-sm">
-                            Increase frequency of dispenser calibration checks to weekly for the next 
-                            month to identify any equipment issues.
-                          </p>
-                        </div>
-                        
-                        <div className="p-3 bg-white rounded-md">
-                          <h4 className="font-medium mb-1">Enhance Monitoring</h4>
-                          <p className="text-sm">
-                            Implement real-time alerts for any transaction with over 3% volume discrepancy
-                            to enable immediate investigation.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Audit Schedule</CardTitle>
-                  <CardDescription>
-                    Regular audit activities to prevent and detect fraud
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Activity</TableHead>
-                        <TableHead>Frequency</TableHead>
-                        <TableHead>Responsible</TableHead>
-                        <TableHead>Last Completed</TableHead>
-                        <TableHead>Next Scheduled</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">Dispenser Calibration</TableCell>
-                        <TableCell>Monthly</TableCell>
-                        <TableCell>Maintenance Team</TableCell>
-                        <TableCell>{format(new Date(2025, 3, 5), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>{format(new Date(2025, 4, 5), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-green-50">Completed</Badge>
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Staff Transaction Audit</TableCell>
-                        <TableCell>Weekly</TableCell>
-                        <TableCell>Finance Manager</TableCell>
-                        <TableCell>{format(new Date(2025, 3, 28), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>{format(new Date(2025, 4, 5), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">Pending</Badge>
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Tank Reconciliation</TableCell>
-                        <TableCell>Daily</TableCell>
-                        <TableCell>Operations Manager</TableCell>
-                        <TableCell>{format(new Date(2025, 4, 1), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>{format(new Date(2025, 4, 2), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>
-                          <Badge variant="default">In Progress</Badge>
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Full System Audit</TableCell>
-                        <TableCell>Quarterly</TableCell>
-                        <TableCell>External Auditor</TableCell>
-                        <TableCell>{format(new Date(2025, 0, 15), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>{format(new Date(2025, 4, 15), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">Scheduled</Badge>
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">CCTV Footage Review</TableCell>
-                        <TableCell>Weekly</TableCell>
-                        <TableCell>Security Officer</TableCell>
-                        <TableCell>{format(new Date(2025, 3, 28), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>{format(new Date(2025, 4, 5), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">Pending</Badge>
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-export default FraudDetection;
+                        <div className="p-

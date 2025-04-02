@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,26 +24,21 @@ interface PriceHistory {
 const PriceManagement: React.FC = () => {
   const { toast } = useToast();
   
-  // Current prices state
   const [currentPrices, setCurrentPrices] = useState({
     pms: { purchase: 180, selling: 210 },
     ago: { purchase: 195, selling: 230 }
   });
   
-  // New prices state
   const [newPrices, setNewPrices] = useState({
     pms: { purchase: '', selling: '' },
     ago: { purchase: '', selling: '' }
   });
   
-  // Reason for price change
   const [priceChangeReason, setPriceChangeReason] = useState('');
   
-  // Authorization code for price changes (simple mock)
   const [authCode, setAuthCode] = useState('');
-  const validAuthCode = '123456'; // In a real app, this would be managed securely
+  const validAuthCode = '123456';
   
-  // Price history
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([
     {
       id: 'ph-1',
@@ -82,7 +76,6 @@ const PriceManagement: React.FC = () => {
     }
   ]);
   
-  // Handle price update submission
   const handlePriceUpdate = (productType: 'pms' | 'ago') => {
     if (authCode !== validAuthCode) {
       toast({
@@ -93,7 +86,6 @@ const PriceManagement: React.FC = () => {
       return;
     }
     
-    // Validate prices
     const purchasePrice = parseFloat(newPrices[productType].purchase);
     const sellingPrice = parseFloat(newPrices[productType].selling);
     
@@ -115,7 +107,6 @@ const PriceManagement: React.FC = () => {
       return;
     }
     
-    // Update current prices
     setCurrentPrices(prev => ({
       ...prev,
       [productType]: {
@@ -124,7 +115,6 @@ const PriceManagement: React.FC = () => {
       }
     }));
     
-    // Add to price history
     const newPriceHistory: PriceHistory = {
       id: `ph-${Date.now()}`,
       productType: productType === 'pms' ? 'PMS' : 'AGO',
@@ -137,7 +127,6 @@ const PriceManagement: React.FC = () => {
     
     setPriceHistory(prev => [newPriceHistory, ...prev]);
     
-    // Reset form
     setNewPrices(prev => ({
       ...prev,
       [productType]: { purchase: '', selling: '' }
@@ -145,7 +134,6 @@ const PriceManagement: React.FC = () => {
     setPriceChangeReason('');
     setAuthCode('');
     
-    // Show success notification
     toast({
       title: "Price Updated",
       description: `${productType.toUpperCase()} prices have been updated successfully.`
@@ -559,7 +547,7 @@ const PriceUpdateForm: React.FC<PriceUpdateFormProps> = ({
               
               {!isNaN(margin) && newPurchasePrice && newSellingPrice && (
                 <div className="flex items-center mt-2">
-                  <Badge variant={margin > 0 ? "success" : "destructive"}>
+                  <Badge variant={margin > 0 ? "secondary" : "destructive"}>
                     {margin.toFixed(2)}% Margin
                   </Badge>
                   <span className="text-sm text-muted-foreground ml-2">

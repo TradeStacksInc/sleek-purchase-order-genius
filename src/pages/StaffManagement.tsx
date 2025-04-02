@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { User, UserPlus, UserCog, ShieldAlert, CheckCircle, UserCheck, Clock, Pen } from 'lucide-react';
+import { User, UserPlus, UserCog, ShieldAlert, CheckCircle2, UserCheck, Clock, Pen } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -165,6 +164,8 @@ const StaffManagement: React.FC = () => {
               <TabsTrigger value="add-staff">Add Staff</TabsTrigger>
               <TabsTrigger value="shift-management">Shift Management</TabsTrigger>
             </TabsList>
+            
+            
             
             <TabsContent value="staff-list" className="space-y-6 mt-6">
               {/* Summary Cards */}
@@ -357,6 +358,7 @@ const StaffManagement: React.FC = () => {
                     <TableBody>
                       {staffMembers.map(staff => (
                         <TableRow key={staff.id}>
+                          
                           <TableCell className="font-medium">
                             {staff.name}
                             {staff.performanceRating && (
@@ -366,6 +368,7 @@ const StaffManagement: React.FC = () => {
                             )}
                           </TableCell>
                           <TableCell>{staff.role}</TableCell>
+                          
                           <TableCell>
                             <Badge variant={
                               staff.shift === 'morning' ? 'outline' : 
@@ -377,6 +380,7 @@ const StaffManagement: React.FC = () => {
                               'Unassigned'}
                             </Badge>
                           </TableCell>
+                          
                           <TableCell>
                             {staff.contactNumber}
                             {staff.email && (
@@ -398,8 +402,9 @@ const StaffManagement: React.FC = () => {
                               <span className="text-muted-foreground text-sm">None</span>
                             )}
                           </TableCell>
+                          
                           <TableCell>
-                            <Badge variant={staff.status === 'active' ? 'success' : 'destructive'}>
+                            <Badge variant={staff.status === 'active' ? 'secondary' : 'destructive'}>
                               {staff.status === 'active' ? 'Active' : 'Inactive'}
                             </Badge>
                           </TableCell>
@@ -423,6 +428,8 @@ const StaffManagement: React.FC = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+            
+            
             
             <TabsContent value="add-staff" className="space-y-6 mt-6">
               <Card>
@@ -542,6 +549,8 @@ const StaffManagement: React.FC = () => {
               </Card>
             </TabsContent>
             
+            
+            
             <TabsContent value="shift-management" className="space-y-6 mt-6">
               <Card>
                 <CardHeader>
@@ -581,7 +590,7 @@ const StaffManagement: React.FC = () => {
                                       <div className="space-y-1">
                                         {staff.assignedDispensers.map((disp, idx) => (
                                           <div key={idx} className="text-sm flex items-center">
-                                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                                            <CheckCircle2 className="h-3 w-3 text-green-500 mr-1" />
                                             {disp.name}
                                           </div>
                                         ))}
@@ -618,6 +627,8 @@ const StaffManagement: React.FC = () => {
                       </div>
                     </TabsContent>
                     
+                    
+                    
                     <TabsContent value="afternoon" className="mt-4">
                       <div className="rounded-md border">
                         <Table>
@@ -641,7 +652,7 @@ const StaffManagement: React.FC = () => {
                                       <div className="space-y-1">
                                         {staff.assignedDispensers.map((disp, idx) => (
                                           <div key={idx} className="text-sm flex items-center">
-                                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                                            <CheckCircle2 className="h-3 w-3 text-green-500 mr-1" />
                                             {disp.name}
                                           </div>
                                         ))}
@@ -697,7 +708,7 @@ const StaffManagement: React.FC = () => {
                                   <TableCell className="font-medium">{staff.name}</TableCell>
                                   <TableCell>{staff.role}</TableCell>
                                   <TableCell>
-                                    <Badge variant={staff.status === 'active' ? 'success' : 'destructive'}>
+                                    <Badge variant={staff.status === 'active' ? 'secondary' : 'destructive'}>
                                       {staff.status === 'active' ? 'Active' : 'Inactive'}
                                     </Badge>
                                   </TableCell>
