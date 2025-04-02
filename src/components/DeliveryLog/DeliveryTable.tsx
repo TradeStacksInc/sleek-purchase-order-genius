@@ -140,7 +140,8 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
       case "Heavy":
         return <Badge variant="destructive" className="text-xs">Heavy Traffic</Badge>;
       case "Moderate":
-        return <Badge variant="warning" className="text-xs">Moderate Traffic</Badge>;
+        // Changed from "warning" to "secondary" since "warning" is not an allowed variant
+        return <Badge variant="secondary" className="text-xs">Moderate Traffic</Badge>;
       default:
         return <Badge variant="outline" className="text-xs bg-green-50">Clear Roads</Badge>;
     }
