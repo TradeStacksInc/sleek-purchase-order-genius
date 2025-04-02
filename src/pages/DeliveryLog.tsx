@@ -1,28 +1,19 @@
+
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DateRange } from 'react-day-picker';
-import { DateRangePicker } from '@/components/DateRangePicker';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
 import { isWithinInterval, subDays, startOfMonth } from 'date-fns';
 import { AIInsightsPanel } from '@/components/AIInsightsPanel';
 import DeliveryTable from '@/components/DeliveryLog/DeliveryTable';
-import { FileDown, Map, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
 import { DateFilter } from '@/types/filters';
 import { exportDataToFile } from '@/utils/localStorage';
 import MapView from '@/components/DeliveryLog/MapView';
-import MoreOptions from '@/components/DeliveryLog/MoreOptions';
+import DeliveryLogHeader from '@/components/DeliveryLog/DeliveryLogHeader';
+import DeliveryLogPagination from '@/components/DeliveryLog/DeliveryLogPagination';
 
 const DeliveryLog: React.FC = () => {
   const { purchaseOrders } = useApp();
@@ -143,58 +134,18 @@ const DeliveryLog: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <Card className="shadow-md">
         <CardHeader className="pb-3 bg-gradient-to-r from-gray-50 to-white">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <CardTitle>Delivery Log</CardTitle>
-              <CardDescription>
-                Track and manage all product deliveries
-              </CardDescription>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="flex items-center gap-1"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-              </Button>
-
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowMapView(true)}
-                className="flex items-center gap-1"
-              >
-                <Map className="h-4 w-4" />
-                <span>Map View</span>
-              </Button>
-              
-              <MoreOptions 
-                dateFilter={dateFilter}
-                onDateFilterChange={setDateFilter}
-                onRefresh={handleRefresh}
-                onMapView={() => setShowMapView(true)}
-                exportData={handleExport}
-                onManageTrucks={handleTruckManagement}
-                onViewAnalytics={handleViewAnalytics}
-                isRefreshing={isRefreshing}
-              />
-            </div>
-          </div>
-          
-          {dateFilter === 'custom' && (
-            <div className="mt-4">
-              <DateRangePicker 
-                date={dateRange} 
-                onDateChange={setDateRange} 
-                className="w-full sm:w-auto"
-              />
-            </div>
-          )}
+          <DeliveryLogHeader 
+            dateFilter={dateFilter}
+            dateRange={dateRange}
+            isRefreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            onMapView={() => setShowMapView(true)}
+            onDateFilterChange={setDateFilter}
+            onDateRangeChange={setDateRange}
+            onExport={handleExport}
+            onManageTrucks={handleTruckManagement}
+            onViewAnalytics={handleViewAnalytics}
+          />
         </CardHeader>
         <CardContent>
           {/* AI Insights Panel */}
@@ -224,38 +175,11 @@ const DeliveryLog: React.FC = () => {
 
           <DeliveryTable deliveries={currentDeliveries} />
           
-          {totalPages > 1 && (
-            <div className="mt-6 flex justify-center">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious 
-                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                  </PaginationItem>
-                  
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <PaginationItem key={page}>
-                      <PaginationLink 
-                        isActive={currentPage === page}
-                        onClick={() => handlePageChange(page)}
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  
-                  <PaginationItem>
-                    <PaginationNext 
-                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
+          <DeliveryLogPagination 
+            currentPage={currentPage} 
+            totalPages={totalPages} 
+            onPageChange={handlePageChange} 
+          />
         </CardContent>
       </Card>
     </div>
