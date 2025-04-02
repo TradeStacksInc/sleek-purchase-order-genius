@@ -164,29 +164,36 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DetailsDialog order={order}>
-                          <Button variant="outline" size="sm" className="gap-1">
-                            <Info className="h-4 w-4" />
-                            <span className="hidden sm:inline">Details</span>
-                          </Button>
-                        </DetailsDialog>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-1"
+                          onClick={() => {/* Empty handler to avoid button effect */}}
+                        >
+                          <Info className="h-4 w-4" />
+                          <span className="hidden sm:inline">Details</span>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent side="top">
                         <p>View detailed information about this delivery</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  <DetailsDialog order={order} />
                   
                   {delivery.status === 'delivered' && !offloading && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <OffloadingDialog orderId={order.id}>
-                            <Button variant="outline" size="sm" className="gap-1">
-                              <Clipboard className="h-4 w-4" />
-                              <span className="hidden sm:inline">Offload</span>
-                            </Button>
-                          </OffloadingDialog>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-1"
+                            onClick={() => {/* Empty handler to avoid button effect */}}
+                          >
+                            <Clipboard className="h-4 w-4" />
+                            <span className="hidden sm:inline">Offload</span>
+                          </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top">
                           <p>Record offloading details for this delivery</p>
@@ -194,38 +201,49 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                       </Tooltip>
                     </TooltipProvider>
                   )}
+                  {delivery.status === 'delivered' && !offloading && (
+                    <OffloadingDialog orderId={order.id} />
+                  )}
                   
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <IncidentDialog orderId={order.id}>
-                          <Button variant="destructive" size="sm" className="gap-1">
-                            <AlertTriangle className="h-4 w-4" />
-                            <span className="hidden sm:inline">Report Incident</span>
-                          </Button>
-                        </IncidentDialog>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="gap-1"
+                          onClick={() => {/* Empty handler to avoid button effect */}}
+                        >
+                          <AlertTriangle className="h-4 w-4" />
+                          <span className="hidden sm:inline">Report Incident</span>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent side="top">
                         <p>Report an incident for this delivery</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  <IncidentDialog orderId={order.id} />
                   
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <InsightDialog orderId={order.id}>
-                          <Button variant="default" size="sm" className="gap-1">
-                            <FileText className="h-4 w-4" />
-                            <span className="hidden sm:inline">Generate Insight</span>
-                          </Button>
-                        </InsightDialog>
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          className="gap-1"
+                          onClick={() => {/* Empty handler to avoid button effect */}}
+                        >
+                          <FileText className="h-4 w-4" />
+                          <span className="hidden sm:inline">Generate Insight</span>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent side="top">
                         <p>Generate delivery insights and analysis</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  <InsightDialog orderId={order.id} />
                 </div>
               </div>
               
