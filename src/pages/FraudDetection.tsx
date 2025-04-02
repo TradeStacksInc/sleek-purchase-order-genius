@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -829,4 +830,32 @@ const FraudDetection: React.FC = () => {
                           </p>
                         </div>
                         
-                        <div className="p-
+                        <div className="p-3 bg-white rounded-md">
+                          <h4 className="font-medium mb-1">Implement Dual Controls</h4>
+                          <p className="text-sm">
+                            Establish dual control procedures for critical operations like price changes,
+                            end-of-day reconciliation, and volume tracking.
+                          </p>
+                        </div>
+                        
+                        <div className="p-3 bg-white rounded-md">
+                          <h4 className="font-medium mb-1">Enhance Monitoring Systems</h4>
+                          <p className="text-sm">
+                            Upgrade real-time dispenser monitoring and integrate with sales recording
+                            to detect discrepancies as they occur.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default FraudDetection;
