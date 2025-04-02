@@ -9,7 +9,8 @@ import {
   Activity,
   ChevronLeft,
   Truck,
-  FileText
+  FileText,
+  Droplet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,6 +41,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
           <NavItem to="/orders" icon={<ClipboardList className="h-5 w-5" />} text="Orders" />
           <NavItem to="/assign-driver" icon={<Truck className="h-5 w-5" />} text="Assign Driver" />
           <NavItem to="/delivery-log" icon={<FileText className="h-5 w-5" />} text="Delivery Log" />
+          <NavItem to="/offload-log" icon={<Droplet className="h-5 w-5" />} text="Offload Log" />
           <NavItem to="/logs" icon={<Activity className="h-5 w-5" />} text="Activity Log" />
         </nav>
       </ScrollArea>

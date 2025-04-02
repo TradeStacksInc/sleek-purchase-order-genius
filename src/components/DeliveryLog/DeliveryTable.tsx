@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +52,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
     return `${diffHrs}h ${diffMins}m`;
   };
 
-  // Format distance for display
   const formatDistance = (distance?: number) => {
     if (!distance) return "N/A";
     return distance > 1000 
@@ -61,7 +59,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
       : `${Math.round(distance)} m`;
   };
   
-  // Generate route locations based on route
   const getRouteLocations = (start: string, end: string, progress: number): RouteLocation[] => {
     if (start === "Lagos" && end === "Abakaliki") {
       return [
@@ -124,7 +121,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
       ];
     }
     
-    // Default route with some locations
     return [
       { name: "Depot", passed: true, distance: "0 km", weather: "Clear", temperature: "29°C", traffic: "Moderate" },
       { name: "Checkpoint 1", passed: progress > 20, distance: "45 km", weather: "Sunny", temperature: "30°C", traffic: "Light" },
@@ -134,20 +130,17 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
     ];
   };
   
-  // Get traffic icon based on condition
   const getTrafficIcon = (traffic: string) => {
     switch(traffic) {
       case "Heavy":
         return <Badge variant="destructive" className="text-xs">Heavy Traffic</Badge>;
       case "Moderate":
-        // Changed from "warning" to "secondary" since "warning" is not an allowed variant
         return <Badge variant="secondary" className="text-xs">Moderate Traffic</Badge>;
       default:
         return <Badge variant="outline" className="text-xs bg-green-50">Clear Roads</Badge>;
     }
   };
   
-  // Get weather icon based on condition
   const getWeatherIcon = (weather: string) => {
     switch(weather) {
       case "Rain":
@@ -205,7 +198,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
           cardColorClass = 'border-l-4 border-l-gray-400';
         }
         
-        // Calculate progress percentage for in-transit deliveries
         let progressPercentage = 0;
         let eta = "";
         
@@ -221,15 +213,12 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
           progressPercentage = 100;
         }
         
-        // Get product type from the order items (first item for simplicity)
         const productType = order.items && order.items.length > 0 
           ? order.items[0].product 
           : "Unknown Product";
           
-        // Calculate total volume from order items
         const totalVolume = order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
 
-        // Store waypoints for the journey
         const routeStart = "Lagos";
         const routeEnd = "Abakaliki";
         const waypoints = getRouteLocations(routeStart, routeEnd, progressPercentage);
@@ -237,7 +226,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
         return (
           <Card key={order.id} className={`overflow-hidden transition-all duration-200 hover:shadow-md ${cardColorClass}`}>
             <CardContent className="p-0">
-              {/* Header Section */}
               <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-4 md:gap-6 border-b">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
@@ -268,27 +256,28 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                 </div>
                 
                 <div className="flex flex-wrap md:flex-nowrap gap-2 mt-2 md:mt-0">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="gap-1"
-                        >
-                          <Info className="h-4 w-4" />
-                          <span className="hidden sm:inline">Details</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p>View detailed information about this delivery</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <DetailsDialog order={order} />
+                  <DetailsDialog order={order}>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-1"
+                          >
+                            <Info className="h-4 w-4" />
+                            <span className="hidden sm:inline">Details</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p>View detailed information about this delivery</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </DetailsDialog>
                   
                   {delivery.status === 'delivered' && !offloading && (
-                    <>
+                    <OffloadingDialog orderId={order.id}>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -306,54 +295,53 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      <OffloadingDialog orderId={order.id} />
-                    </>
+                    </OffloadingDialog>
                   )}
                   
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="destructive" 
-                          size="sm" 
-                          className="gap-1"
-                        >
-                          <AlertTriangle className="h-4 w-4" />
-                          <span className="hidden sm:inline">Report Incident</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p>Report an incident for this delivery</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <IncidentDialog orderId={order.id} />
+                  <IncidentDialog orderId={order.id}>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="gap-1"
+                          >
+                            <AlertTriangle className="h-4 w-4" />
+                            <span className="hidden sm:inline">Report Incident</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p>Report an incident for this delivery</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </IncidentDialog>
                   
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="default" 
-                          size="sm" 
-                          className="gap-1"
-                        >
-                          <FileText className="h-4 w-4" />
-                          <span className="hidden sm:inline">Generate Insight</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p>Generate delivery insights and analysis</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <InsightDialog orderId={order.id} />
+                  <InsightDialog orderId={order.id}>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            className="gap-1"
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span className="hidden sm:inline">Generate Insight</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p>Generate delivery insights and analysis</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </InsightDialog>
                 </div>
               </div>
               
-              {/* Volume and Offloading Section */}
               <div className="p-5 md:p-6 border-b">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {/* Vehicle Information */}
                   <div>
                     <h4 className="text-sm font-semibold mb-2">Vehicle Information</h4>
                     <div className="space-y-2">
@@ -372,7 +360,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                     </div>
                   </div>
                   
-                  {/* Load Information */}
                   <div>
                     <h4 className="text-sm font-semibold mb-2">Load Information</h4>
                     <div className="space-y-2">
@@ -393,7 +380,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                     </div>
                   </div>
                   
-                  {/* Timing Information */}
                   <div>
                     <h4 className="text-sm font-semibold mb-2">Timing Information</h4>
                     <div className="space-y-2">
@@ -421,7 +407,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                     </div>
                   </div>
                   
-                  {/* Incidents */}
                   <div>
                     <h4 className="text-sm font-semibold mb-2">Incidents</h4>
                     {order.incidents && order.incidents.length > 0 ? (
@@ -445,12 +430,10 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                 </div>
               </div>
               
-              {/* Route Tracking Section */}
               <div className="p-5 md:p-6">
                 <h4 className="text-sm font-semibold mb-4">Delivery Route: {routeStart} to {routeEnd}</h4>
                 
                 <div className="relative pt-1 mb-8">
-                  {/* Route Progress Bar */}
                   <Progress 
                     value={progressPercentage} 
                     className="h-3 rounded-full"
@@ -459,7 +442,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                     }}
                   />
                   
-                  {/* Truck position indicator */}
                   <div 
                     className="absolute top-0 transform -translate-y-1/2"
                     style={{ left: `${Math.min(progressPercentage, 100)}%`, transform: 'translateX(-50%)' }}
@@ -469,7 +451,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                     </div>
                   </div>
                   
-                  {/* Waypoints indicators */}
                   <div className="flex justify-between mt-8">
                     {waypoints.map((waypoint, index) => (
                       <div key={index} className="flex flex-col items-center max-w-[100px]">
@@ -488,7 +469,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   </div>
                 </div>
                 
-                {/* Journey stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                   <div className="bg-gray-50 rounded-md p-3">
                     <div className="text-sm font-medium text-muted-foreground">Total Distance</div>

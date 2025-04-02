@@ -10,6 +10,7 @@ import AssignDriver from "../pages/AssignDriver";
 import GPSTracking from "../pages/GPSTracking";
 import DeliveryLog from "../pages/DeliveryLog";
 import DeliveryTracking from "../pages/DeliveryTracking";
+import OffloadLog from "../pages/OffloadLog";
 import NotFound from "../pages/NotFound";
 
 const AppRoutes = () => {
@@ -25,6 +26,7 @@ const AppRoutes = () => {
           <Route path="delivery-tracking" element={<DeliveryTracking />} />
           <Route path="gps-tracking" element={<GPSTracking />} />
           <Route path="delivery-log" element={<DeliveryLog />} />
+          <Route path="offload-log" element={<OffloadLog />} />
           <Route path="logs" element={<ActivityLog />} />
           <Route path="*" element={<NotFound />} />
         </Route>
