@@ -23,16 +23,20 @@ import {
 import { isWithinInterval, subDays, startOfMonth } from 'date-fns';
 import { AIInsightsPanel } from '@/components/AIInsightsPanel';
 import DeliveryTable from '@/components/DeliveryLog/DeliveryTable';
+import { Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator } from '@/components/ui/menubar';
+import { SlidersHorizontal, FileDown, Filter, Calendar, Truck, Info } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 type DateFilter = 'all' | 'today' | 'week' | 'month' | 'custom';
 
 const DeliveryLog: React.FC = () => {
   const { purchaseOrders } = useApp();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 5; // Reduced to show fewer items per page
 
   const filteredDeliveries = useMemo(() => {
     let filtered = purchaseOrders.filter(order => order.deliveryDetails);
@@ -91,6 +95,13 @@ const DeliveryLog: React.FC = () => {
     setCurrentPage(pageNumber);
   };
 
+  const handleExport = () => {
+    toast({
+      title: "Export initiated",
+      description: "Your delivery log data is being prepared for export.",
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <Card>
@@ -102,39 +113,99 @@ const DeliveryLog: React.FC = () => {
                 Track and manage all product deliveries
               </CardDescription>
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Filter by:</span>
-                <Select
-                  value={dateFilter}
-                  onValueChange={(value) => {
-                    setDateFilter(value as DateFilter);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Select date" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Deliveries</SelectItem>
-                    <SelectItem value="today">Today</SelectItem>
-                    <SelectItem value="week">This Week</SelectItem>
-                    <SelectItem value="month">This Month</SelectItem>
-                    <SelectItem value="custom">Custom Range</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            
+            <Menubar className="h-10">
+              <MenubarMenu>
+                <MenubarTrigger className="flex items-center gap-1">
+                  <Filter className="h-4 w-4" />
+                  <span>Filter</span>
+                </MenubarTrigger>
+                <MenubarContent>
+                  <MenubarItem 
+                    className={dateFilter === 'all' ? 'bg-accent' : ''}
+                    onClick={() => {
+                      setDateFilter('all');
+                      setCurrentPage(1);
+                    }}
+                  >
+                    All Deliveries
+                  </MenubarItem>
+                  <MenubarItem 
+                    className={dateFilter === 'today' ? 'bg-accent' : ''}
+                    onClick={() => {
+                      setDateFilter('today');
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Today
+                  </MenubarItem>
+                  <MenubarItem 
+                    className={dateFilter === 'week' ? 'bg-accent' : ''}
+                    onClick={() => {
+                      setDateFilter('week');
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    This Week
+                  </MenubarItem>
+                  <MenubarItem 
+                    className={dateFilter === 'month' ? 'bg-accent' : ''}
+                    onClick={() => {
+                      setDateFilter('month');
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    This Month
+                  </MenubarItem>
+                  <MenubarSeparator />
+                  <MenubarItem 
+                    className={dateFilter === 'custom' ? 'bg-accent' : ''}
+                    onClick={() => {
+                      setDateFilter('custom');
+                      setCurrentPage(1);
+                    }}
+                  >
+                    Custom Range
+                  </MenubarItem>
+                </MenubarContent>
+              </MenubarMenu>
               
-              {dateFilter === 'custom' && (
-                <div className="w-full sm:w-auto">
-                  <DateRangePicker 
-                    date={dateRange} 
-                    onDateChange={setDateRange} 
-                  />
-                </div>
-              )}
-            </div>
+              <MenubarMenu>
+                <MenubarTrigger className="flex items-center gap-1">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span>Options</span>
+                </MenubarTrigger>
+                <MenubarContent>
+                  <MenubarItem onClick={handleExport}>
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Export Log
+                  </MenubarItem>
+                  <MenubarSeparator />
+                  <MenubarItem>
+                    <Truck className="h-4 w-4 mr-2" />
+                    Manage Trucks
+                  </MenubarItem>
+                  <MenubarItem>
+                    <Info className="h-4 w-4 mr-2" />
+                    View Analytics
+                  </MenubarItem>
+                </MenubarContent>
+              </MenubarMenu>
+            </Menubar>
           </div>
+          
+          {dateFilter === 'custom' && (
+            <div className="mt-4">
+              <DateRangePicker 
+                date={dateRange} 
+                onDateChange={setDateRange} 
+                className="w-full sm:w-auto"
+              />
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {/* AI Insights Panel */}
@@ -149,7 +220,7 @@ const DeliveryLog: React.FC = () => {
               setActiveTab(value);
               setCurrentPage(1);
             }}
-            className="mb-4"
+            className="mb-6"
           >
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="all">All</TabsTrigger>
@@ -165,7 +236,7 @@ const DeliveryLog: React.FC = () => {
           <DeliveryTable deliveries={currentDeliveries} />
           
           {totalPages > 1 && (
-            <div className="mt-4">
+            <div className="mt-6 flex justify-center">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
