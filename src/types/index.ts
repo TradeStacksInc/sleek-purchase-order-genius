@@ -1,5 +1,3 @@
-
-
 export type Product = 'PMS' | 'AGO' | 'DPK';
 
 export type OrderStatus = 'pending' | 'active' | 'fulfilled';
@@ -45,6 +43,7 @@ export interface Truck {
   isAvailable: boolean;
   isGPSTagged?: boolean;
   gpsDeviceId?: string;
+  year?: number;
 }
 
 export interface GPSData {
@@ -69,6 +68,8 @@ export interface DeliveryDetails {
   totalDistance?: number;
   isGPSTagged?: boolean;
   gpsDeviceId?: string;
+  driverName?: string;
+  vehicleDetails?: string;
 }
 
 export interface OffloadingDetails {
@@ -127,8 +128,7 @@ export interface AIInsight {
   type: 'discrepancy_pattern' | 'driver_analysis' | 'efficiency_recommendation';
   description: string;
   severity: 'low' | 'medium' | 'high';
-  relatedEntityIds: string[]; // Can be driver IDs, truck IDs, etc.
+  relatedEntityIds: string[];
   generatedAt: Date;
   isRead: boolean;
 }
-

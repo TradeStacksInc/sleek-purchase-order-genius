@@ -2,11 +2,11 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ResponsiveContainer, PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, Cell } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '@/components/DateRangePicker';
 import { Button } from '@/components/ui/button';
-import { Calendar, Download, ArrowUpDown, Clock, AlertTriangle, Truck } from 'lucide-react';
+import { Calendar, Download, ArrowUpDown, Clock, AlertTriangle, Truck, CheckCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { isWithinInterval, subDays, startOfMonth, startOfYear, format, differenceInDays } from 'date-fns';
@@ -368,7 +368,7 @@ const Analytics: React.FC = () => {
                         label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       >
                         {deliveryStatusData.map((entry, index) => (
-                          <Pie fill={entry.color} key={`cell-${index}`} />
+                          <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -410,10 +410,10 @@ const Analytics: React.FC = () => {
                         <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
                         <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
                         <Tooltip 
-                          formatter={(value, name) => {
-                            if (name === 'discrepancy') return [`${value.toFixed(2)}%`, 'Discrepancy'];
-                            if (name === 'planned') return [`${value.toLocaleString()} L`, 'Planned Volume'];
-                            if (name === 'actual') return [`${value.toLocaleString()} L`, 'Actual Volume'];
+                          formatter={(value: any, name: string) => {
+                            if (name === 'discrepancy') return [`${typeof value === 'number' ? value.toFixed(2) : value}%`, 'Discrepancy'];
+                            if (name === 'planned') return [`${typeof value === 'number' ? value.toLocaleString() : value} L`, 'Planned Volume'];
+                            if (name === 'actual') return [`${typeof value === 'number' ? value.toLocaleString() : value} L`, 'Actual Volume'];
                             return [value, name];
                           }}
                         />
@@ -511,7 +511,7 @@ const Analytics: React.FC = () => {
                         <YAxis />
                         <Tooltip 
                           labelFormatter={value => format(new Date(value), 'MMMM dd, yyyy')}
-                          formatter={(value, name) => {
+                          formatter={(value: any, name: string) => {
                             if (name === 'onTime') return [value, 'On Time'];
                             if (name === 'delayed') return [value, 'Delayed'];
                             if (name === 'total') return [value, 'Total Deliveries'];

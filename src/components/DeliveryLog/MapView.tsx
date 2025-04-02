@@ -1,362 +1,402 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { PurchaseOrder } from '@/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, MapPin, Truck, Navigation, Clock, User, AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Truck, ArrowLeft, RefreshCw, AlertTriangle, Navigation, CloudRain, Sun, Cloud } from 'lucide-react';
-import DeliveryStatusBadge from './DeliveryStatusBadge';
+import { Badge } from '@/components/ui/badge';
+import { Driver, GPSData, PurchaseOrder, Truck as TruckType } from '@/types';
 import { format } from 'date-fns';
-
-// Mock weather data - in a real app, this would come from an API
-const WEATHER_DATA = {
-  'Lagos': { icon: Sun, temp: '32°C', condition: 'Sunny' },
-  'One': { icon: Cloud, temp: '28°C', condition: 'Partly Cloudy' },
-  'Beim': { icon: CloudRain, temp: '24°C', condition: 'Light Rain' },
-  'Abakaliki': { icon: Sun, temp: '30°C', condition: 'Clear' }
-};
-
-// Mock traffic data - in a real app, this would come from an API
-const TRAFFIC_DATA = {
-  'Lagos': { status: 'heavy', color: 'bg-red-500' },
-  'One': { status: 'moderate', color: 'bg-yellow-500' },
-  'Beim': { status: 'light', color: 'bg-green-500' },
-  'Abakaliki': { status: 'moderate', color: 'bg-yellow-500' }
-};
-
-// Route waypoints for demonstration
-const ROUTE_WAYPOINTS = ['Lagos', 'One', 'Beim', 'Abakaliki'];
 
 interface MapViewProps {
   onBack: () => void;
 }
 
 const MapView: React.FC<MapViewProps> = ({ onBack }) => {
-  const { purchaseOrders, getOrdersWithDeliveryStatus } = useApp();
-  const [activeTab, setActiveTab] = useState('all');
-  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { purchaseOrders, gpsData, getDriverById, getTruckById } = useApp();
+  const [selectedDelivery, setSelectedDelivery] = useState<string | null>(null);
+  
+  // Filter only active or delivered orders with delivery details
+  const activeDeliveries = useMemo(() => {
+    return purchaseOrders.filter(order => 
+      order.deliveryDetails && 
+      (order.deliveryDetails.status === 'in_transit' || order.deliveryDetails.status === 'delivered')
+    );
+  }, [purchaseOrders]);
 
-  // Filter deliveries based on active tab
-  const filteredDeliveries = useMemo(() => {
-    if (activeTab === 'all') {
-      return purchaseOrders.filter(order => order.deliveryDetails);
-    } else if (activeTab === 'in-transit') {
-      return getOrdersWithDeliveryStatus('in_transit');
-    } else if (activeTab === 'delivered') {
-      return getOrdersWithDeliveryStatus('delivered');
-    } else if (activeTab === 'pending') {
-      return getOrdersWithDeliveryStatus('pending');
-    }
-    return [];
-  }, [purchaseOrders, activeTab, getOrdersWithDeliveryStatus]);
+  // Get selected delivery details
+  const selectedDeliveryDetails = useMemo(() => {
+    if (!selectedDelivery) return null;
+    return activeDeliveries.find(order => order.id === selectedDelivery);
+  }, [selectedDelivery, activeDeliveries]);
 
-  // Select the first delivery by default
+  // Get GPS data for the selected delivery
+  const deliveryGpsData = useMemo(() => {
+    if (!selectedDeliveryDetails?.deliveryDetails?.truckId) return [];
+    
+    return gpsData
+      .filter(gps => gps.truckId === selectedDeliveryDetails.deliveryDetails?.truckId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [selectedDeliveryDetails, gpsData]);
+
+  // Get the latest GPS position
+  const latestPosition = useMemo(() => {
+    return deliveryGpsData[0] || null;
+  }, [deliveryGpsData]);
+
+  // If no delivery is selected, select the first one
   useEffect(() => {
-    if (filteredDeliveries.length > 0 && !selectedOrder) {
-      setSelectedOrder(filteredDeliveries[0]);
-    } else if (filteredDeliveries.length === 0) {
-      setSelectedOrder(null);
+    if (activeDeliveries.length > 0 && !selectedDelivery) {
+      setSelectedDelivery(activeDeliveries[0].id);
     }
-  }, [filteredDeliveries, selectedOrder]);
+  }, [activeDeliveries, selectedDelivery]);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
+  // Prepare driver and truck information
+  const driverInfo = useMemo(() => {
+    if (!selectedDeliveryDetails?.deliveryDetails?.driverId) return null;
+    return getDriverById(selectedDeliveryDetails.deliveryDetails.driverId);
+  }, [selectedDeliveryDetails, getDriverById]);
+
+  const truckInfo = useMemo(() => {
+    if (!selectedDeliveryDetails?.deliveryDetails?.truckId) return null;
+    return getTruckById(selectedDeliveryDetails.deliveryDetails.truckId);
+  }, [selectedDeliveryDetails, getTruckById]);
+
+  // Helper function to calculate the progress percentage
+  const calculateProgress = (order: PurchaseOrder) => {
+    if (!order.deliveryDetails) return 0;
     
-    // Simulate refresh
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1000);
+    if (order.deliveryDetails.status === 'delivered') return 100;
+    
+    const distanceCovered = order.deliveryDetails.distanceCovered || 0;
+    const totalDistance = order.deliveryDetails.totalDistance || 100;
+    
+    return Math.min(Math.round((distanceCovered / totalDistance) * 100), 99);
   };
 
-  // Calculate progress for selected order
-  const calculateProgress = (order: PurchaseOrder | null) => {
-    if (!order || !order.deliveryDetails) return 0;
+  // This would be replaced with an actual map implementation
+  const MapSimulation = () => {
+    if (!selectedDeliveryDetails) return (
+      <div className="h-full flex items-center justify-center bg-gray-100 rounded-lg">
+        <p className="text-gray-500">No delivery selected</p>
+      </div>
+    );
     
-    const { distanceCovered, totalDistance, status } = order.deliveryDetails;
+    // For demonstration, just show a basic visualization
+    const progress = calculateProgress(selectedDeliveryDetails);
     
-    if (status === 'delivered') return 100;
-    if (status === 'pending') return 0;
-    
-    return Math.round((distanceCovered || 0) / (totalDistance || 100) * 100);
-  };
+    return (
+      <div className="relative w-full h-full bg-blue-50 rounded-lg overflow-hidden">
+        {/* Simulated Map Background */}
+        <div className="absolute inset-0 grid grid-cols-6 grid-rows-6">
+          {Array.from({ length: 36 }).map((_, i) => (
+            <div key={i} className="border border-blue-100/50"></div>
+          ))}
+        </div>
+        
+        {/* Origin Point */}
+        <div className="absolute top-3/4 left-1/4 flex flex-col items-center">
+          <div className="w-4 h-4 rounded-full bg-green-500 shadow-lg z-10"></div>
+          <p className="text-xs font-medium mt-1 px-2 py-1 bg-white rounded shadow">Origin</p>
+        </div>
+        
+        {/* Destination Point */}
+        <div className="absolute top-1/4 right-1/4 flex flex-col items-center">
+          <div className="w-4 h-4 rounded-full bg-red-500 shadow-lg z-10"></div>
+          <p className="text-xs font-medium mt-1 px-2 py-1 bg-white rounded shadow">Destination</p>
+        </div>
+        
+        {/* Vehicle Position */}
+        {selectedDeliveryDetails.deliveryDetails?.status === 'in_transit' && (
+          <div className="absolute flex flex-col items-center"
+               style={{ 
+                 top: `${75 - progress * 0.5}%`, 
+                 left: `${25 + progress * 0.5}%` 
+               }}>
+            <div className="relative">
+              <div className="w-6 h-6 rounded-full bg-blue-500 shadow-lg z-20 flex items-center justify-center">
+                <Truck className="w-3 h-3 text-white" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-blue-300 animate-ping"></div>
+            </div>
+            <p className="text-xs font-medium mt-1 px-2 py-1 bg-white rounded shadow">
+              {truckInfo?.plateNumber}
+            </p>
+          </div>
+        )}
+        
+        {/* Route Path */}
+        <svg className="absolute inset-0 w-full h-full" 
+             xmlns="http://www.w3.org/2000/svg">
+          {/* Simulated Route Path */}
+          <path 
+            d={`M ${25}% ${75}% Q ${40}% ${40}%, ${75}% ${25}%`} 
+            stroke="#3b82f6" 
+            strokeWidth="3"
+            fill="none" 
+            strokeDasharray="5,5"
+          />
+          
+          {/* Progress Indicator */}
+          <path 
+            d={`M ${25}% ${75}% Q ${40}% ${40}%, ${75}% ${25}%`} 
+            stroke="#1d4ed8" 
+            strokeWidth="3"
+            fill="none" 
+            strokeDashoffset={`${100 - progress}%`}
+            strokeDasharray="100%"
+            className="path-progress"
+            // Style to make the progress line solid
+            style={{ strokeDasharray: '0' }}
+          />
+        </svg>
 
-  // Get current location based on progress
-  const getCurrentLocation = (progress: number) => {
-    if (progress <= 0) return ROUTE_WAYPOINTS[0];
-    if (progress >= 100) return ROUTE_WAYPOINTS[ROUTE_WAYPOINTS.length - 1];
-    
-    const waypoint = Math.floor((progress / 100) * (ROUTE_WAYPOINTS.length - 1));
-    return ROUTE_WAYPOINTS[waypoint];
+        {/* Legend */}
+        <div className="absolute bottom-3 left-3 bg-white p-2 rounded-md shadow space-y-1 text-xs">
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+            <span>Origin</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+            <span>Destination</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+            <span>Current Position</span>
+          </div>
+        </div>
+      </div>
+    );
   };
-
-  const progress = calculateProgress(selectedOrder);
-  const currentLocation = getCurrentLocation(progress);
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={onBack} className="flex items-center gap-1">
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back to Delivery Log</span>
-        </Button>
+    <div className="container mx-auto mt-8">
+      <div className="flex flex-col space-y-6">
+        <div className="flex items-center">
+          <Button variant="ghost" onClick={onBack} className="mr-2">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Delivery Log
+          </Button>
+          <h1 className="text-2xl font-bold">Delivery Map View</h1>
+        </div>
         
-        <Button 
-          variant="outline" 
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="flex items-center gap-1"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-        </Button>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Left sidebar - Delivery list */}
-        <div className="md:col-span-1">
-          <Card className="h-full">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Deliveries</CardTitle>
-              <CardDescription>Select a delivery to view its route</CardDescription>
-              
-              <Tabs 
-                defaultValue="all" 
-                value={activeTab} 
-                onValueChange={setActiveTab}
-                className="mt-2"
-              >
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="in-transit">In Transit</TabsTrigger>
-                  <TabsTrigger value="delivered">Delivered</TabsTrigger>
-                  <TabsTrigger value="pending">Pending</TabsTrigger>
-                </TabsList>
-              </Tabs>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Deliveries List */}
+          <Card className="md:col-span-1">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Truck className="h-5 w-5 mr-2 text-primary" />
+                Active Deliveries
+              </CardTitle>
             </CardHeader>
-            <CardContent className="overflow-auto max-h-[70vh]">
-              {filteredDeliveries.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                  <Truck className="h-10 w-10 mb-2 opacity-20" />
-                  <p>No deliveries found</p>
+            <CardContent>
+              {activeDeliveries.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No active deliveries found
                 </div>
               ) : (
-                <ul className="space-y-2">
-                  {filteredDeliveries.map((order) => (
-                    <li 
-                      key={order.id} 
-                      className={`p-3 rounded-md cursor-pointer transition-colors ${
-                        selectedOrder?.id === order.id 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'hover:bg-muted'
-                      }`}
-                      onClick={() => setSelectedOrder(order)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">{order.poNumber}</p>
-                          <p className="text-sm opacity-80">{order.supplier.name}</p>
+                <div className="space-y-3">
+                  {activeDeliveries.map(delivery => {
+                    // Get driver and truck info
+                    const driver = delivery.deliveryDetails?.driverId ? 
+                      getDriverById(delivery.deliveryDetails.driverId) : null;
+                    const truck = delivery.deliveryDetails?.truckId ? 
+                      getTruckById(delivery.deliveryDetails.truckId) : null;
+                    
+                    // Add driverName and vehicleDetails for UI display
+                    if (delivery.deliveryDetails && driver) {
+                      delivery.deliveryDetails.driverName = driver.name;
+                    }
+                    
+                    if (delivery.deliveryDetails && truck) {
+                      delivery.deliveryDetails.vehicleDetails = truck.plateNumber;
+                    }
+                    
+                    const progress = calculateProgress(delivery);
+                    
+                    return (
+                      <div 
+                        key={delivery.id}
+                        className={`p-3 rounded-lg border transition-colors cursor-pointer hover:bg-gray-50 ${selectedDelivery === delivery.id ? 'border-primary bg-primary/5' : 'border-gray-200'}`}
+                        onClick={() => setSelectedDelivery(delivery.id)}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-medium">{delivery.poNumber}</h3>
+                          <Badge 
+                            variant={delivery.deliveryDetails?.status === 'delivered' ? 'default' : 'outline'}
+                            className={
+                              delivery.deliveryDetails?.status === 'delivered' 
+                                ? 'bg-green-500 hover:bg-green-600' 
+                                : 'text-amber-500 border-amber-200 bg-amber-50'
+                            }
+                          >
+                            {delivery.deliveryDetails?.status === 'delivered' ? 'Delivered' : 'In Transit'}
+                          </Badge>
                         </div>
-                        <DeliveryStatusBadge status={order.deliveryDetails?.status || 'pending'} />
+                        
+                        <div className="text-sm text-gray-500 space-y-1">
+                          <div className="flex items-center">
+                            <User className="h-3 w-3 mr-2" />
+                            <span>{delivery.deliveryDetails?.driverName || 'Unassigned'}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Truck className="h-3 w-3 mr-2" />
+                            <span>{delivery.deliveryDetails?.vehicleDetails || 'Unassigned'}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Clock className="h-3 w-3 mr-2" />
+                            <span>
+                              {delivery.deliveryDetails?.depotDepartureTime 
+                                ? format(new Date(delivery.deliveryDetails.depotDepartureTime), 'MMM dd, HH:mm') 
+                                : 'Not departed'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-2">
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div 
+                              className="bg-blue-600 h-1.5 rounded-full" 
+                              style={{ width: `${progress}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between text-xs mt-1">
+                            <span>{progress}% Complete</span>
+                            {delivery.deliveryDetails?.status === 'in_transit' && (
+                              <span className="text-blue-600">Active</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </li>
-                  ))}
-                </ul>
+                    );
+                  })}
+                </div>
               )}
+            </CardContent>
+          </Card>
+          
+          {/* Map View */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <MapPin className="h-5 w-5 mr-2 text-primary" />
+                Live Route Tracking
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[500px]">
+                <MapSimulation />
+              </div>
             </CardContent>
           </Card>
         </div>
         
-        {/* Main content - Map and details */}
-        <div className="md:col-span-2">
-          {selectedOrder ? (
-            <>
-              {/* Delivery Details Card */}
-              <Card className="mb-4">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{selectedOrder.poNumber}</CardTitle>
-                      <CardDescription>
-                        {selectedOrder.supplier.name} - {format(new Date(selectedOrder.createdAt), 'MMM dd, yyyy')}
-                      </CardDescription>
-                    </div>
-                    <DeliveryStatusBadge status={selectedOrder.deliveryDetails?.status || 'pending'} />
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-2">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Driver</p>
-                      <p className="font-medium">{selectedOrder.deliveryDetails?.driverName || 'Not assigned'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Vehicle</p>
-                      <p className="font-medium">{selectedOrder.deliveryDetails?.vehicleDetails || 'Not assigned'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Departure</p>
+        {/* Delivery Details */}
+        {selectedDeliveryDetails && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Navigation className="h-5 w-5 mr-2 text-primary" />
+                Delivery Details: {selectedDeliveryDetails.poNumber}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-3">
+                  <h3 className="font-medium text-sm text-gray-500">Delivery Information</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="text-sm">
+                      <p className="text-gray-500">Status</p>
                       <p className="font-medium">
-                        {selectedOrder.deliveryDetails?.depotDepartureTime 
-                          ? format(new Date(selectedOrder.deliveryDetails.depotDepartureTime), 'MMM dd, HH:mm')
+                        {selectedDeliveryDetails.deliveryDetails?.status === 'delivered' 
+                          ? 'Delivered' 
+                          : 'In Transit'}
+                      </p>
+                    </div>
+                    <div className="text-sm">
+                      <p className="text-gray-500">Progress</p>
+                      <p className="font-medium">{calculateProgress(selectedDeliveryDetails)}%</p>
+                    </div>
+                    <div className="text-sm">
+                      <p className="text-gray-500">Departure</p>
+                      <p className="font-medium">
+                        {selectedDeliveryDetails.deliveryDetails?.depotDepartureTime 
+                          ? format(new Date(selectedDeliveryDetails.deliveryDetails.depotDepartureTime), 'MMM dd, HH:mm') 
                           : 'Not departed'}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Expected Arrival</p>
+                    <div className="text-sm">
+                      <p className="text-gray-500">Expected Arrival</p>
                       <p className="font-medium">
-                        {selectedOrder.deliveryDetails?.expectedArrivalTime
-                          ? format(new Date(selectedOrder.deliveryDetails.expectedArrivalTime), 'MMM dd, HH:mm')
+                        {selectedDeliveryDetails.deliveryDetails?.expectedArrivalTime 
+                          ? format(new Date(selectedDeliveryDetails.deliveryDetails.expectedArrivalTime), 'MMM dd, HH:mm') 
                           : 'Unknown'}
                       </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-              
-              {/* Route Map Card */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2">
-                    <Navigation className="h-5 w-5" />
-                    Route Tracking
-                  </CardTitle>
-                  <CardDescription>
-                    {selectedOrder.deliveryDetails?.status === 'in_transit' 
-                      ? `Currently near ${currentLocation}` 
-                      : selectedOrder.deliveryDetails?.status === 'delivered'
-                        ? 'Delivery completed'
-                        : 'Waiting to depart'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {/* Progress bar */}
-                  <div className="h-2 bg-gray-100 rounded-full mb-6 relative">
-                    <div 
-                      className="absolute top-0 left-0 h-full bg-primary rounded-full transition-all duration-500"
-                      style={{ width: `${progress}%` }}
-                    />
-                    <div
-                      className="absolute top-0 h-5 w-5 bg-primary rounded-full -mt-1.5 border-2 border-white transition-all duration-500"
-                      style={{ left: `${progress}%`, transform: 'translateX(-50%)' }}
-                    />
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="font-medium text-sm text-gray-500">Driver & Vehicle</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <User className="h-6 w-6 text-gray-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{driverInfo?.name || 'Unassigned'}</p>
+                        <p className="text-sm text-gray-500">{driverInfo?.contact || 'No contact'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <Truck className="h-6 w-6 text-gray-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{truckInfo?.plateNumber || 'Unassigned'}</p>
+                        <p className="text-sm text-gray-500">{truckInfo?.model || 'No model'} ({truckInfo?.capacity.toLocaleString()} L)</p>
+                      </div>
+                    </div>
                   </div>
-                  
-                  {/* Route waypoints visualization */}
-                  <div className="flex items-center justify-between mt-8 relative">
-                    {/* Line connecting all points */}
-                    <div className="absolute top-4 left-4 right-4 h-0.5 bg-gray-200 z-0" />
-                    
-                    {/* Progress line */}
-                    <div 
-                      className="absolute top-4 left-4 h-0.5 bg-primary z-10 transition-all duration-500"
-                      style={{ width: `${progress}%` }}
-                    />
-                    
-                    {/* Waypoints */}
-                    {ROUTE_WAYPOINTS.map((waypoint, index) => {
-                      const Weather = WEATHER_DATA[waypoint]?.icon || Sun;
-                      const waypointProgress = (index / (ROUTE_WAYPOINTS.length - 1)) * 100;
-                      const isPassed = progress >= waypointProgress;
-                      const isCurrent = currentLocation === waypoint;
-                      
-                      return (
-                        <div key={waypoint} className="flex flex-col items-center z-20 relative">
-                          {/* Weather icon */}
-                          <Weather className={`h-4 w-4 mb-1 ${isPassed ? 'text-primary' : 'text-gray-400'}`} />
-                          
-                          {/* Traffic indicator */}
-                          <div className={`w-2 h-2 rounded-full mb-1 ${TRAFFIC_DATA[waypoint]?.color || 'bg-gray-300'}`} />
-                          
-                          {/* Location point */}
-                          <div 
-                            className={`w-8 h-8 rounded-full flex items-center justify-center border-2 
-                              ${isCurrent 
-                                ? 'bg-primary text-primary-foreground border-primary animate-pulse' 
-                                : isPassed 
-                                  ? 'bg-primary/20 border-primary/40' 
-                                  : 'bg-gray-100 border-gray-300'
-                              }`}
-                          >
-                            <MapPin className="h-4 w-4" />
-                          </div>
-                          
-                          {/* Waypoint name */}
-                          <p className={`text-xs mt-1 font-medium ${isPassed ? 'text-primary' : 'text-gray-500'}`}>
-                            {waypoint}
-                          </p>
-                          
-                          {/* Weather details */}
-                          <p className="text-xs text-muted-foreground">
-                            {WEATHER_DATA[waypoint]?.temp}
-                          </p>
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="font-medium text-sm text-gray-500">Tracking Information</h3>
+                  {latestPosition ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="text-sm">
+                          <p className="text-gray-500">Last Update</p>
+                          <p className="font-medium">{format(new Date(latestPosition.timestamp), 'MMM dd, HH:mm')}</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Delivery progress details */}
-                  <div className="mt-8 grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Progress</p>
-                      <p className="font-medium">{progress}% Complete</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Distance Covered</p>
-                      <p className="font-medium">
-                        {selectedOrder.deliveryDetails?.distanceCovered || 0} / {selectedOrder.deliveryDetails?.totalDistance || 100} km
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Incidents section */}
-                  {selectedOrder.incidents && selectedOrder.incidents.length > 0 ? (
-                    <div className="mt-4 p-3 bg-red-50 rounded-md border border-red-100">
-                      <h4 className="text-sm font-medium text-red-800 flex items-center gap-1">
-                        <AlertTriangle className="h-4 w-4" />
-                        Reported Incidents
-                      </h4>
-                      <ul className="mt-2 text-sm text-red-700">
-                        {selectedOrder.incidents.map((incident, index) => (
-                          <li key={index} className="flex items-baseline gap-2">
-                            <span className="text-xs">•</span>
-                            <span>{incident.description}</span>
-                          </li>
-                        ))}
-                      </ul>
+                        <div className="text-sm">
+                          <p className="text-gray-500">Speed</p>
+                          <p className="font-medium">{latestPosition.speed} km/h</p>
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-gray-500">Latitude</p>
+                          <p className="font-medium">{latestPosition.latitude.toFixed(4)}</p>
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-gray-500">Longitude</p>
+                          <p className="font-medium">{latestPosition.longitude.toFixed(4)}</p>
+                        </div>
+                      </div>
                     </div>
                   ) : (
-                    selectedOrder.deliveryDetails?.status !== 'pending' && (
-                      <div className="mt-4 p-3 bg-green-50 rounded-md border border-green-100">
-                        <p className="text-sm text-green-700 flex items-center gap-1">
-                          <Badge variant="outline" className="bg-green-100 text-green-800">
-                            Safe
-                          </Badge>
-                          No incidents reported for this delivery
-                        </p>
+                    <div className="flex items-center justify-center h-20 bg-gray-50 rounded-lg">
+                      <div className="flex items-center text-amber-500">
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        <span className="text-sm">No GPS data available</span>
                       </div>
-                    )
+                    </div>
                   )}
-                </CardContent>
-                <CardFooter className="text-xs text-muted-foreground">
-                  Last updated: {format(new Date(), 'MMM dd, yyyy HH:mm:ss')}
-                </CardFooter>
-              </Card>
-            </>
-          ) : (
-            <Card className="h-full flex items-center justify-center">
-              <CardContent className="py-10 text-center">
-                <Truck className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-                <h3 className="text-lg font-medium">No Delivery Selected</h3>
-                <p className="text-muted-foreground mt-1">
-                  Please select a delivery from the list to view its route
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

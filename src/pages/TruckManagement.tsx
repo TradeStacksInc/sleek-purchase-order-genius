@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -32,7 +31,6 @@ const TruckManagement: React.FC = () => {
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
   const [selectedTruck, setSelectedTruck] = useState<TruckType | null>(null);
   
-  // New truck form state
   const [newTruck, setNewTruck] = useState({
     plateNumber: '',
     model: '',
@@ -41,14 +39,12 @@ const TruckManagement: React.FC = () => {
     hasGPS: false
   });
   
-  // GPS tagging form state
   const [gpsInfo, setGpsInfo] = useState({
     deviceId: '',
-    latitude: '6.5244',  // Default location (Lagos)
+    latitude: '6.5244',
     longitude: '3.3792'
   });
 
-  // Filter trucks based on active tab and search term
   const filteredTrucks = useMemo(() => {
     let filtered: TruckType[] = [];
     
@@ -74,7 +70,6 @@ const TruckManagement: React.FC = () => {
   }, [trucks, activeTab, searchTerm, getGPSTaggedTrucks, getNonTaggedTrucks, getNonGPSTrucks]);
 
   const handleAddTruck = () => {
-    // Validation
     if (!newTruck.plateNumber || !newTruck.model || !newTruck.capacity) {
       toast({
         title: "Validation Error",
@@ -84,22 +79,20 @@ const TruckManagement: React.FC = () => {
       return;
     }
     
-    // Create new truck object
     const truckData = {
+      id: uuidv4(),
       plateNumber: newTruck.plateNumber,
       model: newTruck.model,
       capacity: parseFloat(newTruck.capacity),
-      year: parseInt(newTruck.year || new Date().getFullYear().toString()),
       hasGPS: newTruck.hasGPS,
       isGPSTagged: false,
       isAvailable: true,
-      gpsDeviceId: undefined
+      gpsDeviceId: undefined,
+      year: parseInt(newTruck.year || new Date().getFullYear().toString())
     };
     
-    // Add truck
     addTruck(truckData);
     
-    // Reset form and close dialog
     setNewTruck({
       plateNumber: '',
       model: '',
@@ -113,7 +106,6 @@ const TruckManagement: React.FC = () => {
   const handleTagTruck = () => {
     if (!selectedTruck) return;
     
-    // Validation
     if (!gpsInfo.deviceId) {
       toast({
         title: "Validation Error",
@@ -123,7 +115,6 @@ const TruckManagement: React.FC = () => {
       return;
     }
     
-    // Tag truck with GPS
     tagTruckWithGPS(
       selectedTruck.id,
       gpsInfo.deviceId,
@@ -131,7 +122,6 @@ const TruckManagement: React.FC = () => {
       parseFloat(gpsInfo.longitude)
     );
     
-    // Reset form and close dialog
     setGpsInfo({
       deviceId: '',
       latitude: '6.5244',
@@ -310,7 +300,6 @@ const TruckManagement: React.FC = () => {
         </CardFooter>
       </Card>
       
-      {/* Add Truck Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -399,7 +388,6 @@ const TruckManagement: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Tag GPS Dialog */}
       <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
         <DialogContent>
           <DialogHeader>

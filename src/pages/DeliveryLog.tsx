@@ -1,6 +1,6 @@
-
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DateRange } from 'react-day-picker';
@@ -27,6 +27,7 @@ import MoreOptions from '@/components/DeliveryLog/MoreOptions';
 const DeliveryLog: React.FC = () => {
   const { purchaseOrders } = useApp();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -126,6 +127,14 @@ const DeliveryLog: React.FC = () => {
     }, 1500);
   };
 
+  const handleTruckManagement = () => {
+    navigate('/manage-trucks');
+  };
+
+  const handleViewAnalytics = () => {
+    navigate('/analytics');
+  };
+
   if (showMapView) {
     return <MapView onBack={() => setShowMapView(false)} />;
   }
@@ -170,6 +179,8 @@ const DeliveryLog: React.FC = () => {
                 onRefresh={handleRefresh}
                 onMapView={() => setShowMapView(true)}
                 exportData={handleExport}
+                onManageTrucks={handleTruckManagement}
+                onViewAnalytics={handleViewAnalytics}
                 isRefreshing={isRefreshing}
               />
             </div>
