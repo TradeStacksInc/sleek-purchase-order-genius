@@ -46,11 +46,17 @@ const MoreOptions: React.FC<MoreOptionsProps> = ({
         <DropdownMenuSeparator />
         
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={onRefresh} disabled={isRefreshing}>
+          <DropdownMenuItem onClick={(e) => {
+            e.preventDefault();
+            onRefresh();
+          }} disabled={isRefreshing}>
             <RefreshCw className="mr-2 h-4 w-4" />
             <span>{isRefreshing ? 'Refreshing...' : 'Refresh Data'}</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onMapView}>
+          <DropdownMenuItem onClick={(e) => {
+            e.preventDefault();
+            onMapView();
+          }}>
             <Map className="mr-2 h-4 w-4" />
             <span>Map View</span>
           </DropdownMenuItem>
@@ -61,35 +67,50 @@ const MoreOptions: React.FC<MoreOptionsProps> = ({
         
         <DropdownMenuGroup>
           <DropdownMenuItem 
-            onClick={() => onDateFilterChange('all')}
+            onClick={(e) => {
+              e.preventDefault();
+              onDateFilterChange('all');
+            }}
             disabled={dateFilter === 'all'}
           >
             <Calendar className="mr-2 h-4 w-4" />
             <span>All Time</span>
           </DropdownMenuItem>
           <DropdownMenuItem 
-            onClick={() => onDateFilterChange('today')}
+            onClick={(e) => {
+              e.preventDefault();
+              onDateFilterChange('today');
+            }}
             disabled={dateFilter === 'today'}
           >
             <Calendar className="mr-2 h-4 w-4" />
             <span>Today</span>
           </DropdownMenuItem>
           <DropdownMenuItem 
-            onClick={() => onDateFilterChange('week')}
+            onClick={(e) => {
+              e.preventDefault();
+              onDateFilterChange('week');
+            }}
             disabled={dateFilter === 'week'}
           >
             <Calendar className="mr-2 h-4 w-4" />
             <span>This Week</span>
           </DropdownMenuItem>
           <DropdownMenuItem 
-            onClick={() => onDateFilterChange('month')}
+            onClick={(e) => {
+              e.preventDefault();
+              onDateFilterChange('month');
+            }}
             disabled={dateFilter === 'month'}
           >
             <Calendar className="mr-2 h-4 w-4" />
             <span>This Month</span>
           </DropdownMenuItem>
           <DropdownMenuItem 
-            onClick={() => onDateFilterChange('custom')}
+            onClick={(e) => {
+              e.preventDefault();
+              onDateFilterChange('custom');
+            }}
             disabled={dateFilter === 'custom'}
           >
             <Calendar className="mr-2 h-4 w-4" />
@@ -100,18 +121,27 @@ const MoreOptions: React.FC<MoreOptionsProps> = ({
         <DropdownMenuSeparator />
         
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={exportData}>
+          <DropdownMenuItem onClick={(e) => {
+            e.preventDefault();
+            exportData();
+          }}>
             <Download className="mr-2 h-4 w-4" />
             <span>Export Log</span>
           </DropdownMenuItem>
           {onManageTrucks && (
-            <DropdownMenuItem onClick={onManageTrucks}>
+            <DropdownMenuItem onClick={(e) => {
+              e.preventDefault();
+              onManageTrucks();
+            }}>
               <Truck className="mr-2 h-4 w-4" />
               <span>Manage Trucks</span>
             </DropdownMenuItem>
           )}
           {onViewAnalytics && (
-            <DropdownMenuItem onClick={onViewAnalytics}>
+            <DropdownMenuItem onClick={(e) => {
+              e.preventDefault();
+              onViewAnalytics();
+            }}>
               <BarChart3 className="mr-2 h-4 w-4" />
               <span>View Analytics</span>
             </DropdownMenuItem>
