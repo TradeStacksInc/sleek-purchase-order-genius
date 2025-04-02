@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProvider } from "./context/AppContext";
 import AppRoutes from "./components/AppRoutes";
 import AutoSave from "./components/AutoSave";
+import { useEffect } from "react";
+import { setupStorageSync } from "./utils/storageSync";
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -18,6 +20,11 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
+  // Initialize storage sync on app load
+  useEffect(() => {
+    setupStorageSync();
+  }, []);
+  
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>

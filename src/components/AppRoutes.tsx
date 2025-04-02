@@ -12,6 +12,8 @@ import DeliveryLog from "../pages/DeliveryLog";
 import DeliveryTracking from "../pages/DeliveryTracking";
 import OffloadLog from "../pages/OffloadLog";
 import NotFound from "../pages/NotFound";
+import TruckManagement from "../pages/TruckManagement";
+import Analytics from "../pages/Analytics";
 
 const AppRoutes = () => {
   return (
@@ -28,6 +30,8 @@ const AppRoutes = () => {
           <Route path="delivery-log" element={<DeliveryLog />} />
           <Route path="offload-log" element={<OffloadLog />} />
           <Route path="logs" element={<ActivityLog />} />
+          <Route path="manage-trucks" element={<TruckManagement />} />
+          <Route path="analytics" element={<Analytics />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

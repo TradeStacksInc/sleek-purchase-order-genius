@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { saveAppState } from '@/utils/localStorage';
+import { setupStorageSync } from '@/utils/storageSync';
 
 /**
  * AutoSave component that silently saves app state periodically
@@ -12,6 +13,9 @@ const AutoSave: React.FC = () => {
   
   useEffect(() => {
     console.log("AutoSave component mounted");
+    
+    // Setup cross-tab synchronization
+    setupStorageSync();
     
     // Save current state when user navigates away
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
