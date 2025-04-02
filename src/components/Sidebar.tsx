@@ -12,7 +12,13 @@ import {
   FileText,
   Droplet,
   Settings,
-  BarChart2
+  BarChart2,
+  DollarSign,
+  Database,
+  Fuel,
+  Users,
+  Shield,
+  Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -39,21 +45,55 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
       <ScrollArea className="flex-1 py-6">
         <nav className="px-2 space-y-1">
           <NavItem to="/" icon={<BarChart className="h-5 w-5" />} text="Dashboard" />
+          
+          {/* Operations Section */}
+          <div className="pt-4 pb-2">
+            <div className="px-3 text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider">
+              Operations
+            </div>
+          </div>
           <NavItem to="/create" icon={<ClipboardPlus className="h-5 w-5" />} text="Create New PO" />
           <NavItem to="/orders" icon={<ClipboardList className="h-5 w-5" />} text="Orders" />
           <NavItem to="/assign-driver" icon={<Truck className="h-5 w-5" />} text="Assign Driver" />
           <NavItem to="/delivery-log" icon={<FileText className="h-5 w-5" />} text="Delivery Log" />
           <NavItem to="/offload-log" icon={<Droplet className="h-5 w-5" />} text="Offload Log" />
-          <NavItem to="/logs" icon={<Activity className="h-5 w-5" />} text="Activity Log" />
           
+          {/* Inventory Management Section */}
+          <div className="pt-4 pb-2">
+            <div className="px-3 text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider">
+              Inventory Management
+            </div>
+          </div>
+          <NavItem to="/tank-management" icon={<Database className="h-5 w-5" />} text="Tank Management" />
+          <NavItem to="/dispenser-management" icon={<Fuel className="h-5 w-5" />} text="Dispenser Management" />
+          
+          {/* Financial Section */}
+          <div className="pt-4 pb-2">
+            <div className="px-3 text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider">
+              Financials
+            </div>
+          </div>
+          <NavItem to="/analytics" icon={<BarChart2 className="h-5 w-5" />} text="Financial Dashboard" />
+          <NavItem to="/price-management" icon={<Tag className="h-5 w-5" />} text="Price Management" />
+          <NavItem to="/sales-recording" icon={<DollarSign className="h-5 w-5" />} text="Sales Recording" />
+          
+          {/* Staff & Security Section */}
+          <div className="pt-4 pb-2">
+            <div className="px-3 text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider">
+              Staff & Security
+            </div>
+          </div>
+          <NavItem to="/staff-management" icon={<Users className="h-5 w-5" />} text="Staff Management" />
+          <NavItem to="/logs" icon={<Activity className="h-5 w-5" />} text="Activity Log" />
+          <NavItem to="/fraud-detection" icon={<Shield className="h-5 w-5" />} text="Fraud Detection" />
+          
+          {/* Management Section */}
           <div className="pt-4 pb-2">
             <div className="px-3 text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider">
               Management
             </div>
           </div>
-          
           <NavItem to="/manage-trucks" icon={<Truck className="h-5 w-5" />} text="Truck Management" />
-          <NavItem to="/analytics" icon={<BarChart2 className="h-5 w-5" />} text="Analytics" />
         </nav>
       </ScrollArea>
       

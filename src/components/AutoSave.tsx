@@ -1,47 +1,41 @@
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { saveAppState } from '@/utils/localStorage';
-import { setupStorageSync } from '@/utils/storageSync';
+import { STORAGE_KEYS, saveToLocalStorage } from '@/utils/localStorage';
 
-/**
- * AutoSave component that silently saves app state when user navigates away
- */
 const AutoSave: React.FC = () => {
-  const appState = useApp();
-  
+  const { 
+    purchaseOrders, 
+    logs, 
+    suppliers, 
+    drivers, 
+    trucks, 
+    gpsData, 
+    aiInsights 
+  } = useApp();
+
+  // Log component mount
   useEffect(() => {
-    console.log("AutoSave component mounted");
+    console.info('AutoSave component mounted');
     
-    // Setup cross-tab synchronization
-    setupStorageSync();
-    
-    // Save current state when user navigates away
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Extract only the data properties, not functions
-      const dataToSave = {
-        purchaseOrders: appState.purchaseOrders,
-        logs: appState.logs,
-        suppliers: appState.suppliers,
-        drivers: appState.drivers,
-        trucks: appState.trucks,
-        gpsData: appState.gpsData,
-        aiInsights: appState.aiInsights
-      };
-      
-      saveAppState(dataToSave);
+    // Only save data when the user is leaving the page
+    const handleBeforeUnload = () => {
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, purchaseOrders);
+      saveToLocalStorage(STORAGE_KEYS.LOGS, logs);
+      saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
+      saveToLocalStorage(STORAGE_KEYS.DRIVERS, drivers);
+      saveToLocalStorage(STORAGE_KEYS.TRUCKS, trucks);
+      saveToLocalStorage(STORAGE_KEYS.GPS_DATA, gpsData);
+      saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, aiInsights);
     };
-    
-    // Add event listener for page unload
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     
-    // Clean up
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [appState]);
-  
-  // This component doesn't render anything
+  }, [purchaseOrders, logs, suppliers, drivers, trucks, gpsData, aiInsights]);
+
   return null;
 };
 

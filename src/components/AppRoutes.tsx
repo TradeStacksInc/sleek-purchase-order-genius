@@ -14,6 +14,12 @@ import OffloadLog from "../pages/OffloadLog";
 import NotFound from "../pages/NotFound";
 import TruckManagement from "../pages/TruckManagement";
 import Analytics from "../pages/Analytics";
+import TankManagement from "../pages/TankManagement";
+import DispenserManagement from "../pages/DispenserManagement";
+import PriceManagement from "../pages/PriceManagement";
+import StaffManagement from "../pages/StaffManagement";
+import SalesRecording from "../pages/SalesRecording";
+import FraudDetection from "../pages/FraudDetection";
 
 const AppRoutes = () => {
   return (
@@ -32,6 +38,12 @@ const AppRoutes = () => {
           <Route path="logs" element={<ActivityLog />} />
           <Route path="manage-trucks" element={<TruckManagement />} />
           <Route path="analytics" element={<Analytics />} />
+          <Route path="tank-management" element={<TankManagement />} />
+          <Route path="dispenser-management" element={<DispenserManagement />} />
+          <Route path="price-management" element={<PriceManagement />} />
+          <Route path="staff-management" element={<StaffManagement />} />
+          <Route path="sales-recording" element={<SalesRecording />} />
+          <Route path="fraud-detection" element={<FraudDetection />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
