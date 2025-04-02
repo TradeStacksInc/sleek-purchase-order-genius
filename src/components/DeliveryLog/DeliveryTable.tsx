@@ -18,7 +18,7 @@ import OffloadingDialog from './OffloadingDialog';
 import IncidentDialog from './IncidentDialog';
 import InsightDialog from './InsightDialog';
 import { useApp } from '@/context/AppContext';
-import { Truck, MapPin, Clock, Info, FileText, Droplet, AlertTriangle, ChevronRight, Clipboard } from 'lucide-react';
+import { Truck, MapPin, Clock, Info, FileText, Droplet, AlertTriangle, ChevronRight, Clipboard, Thermometer, Cloud, Wind } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import {
   Tooltip,
@@ -31,6 +31,15 @@ import { Button } from '@/components/ui/button';
 
 interface DeliveryTableProps {
   deliveries: PurchaseOrder[];
+}
+
+interface RouteLocation {
+  name: string;
+  passed: boolean;
+  distance: string;
+  weather?: string;
+  temperature?: string;
+  traffic?: string;
 }
 
 const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
@@ -52,6 +61,107 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
       : `${Math.round(distance)} m`;
   };
   
+  // Generate route locations based on route
+  const getRouteLocations = (start: string, end: string, progress: number): RouteLocation[] => {
+    if (start === "Lagos" && end === "Abakaliki") {
+      return [
+        { 
+          name: "Lagos (Depot)", 
+          passed: true, 
+          distance: "0 km",
+          weather: "Partly Cloudy",
+          temperature: "31°C",
+          traffic: "Heavy"
+        },
+        { 
+          name: "Ore", 
+          passed: progress > 15, 
+          distance: "180 km",
+          weather: "Sunny",
+          temperature: "33°C",
+          traffic: "Moderate"
+        },
+        { 
+          name: "Benin", 
+          passed: progress > 30, 
+          distance: "120 km",
+          weather: "Clear",
+          temperature: "32°C",
+          traffic: "Light"
+        },
+        { 
+          name: "Asaba", 
+          passed: progress > 45, 
+          distance: "85 km",
+          weather: "Partly Cloudy",
+          temperature: "30°C",
+          traffic: "Light"
+        },
+        { 
+          name: "Onitsha", 
+          passed: progress > 60, 
+          distance: "20 km",
+          weather: "Light Rain",
+          temperature: "28°C",
+          traffic: "Moderate"
+        },
+        { 
+          name: "Enugu", 
+          passed: progress > 75, 
+          distance: "100 km",
+          weather: "Sunny",
+          temperature: "29°C",
+          traffic: "Light"
+        },
+        { 
+          name: "Abakaliki", 
+          passed: progress >= 100, 
+          distance: "60 km",
+          weather: "Clear",
+          temperature: "30°C",
+          traffic: "Light"
+        }
+      ];
+    }
+    
+    // Default route with some locations
+    return [
+      { name: "Depot", passed: true, distance: "0 km", weather: "Clear", temperature: "29°C", traffic: "Moderate" },
+      { name: "Checkpoint 1", passed: progress > 20, distance: "45 km", weather: "Sunny", temperature: "30°C", traffic: "Light" },
+      { name: "Midpoint", passed: progress > 50, distance: "120 km", weather: "Partly Cloudy", temperature: "28°C", traffic: "Moderate" },
+      { name: "Checkpoint 2", passed: progress > 75, distance: "85 km", weather: "Cloudy", temperature: "27°C", traffic: "Heavy" },
+      { name: "Destination", passed: progress >= 100, distance: "30 km", weather: "Clear", temperature: "29°C", traffic: "Light" }
+    ];
+  };
+  
+  // Get traffic icon based on condition
+  const getTrafficIcon = (traffic: string) => {
+    switch(traffic) {
+      case "Heavy":
+        return <Badge variant="destructive" className="text-xs">Heavy Traffic</Badge>;
+      case "Moderate":
+        return <Badge variant="warning" className="text-xs">Moderate Traffic</Badge>;
+      default:
+        return <Badge variant="outline" className="text-xs bg-green-50">Clear Roads</Badge>;
+    }
+  };
+  
+  // Get weather icon based on condition
+  const getWeatherIcon = (weather: string) => {
+    switch(weather) {
+      case "Rain":
+      case "Light Rain":
+        return <Cloud className="h-4 w-4 text-blue-500" />;
+      case "Storm":
+        return <Wind className="h-4 w-4 text-purple-500" />;
+      case "Cloudy":
+      case "Partly Cloudy":
+        return <Cloud className="h-4 w-4 text-gray-500" />;
+      default:
+        return <Thermometer className="h-4 w-4 text-amber-500" />;
+    }
+  };
+  
   if (deliveries.length === 0) {
     return (
       <Card className="border-2 border-dashed">
@@ -65,7 +175,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
   }
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {deliveries.map((order) => {
         const delivery = order.deliveryDetails;
         const offloading = order.offloadingDetails;
@@ -118,14 +228,10 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
         // Calculate total volume from order items
         const totalVolume = order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
 
-        // Store waypoints for the journey based on vehicle location
-        const waypoints = [
-          { name: "Depot", passed: true, distance: "0 km" },
-          { name: "Checkpoint 1", passed: progressPercentage > 20, distance: "45 km" },
-          { name: "Midpoint", passed: progressPercentage > 50, distance: "120 km" },
-          { name: "Checkpoint 2", passed: progressPercentage > 75, distance: "85 km" },
-          { name: "Destination", passed: progressPercentage >= 100, distance: "30 km" }
-        ];
+        // Store waypoints for the journey
+        const routeStart = "Lagos";
+        const routeEnd = "Abakaliki";
+        const waypoints = getRouteLocations(routeStart, routeEnd, progressPercentage);
 
         return (
           <Card key={order.id} className={`overflow-hidden transition-all duration-200 hover:shadow-md ${cardColorClass}`}>
@@ -168,7 +274,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                           variant="outline" 
                           size="sm" 
                           className="gap-1"
-                          onClick={() => {/* Empty handler to avoid button effect */}}
                         >
                           <Info className="h-4 w-4" />
                           <span className="hidden sm:inline">Details</span>
@@ -182,27 +287,26 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   <DetailsDialog order={order} />
                   
                   {delivery.status === 'delivered' && !offloading && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-1"
-                            onClick={() => {/* Empty handler to avoid button effect */}}
-                          >
-                            <Clipboard className="h-4 w-4" />
-                            <span className="hidden sm:inline">Offload</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          <p>Record offloading details for this delivery</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  {delivery.status === 'delivered' && !offloading && (
-                    <OffloadingDialog orderId={order.id} />
+                    <>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="gap-1"
+                            >
+                              <Clipboard className="h-4 w-4" />
+                              <span className="hidden sm:inline">Offload</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p>Record offloading details for this delivery</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <OffloadingDialog orderId={order.id} />
+                    </>
                   )}
                   
                   <TooltipProvider>
@@ -212,7 +316,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                           variant="destructive" 
                           size="sm" 
                           className="gap-1"
-                          onClick={() => {/* Empty handler to avoid button effect */}}
                         >
                           <AlertTriangle className="h-4 w-4" />
                           <span className="hidden sm:inline">Report Incident</span>
@@ -232,7 +335,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                           variant="default" 
                           size="sm" 
                           className="gap-1"
-                          onClick={() => {/* Empty handler to avoid button effect */}}
                         >
                           <FileText className="h-4 w-4" />
                           <span className="hidden sm:inline">Generate Insight</span>
@@ -344,42 +446,42 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
               
               {/* Route Tracking Section */}
               <div className="p-5 md:p-6">
-                <h4 className="text-sm font-semibold mb-4">Delivery Route</h4>
+                <h4 className="text-sm font-semibold mb-4">Delivery Route: {routeStart} to {routeEnd}</h4>
                 
                 <div className="relative pt-1 mb-8">
                   {/* Route Progress Bar */}
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium">Depot</span>
-                    <span className="text-xs font-medium">Destination</span>
-                  </div>
+                  <Progress 
+                    value={progressPercentage} 
+                    className="h-3 rounded-full"
+                    style={{ 
+                      background: delivery.status === 'delivered' ? 'linear-gradient(to right, #10B981, #10B981)' : 'linear-gradient(to right, #3B82F6, #E5E7EB)' 
+                    }}
+                  />
                   
-                  <div className="relative">
-                    <Progress 
-                      value={progressPercentage} 
-                      className="h-3 rounded-full"
-                      style={{ 
-                        background: delivery.status === 'delivered' ? 'linear-gradient(to right, #10B981, #10B981)' : 'linear-gradient(to right, #3B82F6, #E5E7EB)' 
-                      }}
-                    />
-                    
-                    {/* Truck position indicator */}
-                    <div 
-                      className="absolute top-0 transform -translate-y-1/2"
-                      style={{ left: `${Math.min(progressPercentage, 100)}%`, transform: 'translateX(-50%)' }}
-                    >
-                      <div className="relative">
-                        <Truck className={`h-6 w-6 text-blue-600 ${delivery.status === 'in_transit' ? 'animate-pulse' : ''}`} />
-                      </div>
+                  {/* Truck position indicator */}
+                  <div 
+                    className="absolute top-0 transform -translate-y-1/2"
+                    style={{ left: `${Math.min(progressPercentage, 100)}%`, transform: 'translateX(-50%)' }}
+                  >
+                    <div className="relative">
+                      <Truck className={`h-6 w-6 text-blue-600 ${delivery.status === 'in_transit' ? 'animate-pulse' : ''}`} />
                     </div>
                   </div>
                   
                   {/* Waypoints indicators */}
-                  <div className="flex justify-between mt-2">
+                  <div className="flex justify-between mt-8">
                     {waypoints.map((waypoint, index) => (
-                      <div key={index} className="flex flex-col items-center">
+                      <div key={index} className="flex flex-col items-center max-w-[100px]">
                         <div className={`w-3 h-3 rounded-full ${waypoint.passed ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                        <span className="text-xs mt-1 font-medium">{waypoint.name}</span>
-                        <span className="text-xs text-muted-foreground">{waypoint.distance}</span>
+                        <span className="text-xs mt-1 font-medium text-center">{waypoint.name}</span>
+                        <div className="flex items-center mt-1">
+                          {getWeatherIcon(waypoint.weather || '')}
+                          <span className="text-xs ml-1">{waypoint.temperature}</span>
+                        </div>
+                        <div className="mt-1">
+                          {getTrafficIcon(waypoint.traffic || '')}
+                        </div>
+                        <span className="text-xs text-muted-foreground mt-1">{waypoint.distance}</span>
                       </div>
                     ))}
                   </div>

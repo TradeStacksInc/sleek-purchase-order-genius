@@ -13,19 +13,13 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { isWithinInterval, subDays, startOfMonth } from 'date-fns';
 import { AIInsightsPanel } from '@/components/AIInsightsPanel';
 import DeliveryTable from '@/components/DeliveryLog/DeliveryTable';
-import { Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator } from '@/components/ui/menubar';
-import { SlidersHorizontal, FileDown, Filter, Calendar, Truck, Info } from 'lucide-react';
+import { Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from '@/components/ui/menubar';
+import { SlidersHorizontal, FileDown, Filter, Calendar, Truck, Info, Download, RefreshCw, Map } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 type DateFilter = 'all' | 'today' | 'week' | 'month' | 'custom';
 
@@ -37,6 +31,7 @@ const DeliveryLog: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5; // Reduced to show fewer items per page
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const filteredDeliveries = useMemo(() => {
     let filtered = purchaseOrders.filter(order => order.deliveryDetails);
@@ -102,6 +97,26 @@ const DeliveryLog: React.FC = () => {
     });
   };
 
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    
+    // Simulate refresh
+    setTimeout(() => {
+      setIsRefreshing(false);
+      toast({
+        title: "Data refreshed",
+        description: "Delivery information has been updated with the latest data.",
+      });
+    }, 1500);
+  };
+
+  const handleViewMap = () => {
+    toast({
+      title: "Map view",
+      description: "Switching to map view is coming soon.",
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <Card>
@@ -114,87 +129,116 @@ const DeliveryLog: React.FC = () => {
               </CardDescription>
             </div>
             
-            <Menubar className="h-10">
-              <MenubarMenu>
-                <MenubarTrigger className="flex items-center gap-1">
-                  <Filter className="h-4 w-4" />
-                  <span>Filter</span>
-                </MenubarTrigger>
-                <MenubarContent>
-                  <MenubarItem 
-                    className={dateFilter === 'all' ? 'bg-accent' : ''}
-                    onClick={() => {
-                      setDateFilter('all');
-                      setCurrentPage(1);
-                    }}
-                  >
-                    All Deliveries
-                  </MenubarItem>
-                  <MenubarItem 
-                    className={dateFilter === 'today' ? 'bg-accent' : ''}
-                    onClick={() => {
-                      setDateFilter('today');
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Today
-                  </MenubarItem>
-                  <MenubarItem 
-                    className={dateFilter === 'week' ? 'bg-accent' : ''}
-                    onClick={() => {
-                      setDateFilter('week');
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    This Week
-                  </MenubarItem>
-                  <MenubarItem 
-                    className={dateFilter === 'month' ? 'bg-accent' : ''}
-                    onClick={() => {
-                      setDateFilter('month');
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    This Month
-                  </MenubarItem>
-                  <MenubarSeparator />
-                  <MenubarItem 
-                    className={dateFilter === 'custom' ? 'bg-accent' : ''}
-                    onClick={() => {
-                      setDateFilter('custom');
-                      setCurrentPage(1);
-                    }}
-                  >
-                    Custom Range
-                  </MenubarItem>
-                </MenubarContent>
-              </MenubarMenu>
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-1"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+              </Button>
+
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleViewMap}
+                className="flex items-center gap-1"
+              >
+                <Map className="h-4 w-4" />
+                <span>Map View</span>
+              </Button>
               
-              <MenubarMenu>
-                <MenubarTrigger className="flex items-center gap-1">
-                  <SlidersHorizontal className="h-4 w-4" />
-                  <span>Options</span>
-                </MenubarTrigger>
-                <MenubarContent>
-                  <MenubarItem onClick={handleExport}>
-                    <FileDown className="h-4 w-4 mr-2" />
-                    Export Log
-                  </MenubarItem>
-                  <MenubarSeparator />
-                  <MenubarItem>
-                    <Truck className="h-4 w-4 mr-2" />
-                    Manage Trucks
-                  </MenubarItem>
-                  <MenubarItem>
-                    <Info className="h-4 w-4 mr-2" />
-                    View Analytics
-                  </MenubarItem>
-                </MenubarContent>
-              </MenubarMenu>
-            </Menubar>
+              <Menubar className="h-10">
+                <MenubarMenu>
+                  <MenubarTrigger className="flex items-center gap-1">
+                    <Filter className="h-4 w-4" />
+                    <span>Filter</span>
+                  </MenubarTrigger>
+                  <MenubarContent>
+                    <MenubarItem 
+                      className={dateFilter === 'all' ? 'bg-accent' : ''}
+                      onClick={() => {
+                        setDateFilter('all');
+                        setCurrentPage(1);
+                      }}
+                    >
+                      All Deliveries
+                      <MenubarShortcut>A</MenubarShortcut>
+                    </MenubarItem>
+                    <MenubarItem 
+                      className={dateFilter === 'today' ? 'bg-accent' : ''}
+                      onClick={() => {
+                        setDateFilter('today');
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Today
+                      <MenubarShortcut>T</MenubarShortcut>
+                    </MenubarItem>
+                    <MenubarItem 
+                      className={dateFilter === 'week' ? 'bg-accent' : ''}
+                      onClick={() => {
+                        setDateFilter('week');
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      This Week
+                      <MenubarShortcut>W</MenubarShortcut>
+                    </MenubarItem>
+                    <MenubarItem 
+                      className={dateFilter === 'month' ? 'bg-accent' : ''}
+                      onClick={() => {
+                        setDateFilter('month');
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      This Month
+                      <MenubarShortcut>M</MenubarShortcut>
+                    </MenubarItem>
+                    <MenubarSeparator />
+                    <MenubarItem 
+                      className={dateFilter === 'custom' ? 'bg-accent' : ''}
+                      onClick={() => {
+                        setDateFilter('custom');
+                        setCurrentPage(1);
+                      }}
+                    >
+                      Custom Range
+                      <MenubarShortcut>C</MenubarShortcut>
+                    </MenubarItem>
+                  </MenubarContent>
+                </MenubarMenu>
+                
+                <MenubarMenu>
+                  <MenubarTrigger className="flex items-center gap-1">
+                    <SlidersHorizontal className="h-4 w-4" />
+                    <span>Options</span>
+                  </MenubarTrigger>
+                  <MenubarContent>
+                    <MenubarItem onClick={handleExport}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export Log
+                      <MenubarShortcut>E</MenubarShortcut>
+                    </MenubarItem>
+                    <MenubarSeparator />
+                    <MenubarItem>
+                      <Truck className="h-4 w-4 mr-2" />
+                      Manage Trucks
+                    </MenubarItem>
+                    <MenubarItem>
+                      <Info className="h-4 w-4 mr-2" />
+                      View Analytics
+                    </MenubarItem>
+                  </MenubarContent>
+                </MenubarMenu>
+              </Menubar>
+            </div>
           </div>
           
           {dateFilter === 'custom' && (
