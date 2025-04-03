@@ -1,38 +1,26 @@
 
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { cn } from '@/lib/utils';
-import { Menu } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import AIChatWidget from './AIChatWidget';
+import AppHeader from './AppHeader';
+import AutoSave from './AutoSave';
+import { useApp } from '@/context/AppContext';
 
-const Layout: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
+const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-      
-      <div className={cn(
-        "flex-1 transition-all duration-300 ease-in-out",
-        sidebarOpen ? "ml-64" : "ml-0"
-      )}>
-        <div className="sticky top-0 z-10 flex items-center h-16 px-4 bg-card/60 backdrop-blur-md border-b">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="mr-4"
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-          <h1 className="text-xl font-semibold">Purchase Order Management</h1>
-        </div>
-        
-        <main className="p-6">
-          <Outlet />
+    <div className="min-h-screen flex flex-col">
+      <AppHeader />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+        <main className={`flex-1 overflow-y-auto p-4 pb-0 transition-all ${sidebarOpen ? 'md:pl-72' : ''}`}>
+          {children}
+          <AutoSave />
         </main>
+        <div className="hidden lg:block">
+          <AIChatWidget />
+        </div>
       </div>
     </div>
   );

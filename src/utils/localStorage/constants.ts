@@ -7,5 +7,15 @@ export const STORAGE_KEYS = {
   DRIVERS: 'drivers',
   TRUCKS: 'trucks',
   GPS_DATA: 'gps_data',
-  AI_INSIGHTS: 'ai_insights'
+  AI_INSIGHTS: 'ai_insights',
+  STAFF: 'staff',
+  DISPENSERS: 'dispensers',
+  SHIFTS: 'shifts',
+  SALES: 'sales',
+  PRICES: 'prices',
+  INCIDENTS: 'incidents',
+  ACTIVITY_LOGS: 'activity_logs'
 };
+
+// Version information for database schema migrations
+export const DB_VERSION = '1.0.0';

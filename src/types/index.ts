@@ -1,3 +1,4 @@
+
 export type Product = 'PMS' | 'AGO' | 'DPK';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled';
@@ -24,6 +25,12 @@ export interface Supplier {
   name: string;
   address: string;
   contact: string;
+  email?: string;
+  supplierType?: 'Major' | 'Independent' | 'Government';
+  depotName?: string;
+  taxId?: string;
+  accountNumber?: string;
+  bankName?: string;
   products?: string[];
 }
 
@@ -33,6 +40,11 @@ export interface Driver {
   contact: string;
   licenseNumber: string;
   isAvailable: boolean;
+  address?: string;
+  email?: string;
+  emergencyContact?: string;
+  licenseCategoryType?: string;
+  licenseExpiryDate?: Date;
 }
 
 export interface Truck {
@@ -49,6 +61,18 @@ export interface Truck {
   lastLongitude?: number;
   lastSpeed?: number;
   lastUpdate?: Date;
+  manufacturer?: string;
+  tankCapacity?: number;
+  tankCompartments?: number;
+  registration?: {
+    expiryDate: Date;
+    certificateNumber: string;
+  };
+  maintenance?: {
+    lastServiceDate: Date;
+    nextServiceDate: Date;
+    serviceRecords: string[];
+  };
 }
 
 export interface GPSData {
@@ -99,6 +123,8 @@ export interface OffloadingDetails {
   status: 'pending' | 'approved' | 'under_investigation';
   notes?: string;
   timestamp: Date;
+  tankId?: string;
+  productType?: Product;
 }
 
 export interface Incident {
@@ -109,6 +135,11 @@ export interface Incident {
   impact: 'positive' | 'negative' | 'neutral';
   reportedBy: string;
   timestamp: Date;
+  attachments?: string[];
+  status?: 'open' | 'in_progress' | 'resolved';
+  severity?: 'low' | 'medium' | 'high' | 'critical';
+  resolution?: string;
+  resolutionDate?: Date;
 }
 
 export interface PurchaseOrder {
@@ -147,4 +178,93 @@ export interface AIInsight {
   relatedEntityIds: string[];
   generatedAt: Date;
   isRead: boolean;
+}
+
+// New types for expanded database structure
+
+export interface Staff {
+  id: string;
+  name: string;
+  role: 'Manager' | 'Attendant' | 'Cashier' | 'Supervisor' | 'Security' | 'Admin';
+  contact: string;
+  email?: string;
+  address?: string;
+  employeeId: string;
+  hireDate: Date;
+  status: 'active' | 'inactive' | 'suspended';
+  shifts?: Shift[];
+  sales?: Sale[];
+}
+
+export interface Dispenser {
+  id: string;
+  number: number;
+  productType: Product;
+  status: 'operational' | 'maintenance' | 'offline';
+  lastCalibrationDate?: Date;
+  nextCalibrationDate?: Date;
+  totalVolumeSold: number;
+  connectedTankId?: string;
+}
+
+export interface Shift {
+  id: string;
+  staffId: string;
+  startTime: Date;
+  endTime?: Date;
+  status: 'scheduled' | 'active' | 'completed';
+  notes?: string;
+  salesVolume?: number;
+  salesAmount?: number;
+}
+
+export interface Sale {
+  id: string;
+  dispenserId: string;
+  staffId: string;
+  productType: Product;
+  volume: number;
+  unitPrice: number;
+  totalAmount: number;
+  timestamp: Date;
+  paymentMethod: 'cash' | 'card' | 'transfer' | 'credit';
+  receiptNumber?: string;
+  customerId?: string;
+  shiftId?: string;
+}
+
+export interface PriceRecord {
+  id: string;
+  productType: Product;
+  purchasePrice: number;
+  sellingPrice: number;
+  effectiveDate: Date;
+  endDate?: Date;
+  isActive: boolean;
+  setBy: string;
+  notes?: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  entityType: 'supplier' | 'truck' | 'driver' | 'purchase_order' | 'staff' | 'dispenser' | 'shift' | 'sale' | 'price' | 'incident';
+  entityId: string;
+  action: 'create' | 'update' | 'delete' | 'view' | 'approve' | 'reject' | 'other';
+  details: string;
+  user: string;
+  timestamp: Date;
+  ipAddress?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface Tank {
+  id: string;
+  name: string;
+  capacity: number;
+  currentVolume: number;
+  productType: Product;
+  lastRefillDate?: Date;
+  minVolume: number;
+  status: 'operational' | 'maintenance' | 'offline';
+  connectedDispensers: string[];
 }

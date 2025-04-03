@@ -1,6 +1,23 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData, Incident, AIInsight } from '../types';
+import { 
+  LogEntry, 
+  PurchaseOrder, 
+  Supplier, 
+  Driver, 
+  Truck, 
+  DeliveryDetails, 
+  GPSData, 
+  Incident, 
+  AIInsight,
+  Staff,
+  Dispenser,
+  Shift,
+  Sale,
+  PriceRecord,
+  ActivityLog,
+  Tank
+} from '../types';
 import { AppContextType } from './appContextTypes';
 import { defaultInitialState } from './initialState';
 import { usePurchaseOrderActions } from './purchaseOrderActions';
@@ -9,7 +26,15 @@ import { useSupplierActions } from './supplierActions';
 import { useDriverTruckActions } from './driverTruckActions';
 import { useDeliveryActions } from './deliveryActions';
 import { useAIActions } from './aiActions';
+import { useStaffActions } from './staffActions';
+import { useDispenserActions } from './dispenserActions';
+import { useShiftActions } from './shiftActions';
+import { useSaleActions } from './saleActions';
+import { usePriceActions } from './priceActions';
+import { useTankActions } from './tankActions';
+import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
 import { loadAppState, saveToLocalStorage, STORAGE_KEYS } from '../utils/localStorage';
+import { resetDatabase, exportDatabase, importDatabase } from '../utils/databaseManager';
 import { useToast } from '@/hooks/use-toast';
 
 // Create the context with an undefined initial value
@@ -29,6 +54,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [trucks, setTrucks] = useState<Truck[]>(loadedState.trucks);
   const [gpsData, setGPSData] = useState<GPSData[]>(loadedState.gpsData);
   const [aiInsights, setAIInsights] = useState<AIInsight[]>(loadedState.aiInsights);
+  const [staff, setStaff] = useState<Staff[]>(loadedState.staff || []);
+  const [dispensers, setDispensers] = useState<Dispenser[]>(loadedState.dispensers || []);
+  const [shifts, setShifts] = useState<Shift[]>(loadedState.shifts || []);
+  const [sales, setSales] = useState<Sale[]>(loadedState.sales || []);
+  const [prices, setPrices] = useState<PriceRecord[]>(loadedState.prices || []);
+  const [incidents, setIncidents] = useState<Incident[]>(loadedState.incidents || []);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(loadedState.activityLogs || []);
+  const [tanks, setTanks] = useState<Tank[]>(JSON.parse(localStorage.getItem('tanks') || '[]'));
 
   // Log state load completion
   useEffect(() => {
@@ -39,7 +72,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       drivers: drivers.length,
       trucks: trucks.length,
       gpsData: gpsData.length,
-      aiInsights: aiInsights.length
+      aiInsights: aiInsights.length,
+      staff: staff.length,
+      dispensers: dispensers.length,
+      shifts: shifts.length,
+      sales: sales.length,
+      prices: prices.length,
+      incidents: incidents.length,
+      activityLogs: activityLogs.length,
+      tanks: tanks.length
     });
   }, []);
 
@@ -118,6 +159,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const persistentSetStaff: typeof setStaff = (value) => {
+    setStaff((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.STAFF, newValue);
+      }
+      return newValue;
+    });
+  };
+
+  const persistentSetDispensers: typeof setDispensers = (value) => {
+    setDispensers((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newValue);
+      }
+      return newValue;
+    });
+  };
+
+  const persistentSetShifts: typeof setShifts = (value) => {
+    setShifts((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.SHIFTS, newValue);
+      }
+      return newValue;
+    });
+  };
+
+  const persistentSetSales: typeof setSales = (value) => {
+    setSales((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.SALES, newValue);
+      }
+      return newValue;
+    });
+  };
+
+  const persistentSetPrices: typeof setPrices = (value) => {
+    setPrices((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.PRICES, newValue);
+      }
+      return newValue;
+    });
+  };
+
+  const persistentSetIncidents: typeof setIncidents = (value) => {
+    setIncidents((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newValue);
+      }
+      return newValue;
+    });
+  };
+
+  const persistentSetActivityLogs: typeof setActivityLogs = (value) => {
+    setActivityLogs((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      if (Array.isArray(newValue)) {
+        saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, newValue);
+      }
+      return newValue;
+    });
+  };
+
+  const persistentSetTanks: typeof setTanks = (value) => {
+    setTanks((prev) => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      if (Array.isArray(newValue)) {
+        localStorage.setItem('tanks', JSON.stringify(newValue));
+      }
+      return newValue;
+    });
+  };
+
   // Initialize action hooks with persistent state handlers
   const purchaseOrderActions = usePurchaseOrderActions(
     purchaseOrders, 
@@ -126,7 +247,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     persistentSetLogs
   );
   
-  const logActions = useLogActions(logs, persistentSetLogs);
+  const logActions = useLogActions(
+    logs, persistentSetLogs,
+    activityLogs, persistentSetActivityLogs
+  );
   
   const supplierActions = useSupplierActions(
     suppliers, 
@@ -157,6 +281,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     driverTruckActions.getTruckById
   );
 
+  const staffActions = useStaffActions(
+    staff, persistentSetStaff,
+    persistentSetActivityLogs
+  );
+
+  const dispenserActions = useDispenserActions(
+    dispensers, persistentSetDispensers,
+    persistentSetActivityLogs
+  );
+
+  const shiftActions = useShiftActions(
+    shifts, persistentSetShifts,
+    staff, persistentSetStaff,
+    persistentSetActivityLogs
+  );
+
+  const saleActions = useSaleActions(
+    sales, persistentSetSales,
+    shifts, persistentSetShifts,
+    dispensers, persistentSetDispensers,
+    persistentSetActivityLogs
+  );
+
+  const priceActions = usePriceActions(
+    prices, persistentSetPrices,
+    persistentSetActivityLogs
+  );
+
+  const tankActions = useTankActions(
+    tanks, persistentSetTanks,
+    persistentSetActivityLogs
+  );
+
+  // Database management functions
+  const handleResetDatabase = (includeSeedData = false) => {
+    resetDatabase(includeSeedData);
+    
+    // Reload the page to refresh all data
+    window.location.reload();
+  };
+
+  const handleExportDatabase = () => {
+    return exportDatabase();
+  };
+
+  const handleImportDatabase = (jsonData: string) => {
+    const success = importDatabase(jsonData);
+    
+    if (success) {
+      // Reload the page to refresh all data
+      window.location.reload();
+    }
+    
+    return success;
+  };
+
   // Combine all actions and state into the context value
   const contextValue: AppContextType = {
     purchaseOrders,
@@ -166,12 +346,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     trucks,
     gpsData,
     aiInsights,
+    staff,
+    dispensers,
+    shifts,
+    sales,
+    prices,
+    incidents,
+    activityLogs,
+    tanks,
     ...purchaseOrderActions,
     ...logActions,
     ...supplierActions,
     ...driverTruckActions,
     ...deliveryActions,
-    ...aiActions
+    ...aiActions,
+    ...staffActions,
+    ...dispenserActions,
+    ...shiftActions,
+    ...saleActions,
+    ...priceActions,
+    ...tankActions,
+    resetDatabase: handleResetDatabase,
+    exportDatabase: handleExportDatabase,
+    importDatabase: handleImportDatabase
   };
 
   return (
