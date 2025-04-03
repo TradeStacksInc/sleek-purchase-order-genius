@@ -157,14 +157,22 @@ const CreatePO: React.FC = () => {
       // Add purchase order to context
       const savedPO = addPurchaseOrder(newPO);
       
-      toast({
-        title: "Purchase Order Created",
-        description: `PO #${savedPO.poNumber} has been created successfully.`,
-        variant: "default"
-      });
-      
-      // Navigate to the order detail page
-      navigate(`/orders/${savedPO.id}`);
+      if (savedPO) {
+        toast({
+          title: "Purchase Order Created",
+          description: `PO #${savedPO.poNumber} has been created successfully.`,
+          variant: "default"
+        });
+        
+        // Navigate to the order detail page
+        navigate(`/orders/${savedPO.id}`);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to create purchase order. Please try again.",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error('Error creating purchase order:', error);
       toast({

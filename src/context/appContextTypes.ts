@@ -9,7 +9,7 @@ export interface AppContextType {
   trucks: Truck[];
   gpsData: GPSData[];
   aiInsights: AIInsight[];
-  addPurchaseOrder: (order: PurchaseOrder) => void;
+  addPurchaseOrder: (order: PurchaseOrder) => PurchaseOrder | null;
   addSupplier: (supplier: Supplier) => void;
   updateOrderStatus: (id: string, status: OrderStatus, notes?: string, approvedBy?: string, rejectionReason?: string) => void;
   getOrderById: (id: string) => PurchaseOrder | undefined;
@@ -21,7 +21,7 @@ export interface AppContextType {
   updateDeliveryStatus: (
     orderId: string, 
     updates: Partial<DeliveryDetails>
-  ) => void;
+  ) => PurchaseOrder | undefined;
   updateGPSData: (truckId: string, latitude: number, longitude: number, speed: number) => void;
   getDriverById: (id: string) => Driver | undefined;
   getTruckById: (id: string) => Truck | undefined;
