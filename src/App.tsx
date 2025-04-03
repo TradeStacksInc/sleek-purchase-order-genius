@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProvider } from "./context/AppContext";
+import AIChatProvider from "./context/AIChatContext";
 import AppRoutes from "./components/AppRoutes";
 import AutoSave from "./components/AutoSave";
 import { useEffect } from "react";
@@ -28,12 +29,14 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <AppRoutes />
-          <AutoSave />
-        </TooltipProvider>
+        <AIChatProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <AppRoutes />
+            <AutoSave />
+          </TooltipProvider>
+        </AIChatProvider>
       </AppProvider>
     </QueryClientProvider>
   );
