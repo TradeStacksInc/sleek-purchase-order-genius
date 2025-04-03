@@ -1,10 +1,8 @@
 
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
-import AIChatWidget from './AIChatWidget';
 import AppHeader from './AppHeader';
 import AutoSave from './AutoSave';
-import { useApp } from '@/context/AppContext';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
@@ -18,9 +16,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {children}
           <AutoSave />
         </main>
-        <div className="hidden lg:block">
-          <AIChatWidget />
-        </div>
       </div>
     </div>
   );

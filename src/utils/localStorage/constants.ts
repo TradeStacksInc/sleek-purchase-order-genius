@@ -14,7 +14,8 @@ export const STORAGE_KEYS = {
   SALES: 'sales',
   PRICES: 'prices',
   INCIDENTS: 'incidents',
-  ACTIVITY_LOGS: 'activity_logs'
+  ACTIVITY_LOGS: 'activity_logs',
+  TANKS: 'tanks'
 };
 
 // Version information for database schema migrations

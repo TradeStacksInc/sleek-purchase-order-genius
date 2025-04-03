@@ -39,7 +39,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 
 const Dashboard: React.FC = () => {
-  const { purchaseOrders, updateOrderStatus, getDriverById, getTruckById } = useApp();
+  const { purchaseOrders, updateOrderStatus, getDriverById, getTruckById, tanks = [] } = useApp();
   const [timeRange, setTimeRange] = useState('1y');
   
   // Calculate stats
@@ -80,12 +80,20 @@ const Dashboard: React.FC = () => {
     { name: 'DPK', value: 10 },
   ];
 
-  const tankLevels = [
-    { name: 'Tank 1 (PMS)', level: 75, capacity: '45,000L' },
-    { name: 'Tank 2 (PMS)', level: 60, capacity: '45,000L' },
-    { name: 'Tank 3 (AGO)', level: 45, capacity: '45,000L' },
-    { name: 'Tank 4 (AGO)', level: 30, capacity: '45,000L' },
-  ];
+  // Use actual tank data if available, otherwise use mock data
+  const tankLevels = tanks.length > 0 
+    ? tanks.map(tank => ({
+        name: `${tank.name} (${tank.productType})`,
+        level: Math.round((tank.currentVolume / tank.capacity) * 100),
+        capacity: `${tank.capacity.toLocaleString()}L`,
+        current: `${tank.currentVolume.toLocaleString()}L`,
+      }))
+    : [
+        { name: 'Tank 1 (PMS)', level: 75, capacity: '45,000L', current: '33,750L' },
+        { name: 'Tank 2 (PMS)', level: 60, capacity: '45,000L', current: '27,000L' },
+        { name: 'Tank 3 (AGO)', level: 45, capacity: '45,000L', current: '20,250L' },
+        { name: 'Tank 4 (AGO)', level: 30, capacity: '45,000L', current: '13,500L' },
+      ];
 
   const alerts = [
     { id: 1, type: 'critical', message: 'Tank 4 level below 35%', timestamp: '2 hours ago' },
@@ -152,8 +160,8 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2">
+        <Card className="lg:col-span-2 shadow-md rounded-xl overflow-hidden border-t-4 border-t-blue-500 transition-transform hover:scale-[1.01] hover:shadow-lg">
+          <CardHeader className="pb-2 bg-gradient-to-r from-blue-50 to-white">
             <CardTitle className="text-base font-medium">Revenue Overview</CardTitle>
             <CardDescription>Monthly revenue for the current year</CardDescription>
           </CardHeader>
@@ -195,8 +203,8 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-green-500 transition-transform hover:scale-[1.01] hover:shadow-lg">
+          <CardHeader className="pb-2 bg-gradient-to-r from-green-50 to-white">
             <CardTitle className="text-base font-medium">Fuel Sales Distribution</CardTitle>
             <CardDescription>Sales by fuel type</CardDescription>
           </CardHeader>
@@ -234,8 +242,8 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-blue-500 transition-transform hover:scale-[1.01] hover:shadow-lg">
+          <CardHeader className="pb-2 bg-gradient-to-r from-blue-50 to-white">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-medium">Tank Levels</CardTitle>
@@ -250,15 +258,15 @@ const Dashboard: React.FC = () => {
                 <div key={index} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span>{tank.name}</span>
-                    <span className="font-medium">{tank.level}% ({tank.capacity})</span>
+                    <span className="font-medium">{tank.level}% ({tank.current}/{tank.capacity})</span>
                   </div>
                   <Progress 
                     value={tank.level} 
-                    className="h-2" 
+                    className="h-2 rounded-full" 
                     indicatorClassName={
-                      tank.level < 30 ? "bg-red-500" : 
-                      tank.level < 50 ? "bg-amber-500" : 
-                      "bg-green-500"
+                      tank.level < 30 ? "bg-red-500 rounded-full" : 
+                      tank.level < 50 ? "bg-amber-500 rounded-full" : 
+                      "bg-green-500 rounded-full"
                     }
                   />
                 </div>
@@ -267,8 +275,8 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-purple-500 transition-transform hover:scale-[1.01] hover:shadow-lg">
+          <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 to-white">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-medium">Staff Overview</CardTitle>
@@ -279,22 +287,22 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-purple-50 rounded-lg p-4 text-center">
+              <div className="bg-purple-50 rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow">
                 <p className="text-sm text-purple-600 font-medium">On Shift</p>
                 <p className="text-2xl font-bold text-purple-700">12</p>
                 <p className="text-xs text-purple-600">of 15 staff</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
+              <div className="bg-blue-50 rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow">
                 <p className="text-sm text-blue-600 font-medium">Attendance</p>
                 <p className="text-2xl font-bold text-blue-700">92%</p>
                 <p className="text-xs text-blue-600">This month</p>
               </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center">
+              <div className="bg-green-50 rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow">
                 <p className="text-sm text-green-600 font-medium">Productivity</p>
                 <p className="text-2xl font-bold text-green-700">94%</p>
                 <p className="text-xs text-green-600">Target: 85%</p>
               </div>
-              <div className="bg-amber-50 rounded-lg p-4 text-center">
+              <div className="bg-amber-50 rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow">
                 <p className="text-sm text-amber-600 font-medium">Drivers</p>
                 <p className="text-2xl font-bold text-amber-700">8</p>
                 <p className="text-xs text-amber-600">5 in transit</p>
@@ -303,8 +311,8 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-red-500 transition-transform hover:scale-[1.01] hover:shadow-lg">
+          <CardHeader className="pb-2 bg-gradient-to-r from-red-50 to-white">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-medium">System Alerts</CardTitle>
@@ -318,7 +326,7 @@ const Dashboard: React.FC = () => {
               {alerts.map((alert) => (
                 <div 
                   key={alert.id} 
-                  className={`p-3 rounded-lg flex items-start space-x-3 
+                  className={`p-3 rounded-lg flex items-start space-x-3 shadow-sm hover:shadow-md transition-all duration-200
                     ${alert.type === 'critical' ? 'bg-red-50 text-red-800' : 
                       alert.type === 'warning' ? 'bg-amber-50 text-amber-800' :
                       'bg-blue-50 text-blue-800'}`}
@@ -351,8 +359,8 @@ const Dashboard: React.FC = () => {
       
       <Tabs defaultValue="orders" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-4 rounded-lg">
-          <TabsTrigger value="orders">Purchase Orders</TabsTrigger>
-          <TabsTrigger value="tracking">GPS Tracking</TabsTrigger>
+          <TabsTrigger value="orders" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Purchase Orders</TabsTrigger>
+          <TabsTrigger value="tracking" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">GPS Tracking</TabsTrigger>
         </TabsList>
         
         <TabsContent value="orders" className="animate-fade-in">
@@ -394,8 +402,8 @@ const MetricCard: React.FC<MetricCardProps> = ({
   trend,
   trendUp
 }) => (
-  <Card>
-    <CardContent className="p-6">
+  <Card className="shadow-md rounded-xl overflow-hidden transition-transform hover:scale-[1.02] hover:shadow-lg border-t-4 border-t-primary">
+    <CardContent className="p-6 bg-gradient-to-br from-gray-50 to-white">
       <div className="flex items-center justify-between space-x-4">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
