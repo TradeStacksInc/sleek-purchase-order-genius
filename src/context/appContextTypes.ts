@@ -1,5 +1,5 @@
 
-import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData, OffloadingDetails, Incident, AIInsight } from '../types';
+import { LogEntry, PurchaseOrder, Supplier, Driver, Truck, DeliveryDetails, GPSData, OffloadingDetails, Incident, AIInsight, OrderStatus } from '../types';
 
 export interface AppContextType {
   purchaseOrders: PurchaseOrder[];
@@ -11,7 +11,7 @@ export interface AppContextType {
   aiInsights: AIInsight[];
   addPurchaseOrder: (order: PurchaseOrder) => void;
   addSupplier: (supplier: Supplier) => void;
-  updateOrderStatus: (id: string, status: 'pending' | 'active' | 'fulfilled') => void;
+  updateOrderStatus: (id: string, status: OrderStatus, notes?: string, approvedBy?: string, rejectionReason?: string) => void;
   getOrderById: (id: string) => PurchaseOrder | undefined;
   getLogsByOrderId: (id: string) => LogEntry[];
   logAIInteraction: (query: string, response: string) => void;
@@ -34,6 +34,8 @@ export interface AppContextType {
   addIncident: (orderId: string, incident: Omit<Incident, 'id' | 'deliveryId' | 'timestamp'>) => void;
   getOrdersWithDeliveryStatus: (status: 'pending' | 'in_transit' | 'delivered') => PurchaseOrder[];
   getOrdersWithDiscrepancies: () => PurchaseOrder[];
+  getOrdersByStatus: (status: OrderStatus) => PurchaseOrder[];
+  getStatusDescription: (status: OrderStatus) => string;
   generateDiscrepancyInsights: () => void;
   markInsightAsRead: (id: string) => void;
   tagTruckWithGPS: (truckId: string, gpsDeviceId: string, initialLatitude: number, initialLongitude: number) => void;

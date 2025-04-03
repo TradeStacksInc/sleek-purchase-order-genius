@@ -53,8 +53,20 @@ export const useSupplierActions = (
     return suppliers.find(supplier => supplier.id === id);
   };
 
+  const getAllSuppliers = () => {
+    return suppliers;
+  };
+
+  const getSuppliersByProduct = (product: string): Supplier[] => {
+    return suppliers.filter(supplier => 
+      supplier.products && supplier.products.includes(product)
+    );
+  };
+
   return {
     addSupplier,
-    getSupplierById
+    getSupplierById,
+    getAllSuppliers,
+    getSuppliersByProduct
   };
 };

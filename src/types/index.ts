@@ -1,6 +1,6 @@
 export type Product = 'PMS' | 'AGO' | 'DPK';
 
-export type OrderStatus = 'pending' | 'active' | 'fulfilled';
+export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled';
 
 export type PaymentTerm = '50% Advance' | 'Full Payment' | 'Credit';
 
@@ -44,6 +44,10 @@ export interface Truck {
   isGPSTagged?: boolean;
   gpsDeviceId?: string;
   year?: number;
+  lastLatitude?: number;
+  lastLongitude?: number;
+  lastSpeed?: number;
+  lastUpdate?: Date;
 }
 
 export interface GPSData {

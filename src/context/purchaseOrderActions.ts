@@ -1,8 +1,9 @@
 
 import { useState } from 'react';
-import { PurchaseOrder, LogEntry } from '../types';
+import { PurchaseOrder, LogEntry, OrderStatus, StatusHistoryEntry } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
+import { v4 as uuidv4 } from 'uuid';
 
 export const usePurchaseOrderActions = (
   purchaseOrders: PurchaseOrder[],
@@ -13,9 +14,23 @@ export const usePurchaseOrderActions = (
   const { toast } = useToast();
 
   const addPurchaseOrder = (order: PurchaseOrder) => {
+    // Add initial status history
+    const orderWithHistory = {
+      ...order,
+      statusHistory: [
+        {
+          id: uuidv4(),
+          status: order.status,
+          timestamp: new Date(),
+          user: 'Current User', // In a real app, get from auth
+          note: 'Order created'
+        }
+      ]
+    };
+    
     // Add to state
     setPurchaseOrders((prevOrders) => {
-      const newOrders = [order, ...prevOrders];
+      const newOrders = [orderWithHistory, ...prevOrders];
       
       // Save to localStorage immediately
       const saveSuccess = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
@@ -35,7 +50,7 @@ export const usePurchaseOrderActions = (
     const newLog: LogEntry = {
       id: `log-${Date.now()}`,
       poId: order.id,
-      action: `Purchase Order ${order.poNumber} created`,
+      action: `Purchase Order ${order.poNumber} created with status ${order.status}`,
       user: 'Current User', // In a real app, get from auth
       timestamp: new Date(),
     };
@@ -52,19 +67,40 @@ export const usePurchaseOrderActions = (
       description: `PO #${order.poNumber} has been created successfully.`,
     });
     
-    return order;
+    return orderWithHistory;
   };
 
-  const updateOrderStatus = (id: string, status: 'pending' | 'active' | 'fulfilled') => {
+  const updateOrderStatus = (
+    id: string, 
+    status: OrderStatus, 
+    notes?: string,
+    approvedBy?: string,
+    rejectionReason?: string
+  ) => {
     let updatedOrder: PurchaseOrder | undefined;
     
     setPurchaseOrders((prevOrders) => {
       const newOrders = prevOrders.map((order) => {
         if (order.id === id) {
+          const statusHistoryEntry: StatusHistoryEntry = {
+            id: uuidv4(),
+            status,
+            timestamp: new Date(),
+            user: 'Current User', // In a real app, get from auth
+            note: notes
+          };
+          
+          const statusHistory = order.statusHistory 
+            ? [...order.statusHistory, statusHistoryEntry]
+            : [statusHistoryEntry];
+            
           updatedOrder = {
             ...order,
             status,
+            statusHistory,
             updatedAt: new Date(),
+            ...(status === 'approved' && approvedBy ? { approvedBy } : {}),
+            ...(status === 'rejected' && rejectionReason ? { rejectionReason } : {})
           };
           return updatedOrder;
         }
@@ -80,14 +116,12 @@ export const usePurchaseOrderActions = (
     const order = purchaseOrders.find((po) => po.id === id);
     if (!order) return;
 
-    const statusAction = 
-      status === 'active' ? 'Active (Paid)' :
-      status === 'fulfilled' ? 'Fulfilled (Delivered)' : 'Pending';
+    const statusDescription = getStatusDescription(status);
     
     const newLog: LogEntry = {
       id: `log-${Date.now()}`,
       poId: id,
-      action: `Status updated to ${statusAction} for Purchase Order ${order.poNumber}`,
+      action: `Status updated to ${statusDescription} for Purchase Order ${order.poNumber}`,
       user: 'Current User', // In a real app, get from auth
       timestamp: new Date(),
     };
@@ -100,10 +134,22 @@ export const usePurchaseOrderActions = (
     
     toast({
       title: "Status Updated",
-      description: `PO #${order.poNumber} is now ${status}.`,
+      description: `PO #${order.poNumber} is now ${statusDescription}.`,
     });
     
     return updatedOrder;
+  };
+
+  const getStatusDescription = (status: OrderStatus): string => {
+    switch (status) {
+      case 'pending': return 'Pending';
+      case 'approved': return 'Approved';
+      case 'rejected': return 'Rejected';
+      case 'active': return 'Active (Paid)';
+      case 'delivered': return 'Delivered';
+      case 'fulfilled': return 'Fulfilled';
+      default: return status;
+    }
   };
 
   const getOrderById = (id: string) => {
@@ -118,11 +164,17 @@ export const usePurchaseOrderActions = (
     return purchaseOrders.filter(po => po.offloadingDetails?.isDiscrepancyFlagged);
   };
 
+  const getOrdersByStatus = (status: OrderStatus): PurchaseOrder[] => {
+    return purchaseOrders.filter(po => po.status === status);
+  };
+
   return {
     addPurchaseOrder,
     updateOrderStatus,
     getOrderById,
     getOrdersWithDeliveryStatus,
-    getOrdersWithDiscrepancies
+    getOrdersWithDiscrepancies,
+    getOrdersByStatus,
+    getStatusDescription
   };
 };

@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, PhoneCall, Truck, MapPin, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowRight, PhoneCall, Truck, MapPin, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { PurchaseOrder, DeliveryDetails } from '@/types';
+import GPSTrackingService from '@/services/GPSTrackingService';
 
 const GPSTracking: React.FC = () => {
   const { 
@@ -18,6 +18,23 @@ const GPSTracking: React.FC = () => {
     updateDeliveryStatus, 
     updateGPSData
   } = useApp();
+  
+  const [forceUpdate, setForceUpdate] = useState(0);
+  
+  // Register the GPS update callback when component mounts
+  useEffect(() => {
+    const gpsService = GPSTrackingService.getInstance();
+    gpsService.registerUpdateCallback(updateGPSData);
+    
+    // Force a re-render every 5 seconds to update the UI with latest GPS data
+    const intervalId = setInterval(() => {
+      setForceUpdate(prev => prev + 1);
+    }, 5000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [updateGPSData]);
   
   // Get orders that are in transit with GPS-enabled trucks
   const inTransitOrders = purchaseOrders.filter(
@@ -67,8 +84,7 @@ const GPSTracking: React.FC = () => {
                       getDriverById={getDriverById}
                       getTruckById={getTruckById}
                       updateDeliveryStatus={updateDeliveryStatus}
-                      updateGPSData={updateGPSData}
-                      showSimulation={true}
+                      forceUpdate={forceUpdate}
                     />
                   ))}
                 </div>
@@ -111,51 +127,6 @@ const GPSTracking: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
-      
-      <div className="mt-8">
-        <div className="bg-muted rounded-lg p-6">
-          <h2 className="text-lg font-medium mb-4">GPS Tracking Simulation</h2>
-          <p className="text-muted-foreground mb-4">
-            For demonstration purposes, the GPS tracking data is simulated. In a production environment,
-            this would be replaced with real GPS data from actual devices.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <Truck className="h-5 w-5 mr-2 text-blue-500" />
-                  <span className="text-sm font-medium">GPS Updates</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Simulated GPS data is updated every few seconds to provide a realistic tracking experience.
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <Clock className="h-5 w-5 mr-2 text-green-500" />
-                  <span className="text-sm font-medium">ETA Calculation</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Estimated arrival times are calculated based on distance and average speed.
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
-                  <span className="text-sm font-medium">Test Environment</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  This is a demonstration of the GPS tracking interface. No actual GPS devices are connected.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
@@ -165,8 +136,7 @@ interface DeliveryTrackingCardProps {
   getDriverById: (id: string) => any;
   getTruckById: (id: string) => any;
   updateDeliveryStatus: (orderId: string, updates: Partial<DeliveryDetails>) => void;
-  updateGPSData: (truckId: string, latitude: number, longitude: number, speed: number) => void;
-  showSimulation: boolean;
+  forceUpdate: number;
 }
 
 const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({ 
@@ -174,57 +144,8 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
   getDriverById, 
   getTruckById,
   updateDeliveryStatus,
-  updateGPSData,
-  showSimulation
+  forceUpdate
 }) => {
-  const [simulationRunning, setSimulationRunning] = useState(false);
-  
-  // For simulation purpose only
-  useEffect(() => {
-    if (!showSimulation || !simulationRunning || !order.deliveryDetails?.truckId) return;
-    
-    const truckId = order.deliveryDetails.truckId;
-    const totalDistance = order.deliveryDetails.totalDistance || 100;
-    const currentDistance = order.deliveryDetails.distanceCovered || 0;
-    
-    // If we've reached the destination, mark as delivered
-    if (currentDistance >= totalDistance) {
-      updateDeliveryStatus(order.id, {
-        status: 'delivered',
-        destinationArrivalTime: new Date()
-      });
-      setSimulationRunning(false);
-      return;
-    }
-    
-    // Simulate truck movement with random speed variations
-    const interval = setInterval(() => {
-      const speed = Math.floor(Math.random() * 30) + 40; // 40-70 km/h
-      
-      // Mock lat/long (not real coordinates)
-      const latitude = 6.5244 + (Math.random() * 0.01);
-      const longitude = 3.3792 + (Math.random() * 0.01);
-      
-      updateGPSData(truckId, latitude, longitude, speed);
-    }, 3000);
-    
-    return () => clearInterval(interval);
-  }, [
-    simulationRunning, 
-    order.id, 
-    order.deliveryDetails, 
-    updateDeliveryStatus, 
-    updateGPSData,
-    showSimulation
-  ]);
-  
-  // Start simulation when the component mounts
-  useEffect(() => {
-    if (showSimulation) {
-      setSimulationRunning(true);
-    }
-  }, [showSimulation]);
-  
   // Get driver and truck details
   const driver = order.deliveryDetails?.driverId 
     ? getDriverById(order.deliveryDetails.driverId)
@@ -238,6 +159,36 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
     return <div>Missing delivery details</div>;
   }
   
+  // Get GPS tracking service
+  const gpsService = GPSTrackingService.getInstance();
+  const truckId = order.deliveryDetails.truckId!;
+  
+  // Start tracking if not already tracking
+  useEffect(() => {
+    if (!gpsService.isTracking(truckId) && order.deliveryDetails?.status === 'in_transit') {
+      const totalDistance = order.deliveryDetails.totalDistance || 100;
+      const distanceCovered = order.deliveryDetails.distanceCovered || 0;
+      
+      // Don't restart tracking if we've covered the distance
+      if (distanceCovered >= totalDistance) {
+        return;
+      }
+      
+      // Start tracking from current position
+      gpsService.startTracking(
+        truckId,
+        truck.lastLatitude || 6.5244,
+        truck.lastLongitude || 3.3792,
+        totalDistance
+      );
+    }
+    
+    return () => {
+      // Don't stop tracking when component unmounts
+      // Tracking will continue in the background
+    };
+  }, [truckId, order.deliveryDetails, truck, gpsService]);
+  
   // Calculate progress
   const totalDistance = order.deliveryDetails.totalDistance || 100;
   const distanceCovered = order.deliveryDetails.distanceCovered || 0;
@@ -250,6 +201,10 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
     
   // Handle mark as delivered
   const handleMarkDelivered = () => {
+    // Stop tracking
+    gpsService.stopTracking(truckId);
+    
+    // Update delivery status
     updateDeliveryStatus(order.id, {
       status: 'delivered',
       destinationArrivalTime: new Date()
@@ -341,11 +296,13 @@ const PendingDeliveryCard: React.FC<PendingDeliveryCardProps> = ({
   
   // Handle start delivery
   const handleStartDelivery = () => {
+    const totalDistance = Math.floor(Math.random() * 50) + 70; // Random distance between 70-120km for demo
+    
     updateDeliveryStatus(order.id, {
       status: 'in_transit',
       depotDepartureTime: new Date(),
       distanceCovered: 0,
-      totalDistance: Math.floor(Math.random() * 50) + 70, // Random distance between 70-120km for demo
+      totalDistance,
     });
   };
   
