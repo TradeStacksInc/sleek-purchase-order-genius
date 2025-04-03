@@ -43,7 +43,7 @@ const DriverSituationCard: React.FC<DriverSituationCardProps> = ({
   const currentSpeed = trackingInfo?.currentSpeed || truck.lastSpeed || 0;
   
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
@@ -53,8 +53,8 @@ const DriverSituationCard: React.FC<DriverSituationCardProps> = ({
           <Badge 
             className={
               isTracked 
-                ? "bg-blue-500 text-white" 
-                : "bg-gray-200 text-gray-800"
+                ? "bg-blue-500 text-white font-medium" 
+                : "bg-gray-200 text-gray-800 font-medium"
             }
           >
             {isTracked ? "GPS Active" : "GPS Inactive"}
@@ -81,7 +81,7 @@ const DriverSituationCard: React.FC<DriverSituationCardProps> = ({
         </div>
         
         {isTracked && currentSpeed > 0 && (
-          <div className="mb-3 px-2 py-1 bg-blue-50 border border-blue-100 rounded text-sm flex items-center">
+          <div className="mb-3 px-2 py-1.5 bg-blue-50 border border-blue-100 rounded-md text-sm flex items-center">
             <Navigation className="h-4 w-4 mr-2 text-blue-600" />
             <span className="text-blue-700">
               Current Speed: <span className="font-medium">{currentSpeed.toFixed(1)} km/h</span>
@@ -93,13 +93,21 @@ const DriverSituationCard: React.FC<DriverSituationCardProps> = ({
           <span className="text-muted-foreground">Progress</span>
           <span className="font-medium">{progressPercentage}%</span>
         </div>
-        <Progress value={progressPercentage} className="h-2" />
+        <Progress 
+          value={progressPercentage} 
+          className="h-2" 
+          indicatorClassName={
+            progressPercentage < 30 ? "bg-amber-500" : 
+            progressPercentage < 70 ? "bg-blue-500" : 
+            "bg-green-500"
+          }
+        />
         
         <div className="mt-3">
           <Button 
             variant="outline" 
             size="sm" 
-            className="w-full text-xs" 
+            className="w-full text-xs rounded-md" 
             asChild
           >
             <a href={`/delivery-log/map?id=${order.id}`}>

@@ -30,7 +30,7 @@ const GPSTrackingTab: React.FC<GPSTrackingTabProps> = ({
   
   return (
     <>
-      <Card className="bg-card shadow-md border-muted">
+      <Card className="bg-card shadow-sm border">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -45,7 +45,7 @@ const GPSTrackingTab: React.FC<GPSTrackingTabProps> = ({
               </CardDescription>
             </div>
             <Link to="/gps-tracking">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="rounded-md">
                 <span>GPS Tracking</span>
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -110,14 +110,14 @@ const GPSTrackingTab: React.FC<GPSTrackingTabProps> = ({
         
         <DeliveryStatCard
           title="Completed Today"
-          value="0"
+          value="3"
           icon={<FileCheck className="h-4 w-4 text-green-700" />}
           color="green"
         />
         
         <DeliveryStatCard
           title="Available Drivers"
-          value="2"
+          value="5"
           icon={<User className="h-4 w-4 text-purple-700" />}
           color="purple"
         />
@@ -153,16 +153,16 @@ const DeliveryStatCard: React.FC<DeliveryStatCardProps> = ({ title, value, icon,
   };
   
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardContent className="p-0">
         <div className="p-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">{title}</p>
+              <p className="text-lg font-semibold">{value}</p>
+            </div>
             <div className={`p-2 rounded-md ${getColorClass()}`}>
               {icon}
-            </div>
-            <div>
-              <p className="text-xs font-medium">{title}</p>
-              <p className="text-lg font-semibold">{value}</p>
             </div>
           </div>
         </div>
