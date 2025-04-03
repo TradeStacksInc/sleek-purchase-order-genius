@@ -1,5 +1,5 @@
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Layout from "./Layout";
 import Dashboard from "../pages/Dashboard";
 import CreatePO from "../pages/CreatePO";
@@ -25,7 +25,7 @@ const AppRoutes = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout />}>
+        <Route path="/" element={<Layout><Outlet /></Layout>}>
           <Route index element={<Dashboard />} />
           <Route path="create" element={<CreatePO />} />
           <Route path="orders" element={<Orders />} />

@@ -247,7 +247,7 @@ export interface PriceRecord {
 
 export interface ActivityLog {
   id: string;
-  entityType: 'supplier' | 'truck' | 'driver' | 'purchase_order' | 'staff' | 'dispenser' | 'shift' | 'sale' | 'price' | 'incident';
+  entityType: 'supplier' | 'truck' | 'driver' | 'purchase_order' | 'staff' | 'dispenser' | 'shift' | 'sale' | 'price' | 'incident' | 'tank';
   entityId: string;
   action: 'create' | 'update' | 'delete' | 'view' | 'approve' | 'reject' | 'other';
   details: string;

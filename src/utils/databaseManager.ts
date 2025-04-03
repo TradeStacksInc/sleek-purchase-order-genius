@@ -1,6 +1,7 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { clearAppState, initializeDatabase, getDatabaseMetadata } from './localStorage/appState';
-import { STORAGE_KEYS } from './localStorage/constants';
+import { STORAGE_KEYS, DB_VERSION } from './localStorage/constants';
 import { saveToLocalStorage } from './localStorage/core';
 import { StoredAppData } from './localStorage/types';
 import { Staff, Dispenser, Tank, PriceRecord, Product } from '../types';

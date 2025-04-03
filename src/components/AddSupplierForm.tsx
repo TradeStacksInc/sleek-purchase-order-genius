@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { v4 as uuidv4 } from 'uuid';
@@ -68,22 +67,24 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
       // Get selected products
       const selectedProducts = Object.keys(products).filter(key => products[key]);
       
+      // Ensure supplierType is one of the allowed values
+      const validatedSupplierType = (supplierType === 'Major' || supplierType === 'Independent' || supplierType === 'Government') 
+        ? supplierType as 'Major' | 'Independent' | 'Government'
+        : 'Independent'; // Default value
+        
       // Create new supplier object with enhanced fields
       const newSupplier = {
         id: uuidv4(),
         name: name.trim(),
         contact: contact.trim(),
         address: address.trim(),
-        regNumber: regNumber.trim(),
-        depotLocation: depotLocation.trim(),
-        creditLimit: creditLimit ? parseFloat(creditLimit) : 0,
-        products: selectedProducts,
-        paymentTerms: paymentTerms.trim(),
-        supplierType: supplierType.trim(),
-        depotName: depotName.trim(),
-        contactPerson: contactPerson.trim(),
         email: email.trim(),
-        createdAt: new Date(),
+        supplierType: validatedSupplierType,
+        depotName: depotName.trim(),
+        taxId: regNumber.trim(),
+        accountNumber: '',
+        bankName: '',
+        products: selectedProducts
       };
       
       // Add supplier to the context
@@ -134,8 +135,7 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
             <SelectContent>
               <SelectItem value="Major">Major Marketer</SelectItem>
               <SelectItem value="Independent">Independent Marketer</SelectItem>
-              <SelectItem value="Depot">Depot Owner</SelectItem>
-              <SelectItem value="International">International Supplier</SelectItem>
+              <SelectItem value="Government">Government</SelectItem>
             </SelectContent>
           </Select>
         </div>

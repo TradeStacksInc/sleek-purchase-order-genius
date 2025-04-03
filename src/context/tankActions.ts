@@ -24,7 +24,7 @@ export const useTankActions = (
       // Log the action
       const newActivityLog: ActivityLog = {
         id: `log-${uuidv4()}`,
-        entityType: 'tank',
+        entityType: 'tank' as 'tank',
         entityId: newTank.id,
         action: 'create',
         details: `Added new tank: ${newTank.name} for ${newTank.productType}`,
@@ -74,7 +74,7 @@ export const useTankActions = (
         // Log the action
         const newActivityLog: ActivityLog = {
           id: `log-${uuidv4()}`,
-          entityType: 'tank',
+          entityType: 'tank' as 'tank',
           entityId: updatedTank.id,
           action: 'update',
           details: `Updated tank: ${updatedTank.name}`,
@@ -145,7 +145,7 @@ export const useTankActions = (
         // Log the action
         const newActivityLog: ActivityLog = {
           id: `log-${uuidv4()}`,
-          entityType: 'tank',
+          entityType: 'tank' as 'tank',
           entityId: updatedTank.id,
           action: 'update',
           details: `Offloaded ${volume} liters of ${productType} to tank: ${updatedTank.name}`,
