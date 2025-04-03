@@ -16,10 +16,13 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { OrderItem, PaymentTerm, Product, Company } from '@/types';
 import AddSupplierForm from '@/components/AddSupplierForm';
+import { useToast } from '@/hooks/use-toast';
+import StatusTracker from '@/components/PurchaseOrder/StatusTracker';
 
 const CreatePO: React.FC = () => {
   const navigate = useNavigate();
   const { suppliers, addPurchaseOrder } = useApp();
+  const { toast } = useToast();
   
   // Form state
   const [supplierId, setSupplierId] = useState('');
@@ -43,6 +46,7 @@ const CreatePO: React.FC = () => {
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default to 7 days from now
   );
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Calculate grand total
   const grandTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -96,51 +100,120 @@ const CreatePO: React.FC = () => {
   };
   
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    if (!supplierId || !deliveryDate || !company.name || !company.address || !company.contact || !company.taxId) {
-      alert('Please fill in all required fields');
-      return;
+    try {
+      if (!supplierId || !deliveryDate || !company.name || !company.address || !company.contact || !company.taxId) {
+        toast({
+          title: "Missing Information",
+          description: "Please fill in all required fields",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Validate items
+      const invalidItems = items.filter(item => item.quantity <= 0 || item.unitPrice <= 0);
+      if (invalidItems.length > 0) {
+        toast({
+          title: "Invalid Items",
+          description: "Please ensure all items have a quantity and unit price greater than zero",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Find selected supplier
+      const supplier = suppliers.find((s) => s.id === supplierId);
+      if (!supplier) {
+        toast({
+          title: "Supplier Not Found",
+          description: "Please select a valid supplier",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Create new purchase order
+      const newPO = {
+        id: uuidv4(),
+        poNumber: `PO-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+        company,
+        supplier,
+        items,
+        grandTotal,
+        paymentTerm,
+        deliveryDate,
+        status: 'pending' as const,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      // Add purchase order to context
+      const savedPO = addPurchaseOrder(newPO);
+      
+      toast({
+        title: "Purchase Order Created",
+        description: `PO #${savedPO.poNumber} has been created successfully.`,
+        variant: "default"
+      });
+      
+      // Navigate to the order detail page
+      navigate(`/orders/${savedPO.id}`);
+    } catch (error) {
+      console.error('Error creating purchase order:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem creating your purchase order",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    // Find selected supplier
-    const supplier = suppliers.find((s) => s.id === supplierId);
-    if (!supplier) return;
-    
-    // Create new purchase order
-    const newPO = {
-      id: uuidv4(),
-      poNumber: `PO-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-      company,
-      supplier,
-      items,
-      grandTotal,
-      paymentTerm,
-      deliveryDate,
-      status: 'pending' as const,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
-    // Add purchase order to context
-    addPurchaseOrder(newPO);
-    
-    // Navigate back to dashboard
-    navigate('/');
   };
   
   return (
-    <div className="max-w-5xl mx-auto">
-      <Card>
+    <div className="max-w-5xl mx-auto animate-fade-in">
+      <Card className="shadow-md">
         <CardHeader>
-          <CardTitle>Create Purchase Order</CardTitle>
-          <CardDescription>
-            Fill in the details to create a new purchase order
-          </CardDescription>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <CardTitle>Create Purchase Order</CardTitle>
+              <CardDescription>
+                Fill in the details to create a new purchase order
+              </CardDescription>
+            </div>
+            <div className="w-full md:w-auto">
+              <Button variant="ghost" onClick={() => navigate('/')}>
+                Cancel
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
+          {/* Status Tracker Preview */}
+          <div className="mb-6 border rounded-md p-4 bg-muted/30">
+            <h3 className="text-sm font-medium mb-2 text-muted-foreground">Order Status Preview</h3>
+            <StatusTracker 
+              currentStatus="pending" 
+              statusHistory={[
+                {
+                  id: 'preview',
+                  status: 'pending',
+                  timestamp: new Date(),
+                  user: 'Current User',
+                  note: 'Creating new purchase order'
+                }
+              ]}
+            />
+          </div>
+          
+          <form id="create-po-form" onSubmit={handleSubmit}>
             {/* Company Details Section */}
             <div className="po-form-section mb-8">
               <h3 className="text-lg font-medium mb-4">Company Details</h3>
@@ -217,11 +290,17 @@ const CreatePO: React.FC = () => {
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
                     <SelectContent>
-                      {suppliers.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name}
+                      {suppliers.length > 0 ? (
+                        suppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id}>
+                            {supplier.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-suppliers" disabled>
+                          No suppliers found. Add a supplier first.
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -369,15 +448,20 @@ const CreatePO: React.FC = () => {
                 </div>
               </div>
             </div>
-            
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button variant="outline" type="button" onClick={() => navigate('/')}>
-                Cancel
-              </Button>
-              <Button type="submit">Create Purchase Order</Button>
-            </div>
           </form>
         </CardContent>
+        <CardFooter className="flex justify-end space-x-2">
+          <Button variant="outline" type="button" onClick={() => navigate('/')}>
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            form="create-po-form"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Creating...' : 'Create Purchase Order'}
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

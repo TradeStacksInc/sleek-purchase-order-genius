@@ -1,142 +1,178 @@
 
 import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { OrderStatus } from '@/types';
+import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { OrderStatus } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 interface StatusUpdateDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
+  orderId: string;
+  currentStatus: OrderStatus;
   onStatusUpdate: (
+    id: string, 
     status: OrderStatus, 
     notes?: string,
     approvedBy?: string,
     rejectionReason?: string
   ) => void;
-  currentStatus: OrderStatus;
 }
 
 const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({
-  isOpen,
-  onClose,
+  orderId,
+  currentStatus,
   onStatusUpdate,
-  currentStatus
 }) => {
-  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>(currentStatus);
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState<OrderStatus>(
+    currentStatus === 'pending' ? 'approved' : 
+    currentStatus === 'approved' ? 'active' : 
+    currentStatus === 'active' ? 'delivered' : 'fulfilled'
+  );
   const [notes, setNotes] = useState('');
   const [approvedBy, setApprovedBy] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onStatusUpdate(
-      selectedStatus, 
-      notes, 
-      selectedStatus === 'approved' ? approvedBy : undefined,
-      selectedStatus === 'rejected' ? rejectionReason : undefined
-    );
-    onClose();
+  const statusOptions = getAvailableStatusOptions(currentStatus);
+  
+  const handleSubmit = () => {
+    if (status === 'rejected' && !rejectionReason) {
+      toast({
+        title: "Rejection Reason Required",
+        description: "Please provide a reason for rejecting this order.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (status === 'approved' && !approvedBy) {
+      toast({
+        title: "Approval Information Required",
+        description: "Please provide the name of the person who approved this order.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onStatusUpdate(orderId, status, notes, approvedBy, rejectionReason);
+    setOpen(false);
+    
+    // Reset form
+    setNotes('');
+    setApprovedBy('');
+    setRejectionReason('');
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Update Status</Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Update Purchase Order Status</DialogTitle>
-            <DialogDescription>
-              Change the status of this purchase order
-            </DialogDescription>
-          </DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Update Order Status</DialogTitle>
+          <DialogDescription>
+            Change the current status of this purchase order.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid gap-4 py-4">
+          <RadioGroup 
+            value={status} 
+            onValueChange={(value) => setStatus(value as OrderStatus)}
+            className="grid grid-cols-1 gap-2"
+          >
+            {statusOptions.map((option) => (
+              <div key={option.value} className="flex items-center space-x-2 rounded-md border p-3">
+                <RadioGroupItem value={option.value} id={option.value} />
+                <Label 
+                  htmlFor={option.value}
+                  className="flex-1 cursor-pointer font-medium"
+                >
+                  {option.label}
+                </Label>
+                <span className="text-xs text-muted-foreground">{option.description}</span>
+              </div>
+            ))}
+          </RadioGroup>
           
-          <div className="py-4 space-y-4">
-            <RadioGroup value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as OrderStatus)}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="pending" id="pending" />
-                <Label htmlFor="pending">Pending</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="approved" id="approved" />
-                <Label htmlFor="approved">Approved</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="rejected" id="rejected" />
-                <Label htmlFor="rejected">Rejected</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="active" id="active" />
-                <Label htmlFor="active">Active (Paid)</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="delivered" id="delivered" />
-                <Label htmlFor="delivered">Delivered</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="fulfilled" id="fulfilled" />
-                <Label htmlFor="fulfilled">Fulfilled</Label>
-              </div>
-            </RadioGroup>
-            
-            {selectedStatus === 'approved' && (
-              <div className="space-y-2">
-                <Label htmlFor="approvedBy">Approved By</Label>
-                <Input
-                  id="approvedBy"
-                  value={approvedBy}
-                  onChange={(e) => setApprovedBy(e.target.value)}
-                  placeholder="Name of approver"
-                />
-              </div>
-            )}
-            
-            {selectedStatus === 'rejected' && (
-              <div className="space-y-2">
-                <Label htmlFor="rejectionReason">Reason for Rejection</Label>
-                <Textarea
-                  id="rejectionReason"
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="Enter reason for rejection"
-                  rows={3}
-                />
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes (Optional)</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Add additional information"
-                rows={3}
+          {status === 'approved' && (
+            <div className="grid gap-2">
+              <Label htmlFor="approvedBy" className="required">Approved By</Label>
+              <Input
+                id="approvedBy"
+                value={approvedBy}
+                onChange={(e) => setApprovedBy(e.target.value)}
+                placeholder="Enter name of approving officer"
+                required
               />
             </div>
-          </div>
+          )}
           
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">
-              Update Status
-            </Button>
-          </DialogFooter>
-        </form>
+          {status === 'rejected' && (
+            <div className="grid gap-2">
+              <Label htmlFor="rejectionReason" className="required">Rejection Reason</Label>
+              <Textarea
+                id="rejectionReason"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Enter reason for rejecting this order"
+                required
+              />
+            </div>
+          )}
+          
+          <div className="grid gap-2">
+            <Label htmlFor="notes">Additional Notes</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any notes or comments about this status change"
+            />
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit}>
+            Update Status
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
+
+function getAvailableStatusOptions(currentStatus: OrderStatus) {
+  switch (currentStatus) {
+    case 'pending':
+      return [
+        { value: 'approved', label: 'Approve Order', description: 'Mark as approved' },
+        { value: 'rejected', label: 'Reject Order', description: 'Decline this order' }
+      ];
+    case 'approved':
+      return [
+        { value: 'active', label: 'Mark as Paid', description: 'Order has been paid for' },
+        { value: 'rejected', label: 'Reject Order', description: 'Decline this order' }
+      ];
+    case 'active':
+      return [
+        { value: 'delivered', label: 'Mark as Delivered', description: 'Product has been delivered' }
+      ];
+    case 'delivered':
+      return [
+        { value: 'fulfilled', label: 'Mark as Fulfilled', description: 'Order has been completed' }
+      ];
+    default:
+      return [];
+  }
+}
 
 export default StatusUpdateDialog;

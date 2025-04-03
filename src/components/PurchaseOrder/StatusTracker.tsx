@@ -8,7 +8,8 @@ import {
   Clock, 
   Truck, 
   XCircle,
-  AlertCircle 
+  AlertCircle,
+  DollarSign
 } from 'lucide-react';
 
 interface StatusTrackerProps {
@@ -112,7 +113,7 @@ const renderStatusIcon = (status: OrderStatus, isActiveOrPassed: boolean) => {
     case 'approved':
       return <CheckCircle className="h-5 w-5" color={color} />;
     case 'active':
-      return <AlertCircle className="h-5 w-5" color={color} />;
+      return <DollarSign className="h-5 w-5" color={color} />;
     case 'delivered':
       return <Truck className="h-5 w-5" color={color} />;
     case 'fulfilled':
@@ -128,7 +129,7 @@ const formatStatus = (status: OrderStatus): string => {
   switch (status) {
     case 'pending': return 'Pending';
     case 'approved': return 'Approved';
-    case 'active': return 'Active';
+    case 'active': return 'Paid';
     case 'delivered': return 'Delivered';
     case 'fulfilled': return 'Fulfilled';
     case 'rejected': return 'Rejected';

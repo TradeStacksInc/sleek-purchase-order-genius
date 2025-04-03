@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, FileCheck, Clock, AlertCircle } from 'lucide-react';
 import { OrderStatus } from '@/types';
+import StatusTracker from '@/components/PurchaseOrder/StatusTracker';
 
 const PODetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -114,6 +115,14 @@ const PODetail: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
+              {/* Status Tracker */}
+              <div className="mb-6">
+                <StatusTracker 
+                  currentStatus={order.status} 
+                  statusHistory={order.statusHistory}
+                />
+              </div>
+
               <Alert className={cn("border mb-6", getStatusColor(order.status))}>
                 <div className="flex items-start">
                   {getStatusIcon(order.status)}

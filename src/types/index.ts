@@ -1,3 +1,4 @@
+
 export type Product = 'PMS' | 'AGO' | 'DPK';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled';
@@ -76,6 +77,14 @@ export interface DeliveryDetails {
   vehicleDetails?: string;
 }
 
+export interface StatusHistoryEntry {
+  id: string;
+  status: OrderStatus;
+  timestamp: Date;
+  user: string;
+  note?: string;
+}
+
 export interface OffloadingDetails {
   id: string;
   deliveryId: string;
@@ -112,8 +121,11 @@ export interface PurchaseOrder {
   paymentTerm: PaymentTerm;
   deliveryDate: Date;
   status: OrderStatus;
+  statusHistory?: StatusHistoryEntry[];
   createdAt: Date;
   updatedAt: Date;
+  approvedBy?: string;
+  rejectionReason?: string;
   deliveryDetails?: DeliveryDetails;
   offloadingDetails?: OffloadingDetails;
   incidents?: Incident[];
