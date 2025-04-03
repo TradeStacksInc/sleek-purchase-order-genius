@@ -1,7 +1,7 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { Driver, Truck, PurchaseOrder, LogEntry, DeliveryDetails, GPSData } from '../types';
 import { useToast } from '@/hooks/use-toast';
+import GPSTrackingService from '@/services/GPSTrackingService'; 
 
 export const useDriverTruckActions = (
   drivers: Driver[],
@@ -101,11 +101,21 @@ export const useDriverTruckActions = (
     
     if (!truck) {
       console.error("Could not find truck with the provided ID.");
+      toast({
+        title: "Error",
+        description: "Could not find truck with the provided ID.",
+        variant: "destructive"
+      });
       return;
     }
     
     if (!truck.hasGPS) {
       console.error("This truck does not have GPS capability.");
+      toast({
+        title: "Error",
+        description: "This truck does not have GPS capability.",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -113,7 +123,14 @@ export const useDriverTruckActions = (
     setTrucks(prevTrucks =>
       prevTrucks.map(t => 
         t.id === truckId 
-          ? { ...t, isGPSTagged: true, gpsDeviceId } 
+          ? { 
+              ...t, 
+              isGPSTagged: true, 
+              gpsDeviceId,
+              lastLatitude: initialLatitude,
+              lastLongitude: initialLongitude,
+              lastUpdate: new Date()
+            } 
           : t
       )
     );
@@ -155,11 +172,25 @@ export const useDriverTruckActions = (
       return;
     }
     
+    // Stop any active GPS tracking
+    const gpsService = GPSTrackingService.getInstance();
+    if (gpsService.isTracking(truckId)) {
+      gpsService.stopTracking(truckId);
+    }
+    
     // Update truck to remove GPS tagging
     setTrucks(prevTrucks =>
       prevTrucks.map(t => 
         t.id === truckId 
-          ? { ...t, isGPSTagged: false, gpsDeviceId: undefined } 
+          ? { 
+              ...t, 
+              isGPSTagged: false, 
+              gpsDeviceId: undefined,
+              lastLatitude: undefined,
+              lastLongitude: undefined,
+              lastSpeed: undefined,
+              lastUpdate: undefined
+            } 
           : t
       )
     );
@@ -191,31 +222,59 @@ export const useDriverTruckActions = (
       timestamp: new Date()
     };
     
-    setGPSData(prev => [newGPSData, ...prev]);
+    // Add to GPS data with limit to prevent excessive memory usage
+    setGPSData(prev => {
+      // Keep only the latest 1000 GPS points total
+      let newData = [newGPSData, ...prev];
+      if (newData.length > 1000) {
+        newData = newData.slice(0, 1000);
+      }
+      return newData;
+    });
     
-    setPurchaseOrders(prevOrders =>
-      prevOrders.map(po => {
-        if (po.deliveryDetails?.truckId === truckId && po.deliveryDetails.status === 'in_transit') {
-          const distanceCovered = po.deliveryDetails.distanceCovered || 0;
-          const totalDistance = po.deliveryDetails.totalDistance || 100;
-          const newDistanceCovered = Math.min(distanceCovered + (speed / 10), totalDistance);
-          
-          const remainingDistance = totalDistance - newDistanceCovered;
-          const estimatedTimeInHours = remainingDistance / (speed > 0 ? speed : 10);
-          const expectedArrivalTime = new Date(Date.now() + estimatedTimeInHours * 60 * 60 * 1000);
-          
-          return {
-            ...po,
-            deliveryDetails: {
-              ...po.deliveryDetails,
-              distanceCovered: newDistanceCovered,
-              expectedArrivalTime
-            }
-          };
-        }
-        return po;
-      })
+    // Update truck's last known position
+    setTrucks(prevTrucks =>
+      prevTrucks.map(t => 
+        t.id === truckId 
+          ? { 
+              ...t, 
+              lastLatitude: latitude,
+              lastLongitude: longitude,
+              lastSpeed: speed,
+              lastUpdate: new Date()
+            } 
+          : t
+      )
     );
+    
+    // Use GPSTrackingService data to update PO details
+    const gpsService = GPSTrackingService.getInstance();
+    const trackingInfo = gpsService.getTrackingInfo(truckId);
+    
+    if (trackingInfo) {
+      setPurchaseOrders(prevOrders =>
+        prevOrders.map(po => {
+          if (po.deliveryDetails?.truckId === truckId && po.deliveryDetails.status === 'in_transit') {
+            const distanceCovered = trackingInfo.distanceCovered;
+            const totalDistance = po.deliveryDetails.totalDistance || 100;
+            
+            const remainingDistance = Math.max(0, totalDistance - distanceCovered);
+            const estimatedTimeInHours = remainingDistance / (speed > 0 ? speed : 10);
+            const expectedArrivalTime = new Date(Date.now() + estimatedTimeInHours * 60 * 60 * 1000);
+            
+            return {
+              ...po,
+              deliveryDetails: {
+                ...po.deliveryDetails,
+                distanceCovered,
+                expectedArrivalTime
+              }
+            };
+          }
+          return po;
+        })
+      );
+    }
   };
 
   return {

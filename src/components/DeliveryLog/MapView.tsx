@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { ArrowLeft, MapPin, Truck, Navigation, Clock, User, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, MapPin, Truck, Navigation, Clock, User, AlertTriangle, Route } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Driver, GPSData, PurchaseOrder, Truck as TruckType } from '@/types';
 import { format } from 'date-fns';
+import GPSTrackingService from '@/services/GPSTrackingService';
 
 interface MapViewProps {
   onBack: () => void;
@@ -15,6 +16,16 @@ interface MapViewProps {
 const MapView: React.FC<MapViewProps> = ({ onBack }) => {
   const { purchaseOrders, gpsData, getDriverById, getTruckById } = useApp();
   const [selectedDelivery, setSelectedDelivery] = useState<string | null>(null);
+  const [updateTimestamp, setUpdateTimestamp] = useState(Date.now());
+  
+  // Set up interval for UI updates
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setUpdateTimestamp(Date.now());
+    }, 3000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
   
   // Filter only active or delivered orders with delivery details
   const activeDeliveries = useMemo(() => {
@@ -44,6 +55,14 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     return deliveryGpsData[0] || null;
   }, [deliveryGpsData]);
 
+  // Get path history from GPS tracking service
+  const pathHistory = useMemo(() => {
+    if (!selectedDeliveryDetails?.deliveryDetails?.truckId) return [];
+    
+    const gpsService = GPSTrackingService.getInstance();
+    return gpsService.getPathHistory(selectedDeliveryDetails.deliveryDetails.truckId);
+  }, [selectedDeliveryDetails, updateTimestamp]);
+
   // If no delivery is selected, select the first one
   useEffect(() => {
     if (activeDeliveries.length > 0 && !selectedDelivery) {
@@ -68,7 +87,11 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     
     if (order.deliveryDetails.status === 'delivered') return 100;
     
-    const distanceCovered = order.deliveryDetails.distanceCovered || 0;
+    // Get most up-to-date distance from GPS tracking service if possible
+    const gpsService = GPSTrackingService.getInstance();
+    const trackingInfo = gpsService.getTrackingInfo(order.deliveryDetails.truckId || '');
+    
+    const distanceCovered = trackingInfo?.distanceCovered || order.deliveryDetails.distanceCovered || 0;
     const totalDistance = order.deliveryDetails.totalDistance || 100;
     
     return Math.min(Math.round((distanceCovered / totalDistance) * 100), 99);
@@ -84,6 +107,14 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     
     // For demonstration, just show a basic visualization
     const progress = calculateProgress(selectedDeliveryDetails);
+    
+    // Get GPS tracking service for this truck
+    const gpsService = GPSTrackingService.getInstance();
+    const trackingInfo = gpsService.getTrackingInfo(selectedDeliveryDetails.deliveryDetails?.truckId || '');
+    
+    // Current location
+    const currentLat = latestPosition?.latitude || trackingInfo?.currentLatitude || 0;
+    const currentLng = latestPosition?.longitude || trackingInfo?.currentLongitude || 0;
     
     return (
       <div className="relative w-full h-full bg-blue-50 rounded-lg overflow-hidden">
@@ -106,6 +137,24 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
           <p className="text-xs font-medium mt-1 px-2 py-1 bg-white rounded shadow">Destination</p>
         </div>
         
+        {/* Path History - Draw all points from history */}
+        <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          {/* Render path history as a polyline */}
+          {pathHistory.length > 1 && (
+            <polyline 
+              points={pathHistory.map(point => {
+                // Convert GPS coordinates to screen coordinates (simplified)
+                const x = 25 + (point.lng - pathHistory[0].lng) * 3000;
+                const y = 75 - (point.lat - pathHistory[0].lat) * 3000;
+                return `${x}% ${y}%`;
+              }).join(' ')}
+              stroke="#3b82f6"
+              strokeWidth="3"
+              fill="none"
+            />
+          )}
+        </svg>
+        
         {/* Vehicle Position */}
         {selectedDeliveryDetails.deliveryDetails?.status === 'in_transit' && (
           <div className="absolute flex flex-col items-center"
@@ -119,37 +168,18 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
               </div>
               <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-blue-300 animate-ping"></div>
             </div>
-            <p className="text-xs font-medium mt-1 px-2 py-1 bg-white rounded shadow">
-              {truckInfo?.plateNumber}
-            </p>
+            <div className="flex flex-col items-center">
+              <p className="text-xs font-medium mt-1 px-2 py-1 bg-white rounded shadow">
+                {truckInfo?.plateNumber}
+              </p>
+              {trackingInfo?.currentSpeed && (
+                <p className="text-xs mt-1 px-2 py-1 bg-blue-100 rounded shadow">
+                  {trackingInfo.currentSpeed.toFixed(1)} km/h
+                </p>
+              )}
+            </div>
           </div>
         )}
-        
-        {/* Route Path */}
-        <svg className="absolute inset-0 w-full h-full" 
-             xmlns="http://www.w3.org/2000/svg">
-          {/* Simulated Route Path */}
-          <path 
-            d={`M ${25}% ${75}% Q ${40}% ${40}%, ${75}% ${25}%`} 
-            stroke="#3b82f6" 
-            strokeWidth="3"
-            fill="none" 
-            strokeDasharray="5,5"
-          />
-          
-          {/* Progress Indicator */}
-          <path 
-            d={`M ${25}% ${75}% Q ${40}% ${40}%, ${75}% ${25}%`} 
-            stroke="#1d4ed8" 
-            strokeWidth="3"
-            fill="none" 
-            strokeDashoffset={`${100 - progress}%`}
-            strokeDasharray="100%"
-            className="path-progress"
-            // Style to make the progress line solid
-            style={{ strokeDasharray: '0' }}
-          />
-        </svg>
 
         {/* Legend */}
         <div className="absolute bottom-3 left-3 bg-white p-2 rounded-md shadow space-y-1 text-xs">
@@ -164,6 +194,20 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
           <div className="flex items-center">
             <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
             <span>Current Position</span>
+          </div>
+        </div>
+        
+        {/* Map Data */}
+        <div className="absolute top-3 right-3 bg-white p-2 rounded-md shadow text-xs">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            <div className="text-gray-500">Latitude:</div>
+            <div className="font-medium">{currentLat.toFixed(4)}°</div>
+            <div className="text-gray-500">Longitude:</div>
+            <div className="font-medium">{currentLng.toFixed(4)}°</div>
+            <div className="text-gray-500">Speed:</div>
+            <div className="font-medium">{trackingInfo?.currentSpeed?.toFixed(1) || 0} km/h</div>
+            <div className="text-gray-500">Progress:</div>
+            <div className="font-medium">{progress}%</div>
           </div>
         </div>
       </div>
@@ -183,20 +227,20 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Deliveries List */}
-          <Card className="md:col-span-1">
-            <CardHeader>
+          <Card className="md:col-span-1 overflow-hidden">
+            <CardHeader className="bg-slate-50">
               <CardTitle className="text-lg flex items-center">
                 <Truck className="h-5 w-5 mr-2 text-primary" />
                 Active Deliveries
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {activeDeliveries.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   No active deliveries found
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="divide-y">
                   {activeDeliveries.map(delivery => {
                     // Get driver and truck info
                     const driver = delivery.deliveryDetails?.driverId ? 
@@ -215,10 +259,14 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
                     
                     const progress = calculateProgress(delivery);
                     
+                    // Get tracking info
+                    const gpsService = GPSTrackingService.getInstance();
+                    const trackingInfo = gpsService.getTrackingInfo(delivery.deliveryDetails?.truckId || '');
+                    
                     return (
                       <div 
                         key={delivery.id}
-                        className={`p-3 rounded-lg border transition-colors cursor-pointer hover:bg-gray-50 ${selectedDelivery === delivery.id ? 'border-primary bg-primary/5' : 'border-gray-200'}`}
+                        className={`p-3 cursor-pointer hover:bg-gray-50 transition-colors ${selectedDelivery === delivery.id ? 'border-l-4 border-primary bg-primary/5' : ''}`}
                         onClick={() => setSelectedDelivery(delivery.id)}
                       >
                         <div className="flex justify-between items-start mb-2">
@@ -252,6 +300,12 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
                                 : 'Not departed'}
                             </span>
                           </div>
+                          {trackingInfo?.currentSpeed && delivery.deliveryDetails?.status === 'in_transit' && (
+                            <div className="flex items-center text-blue-600">
+                              <Navigation className="h-3 w-3 mr-2" />
+                              <span>{trackingInfo.currentSpeed.toFixed(1)} km/h</span>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="mt-2">
@@ -278,7 +332,7 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
           
           {/* Map View */}
           <Card className="md:col-span-2">
-            <CardHeader>
+            <CardHeader className="bg-slate-50">
               <CardTitle className="text-lg flex items-center">
                 <MapPin className="h-5 w-5 mr-2 text-primary" />
                 Live Route Tracking
@@ -295,13 +349,13 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
         {/* Delivery Details */}
         {selectedDeliveryDetails && (
           <Card>
-            <CardHeader>
+            <CardHeader className="bg-slate-50">
               <CardTitle className="text-lg flex items-center">
-                <Navigation className="h-5 w-5 mr-2 text-primary" />
+                <Route className="h-5 w-5 mr-2 text-primary" />
                 Delivery Details: {selectedDeliveryDetails.poNumber}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-3">
                   <h3 className="font-medium text-sm text-gray-500">Delivery Information</h3>
@@ -382,6 +436,13 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
                           <p className="text-gray-500">Longitude</p>
                           <p className="font-medium">{latestPosition.longitude.toFixed(4)}</p>
                         </div>
+                      </div>
+                      
+                      <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded">
+                        <h4 className="text-xs font-medium text-blue-700 mb-1">Path History</h4>
+                        <p className="text-xs text-blue-600">
+                          {pathHistory.length} GPS coordinates recorded for this journey
+                        </p>
                       </div>
                     </div>
                   ) : (

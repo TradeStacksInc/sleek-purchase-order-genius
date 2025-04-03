@@ -9,9 +9,11 @@ import {
   CardDescription 
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Navigation, Truck, FileCheck, User } from 'lucide-react';
+import { ArrowRight, Navigation, Truck, FileCheck, User, MapPin } from 'lucide-react';
 import DriverSituationCard from './DriverSituationCard';
 import { PurchaseOrder } from '@/types';
+import { useTruckTracking } from '@/hooks/useTruckTracking';
+import { format } from 'date-fns';
 
 interface GPSTrackingTabProps {
   activeDeliveries: PurchaseOrder[];
@@ -24,22 +26,31 @@ const GPSTrackingTab: React.FC<GPSTrackingTabProps> = ({
   getDriverById, 
   getTruckById 
 }) => {
+  const { trackedTrucks, updateTimestamp } = useTruckTracking();
+  
   return (
     <>
       <Card className="bg-card shadow-md border-muted">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Driver Situational Reports</CardTitle>
+            <div>
+              <CardTitle>Driver Situational Reports</CardTitle>
+              <CardDescription>
+                Real-time monitoring of trucks en route
+                {trackedTrucks.length > 0 && (
+                  <span className="ml-2 text-xs text-blue-600">
+                    Last updated: {format(new Date(updateTimestamp), 'HH:mm:ss')}
+                  </span>
+                )}
+              </CardDescription>
+            </div>
             <Link to="/gps-tracking">
               <Button variant="outline" size="sm">
-                <span>GPS Update</span>
+                <span>GPS Tracking</span>
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>
-          <CardDescription>
-            Real-time monitoring of trucks en route to their destinations
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {activeDeliveries.length === 0 ? (
@@ -65,12 +76,15 @@ const GPSTrackingTab: React.FC<GPSTrackingTabProps> = ({
                   return null;
                 }
                 
+                const isBeingTracked = trackedTrucks.includes(truck.id);
+                
                 return (
                   <DriverSituationCard 
                     key={order.id}
                     order={order}
                     driver={driver}
                     truck={truck}
+                    isTracked={isBeingTracked}
                   />
                 );
               })}
@@ -88,17 +102,17 @@ const GPSTrackingTab: React.FC<GPSTrackingTabProps> = ({
         />
         
         <DeliveryStatCard
+          title="GPS Tracked"
+          value={trackedTrucks.length.toString()}
+          icon={<MapPin className="h-4 w-4 text-blue-700" />}
+          color="blue"
+        />
+        
+        <DeliveryStatCard
           title="Completed Today"
           value="0"
           icon={<FileCheck className="h-4 w-4 text-green-700" />}
           color="green"
-        />
-        
-        <DeliveryStatCard
-          title="Average Trip"
-          value="85 km"
-          icon={<Navigation className="h-4 w-4 text-blue-700" />}
-          color="blue"
         />
         
         <DeliveryStatCard
@@ -120,12 +134,30 @@ interface DeliveryStatCardProps {
 }
 
 const DeliveryStatCard: React.FC<DeliveryStatCardProps> = ({ title, value, icon, color }) => {
+  const getColorClass = () => {
+    switch (color) {
+      case 'amber': return 'bg-amber-100 text-amber-700';
+      case 'green': return 'bg-green-100 text-green-700';
+      case 'blue': return 'bg-blue-100 text-blue-700';
+      case 'purple': return 'bg-purple-100 text-purple-700';
+    }
+  };
+  
+  const getGradientClass = () => {
+    switch (color) {
+      case 'amber': return 'bg-gradient-to-r from-amber-100 to-amber-50';
+      case 'green': return 'bg-gradient-to-r from-green-100 to-green-50';
+      case 'blue': return 'bg-gradient-to-r from-blue-100 to-blue-50';
+      case 'purple': return 'bg-gradient-to-r from-purple-100 to-purple-50';
+    }
+  };
+  
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
         <div className="p-4">
           <div className="flex items-center gap-2">
-            <div className={`bg-${color}-100 p-2 rounded-md`}>
+            <div className={`p-2 rounded-md ${getColorClass()}`}>
               {icon}
             </div>
             <div>
@@ -134,7 +166,7 @@ const DeliveryStatCard: React.FC<DeliveryStatCardProps> = ({ title, value, icon,
             </div>
           </div>
         </div>
-        <div className={`bg-gradient-to-r from-${color}-100 to-${color}-50 h-1.5`} />
+        <div className={`h-1.5 ${getGradientClass()}`} />
       </CardContent>
     </Card>
   );

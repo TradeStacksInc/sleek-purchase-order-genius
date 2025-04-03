@@ -23,7 +23,12 @@ type TrackedTruck = {
     latitude: number;
     longitude: number;
   };
+  // Add pathHistory to store the truck's path
+  pathHistory: Array<{lat: number, lng: number, timestamp: Date}>;
 };
+
+// Create a localStorage key for persisting tracking state
+const TRACKING_STORAGE_KEY = 'gps_tracking_state';
 
 class GPSTrackingService {
   private static instance: GPSTrackingService;
@@ -34,8 +39,100 @@ class GPSTrackingService {
   public static getInstance(): GPSTrackingService {
     if (!GPSTrackingService.instance) {
       GPSTrackingService.instance = new GPSTrackingService();
+      // Load persisted tracking state on initialization
+      GPSTrackingService.instance.loadTrackingState();
     }
     return GPSTrackingService.instance;
+  }
+  
+  // Constructor that loads stored tracking data
+  private constructor() {
+    console.log('GPS Tracking Service initialized');
+    // Automatically restore active tracking sessions
+    this.loadTrackingState();
+  }
+  
+  // Save current tracking state to localStorage
+  private saveTrackingState(): void {
+    try {
+      const trackingData = Array.from(this.trucks.entries())
+        .filter(([_, truck]) => truck.isActive)
+        .map(([id, truck]) => ({
+          truckId: id,
+          startTime: truck.startTime,
+          totalDistance: truck.totalDistance,
+          distanceCovered: truck.distanceCovered,
+          currentLatitude: truck.currentLatitude,
+          currentLongitude: truck.currentLongitude,
+          currentSpeed: truck.currentSpeed,
+          destination: truck.destination,
+          pathHistory: truck.pathHistory
+        }));
+      
+      localStorage.setItem(TRACKING_STORAGE_KEY, JSON.stringify(trackingData));
+      console.log('Saved tracking state for', trackingData.length, 'trucks');
+    } catch (error) {
+      console.error('Failed to save tracking state:', error);
+    }
+  }
+  
+  // Load tracking state from localStorage
+  private loadTrackingState(): void {
+    try {
+      const storedData = localStorage.getItem(TRACKING_STORAGE_KEY);
+      if (!storedData) return;
+      
+      const trackingData = JSON.parse(storedData);
+      
+      // Clear any existing tracking
+      for (const [truckId, truck] of this.trucks.entries()) {
+        if (truck.updateInterval) {
+          clearInterval(truck.updateInterval);
+        }
+      }
+      
+      this.trucks.clear();
+      
+      // Restore tracked trucks
+      trackingData.forEach((data: any) => {
+        this.trucks.set(data.truckId, {
+          truckId: data.truckId,
+          startTime: new Date(data.startTime),
+          totalDistance: data.totalDistance,
+          distanceCovered: data.distanceCovered,
+          currentLatitude: data.currentLatitude,
+          currentLongitude: data.currentLongitude,
+          currentSpeed: data.currentSpeed,
+          isActive: true,
+          updateInterval: null,
+          destination: data.destination,
+          pathHistory: data.pathHistory || []
+        });
+        
+        // Restart tracking for active trucks
+        this.resumeTracking(data.truckId);
+      });
+      
+      console.log('Restored tracking state for', this.trucks.size, 'trucks');
+    } catch (error) {
+      console.error('Failed to load tracking state:', error);
+    }
+  }
+  
+  // Resume tracking for a previously tracked truck
+  private resumeTracking(truckId: string): void {
+    const truck = this.trucks.get(truckId);
+    if (!truck) return;
+    
+    // Start the continuous tracking with interval
+    const interval = window.setInterval(() => {
+      this.updateTruckPosition(truckId);
+    }, UPDATE_INTERVAL);
+    
+    // Store the interval ID for later cleanup
+    truck.updateInterval = interval;
+    
+    console.log(`Resumed tracking for truck ${truckId}`);
   }
   
   // Register callback for GPS updates
@@ -70,7 +167,12 @@ class GPSTrackingService {
       destination: {
         latitude: destinationLatitude,
         longitude: destinationLongitude
-      }
+      },
+      pathHistory: [{
+        lat: initialLatitude,
+        lng: initialLongitude,
+        timestamp: new Date()
+      }]
     };
     
     this.trucks.set(truckId, trucking);
@@ -82,6 +184,9 @@ class GPSTrackingService {
     
     // Store the interval ID for later cleanup
     trucking.updateInterval = interval;
+    
+    // Save the initial state
+    this.saveTrackingState();
     
     console.log(`Started tracking truck ${truckId}`);
   }
@@ -104,6 +209,14 @@ class GPSTrackingService {
         0,
         truck.totalDistance
       );
+      
+      // Add final position to path history
+      truck.pathHistory.push({
+        lat: truck.destination.latitude,
+        lng: truck.destination.longitude,
+        timestamp: new Date()
+      });
+      
       this.stopTracking(truckId);
       return;
     }
@@ -111,19 +224,37 @@ class GPSTrackingService {
     // Generate realistic movement towards destination
     const remainingDistancePercent = 1 - progress;
     
-    // Move closer to destination with each update
-    // More direct path as we get closer to destination
-    const latStep = (truck.destination.latitude - truck.currentLatitude) * 
+    // More realistic path generation with slight deviation
+    // This creates a more natural path with small variations
+    const directLatStep = (truck.destination.latitude - truck.currentLatitude) * 
       (0.05 + (0.1 * progress)); // Accelerate towards destination
       
-    const lngStep = (truck.destination.longitude - truck.currentLongitude) * 
+    const directLngStep = (truck.destination.longitude - truck.currentLongitude) * 
       (0.05 + (0.1 * progress));
+    
+    // Add a small random deviation to make the path look more natural
+    const deviation = 0.0001 * (1 - progress * 0.7); // Smaller deviations as we get closer
+    const latDeviation = (Math.random() - 0.5) * 2 * deviation;
+    const lngDeviation = (Math.random() - 0.5) * 2 * deviation;
+    
+    const latStep = directLatStep + latDeviation;
+    const lngStep = directLngStep + lngDeviation;
     
     const newLat = truck.currentLatitude + latStep;
     const newLng = truck.currentLongitude + lngStep;
     
     // Random speed between 40-70 km/h, slowing as we approach destination
-    const speed = Math.floor(Math.random() * 30) + 40 - (progress * 20);
+    // More realistic speed changes with small fluctuations
+    const baseSpeed = Math.floor(Math.random() * 30) + 40 - (progress * 20);
+    const prevSpeed = truck.currentSpeed;
+    const maxSpeedChange = 5; // Maximum speed change per update for realism
+    
+    // Gradually change speed instead of jumping
+    let newSpeed = baseSpeed;
+    if (prevSpeed > 0) {
+      const speedDiff = baseSpeed - prevSpeed;
+      newSpeed = prevSpeed + Math.min(Math.max(speedDiff, -maxSpeedChange), maxSpeedChange);
+    }
     
     // Calculate distance covered in this step (simplified approximation)
     const stepDistance = Math.sqrt(
@@ -137,13 +268,23 @@ class GPSTrackingService {
     );
     
     // Update GPS data through callback
-    this.updateGPS(truckId, newLat, newLng, speed, newDistanceCovered);
+    this.updateGPS(truckId, newLat, newLng, newSpeed, newDistanceCovered);
+    
+    // Add position to path history for drawing the route
+    truck.pathHistory.push({
+      lat: newLat,
+      lng: newLng,
+      timestamp: new Date()
+    });
     
     // Update stored truck data
     truck.currentLatitude = newLat;
     truck.currentLongitude = newLng;
-    truck.currentSpeed = speed;
+    truck.currentSpeed = newSpeed;
     truck.distanceCovered = newDistanceCovered;
+    
+    // Save the updated state
+    this.saveTrackingState();
   }
   
   // Update GPS through callback
@@ -184,11 +325,20 @@ class GPSTrackingService {
     
     truck.isActive = false;
     console.log(`Stopped tracking truck ${truckId}`);
+    
+    // Update saved state
+    this.saveTrackingState();
   }
   
   // Get current tracking data for a truck
   public getTrackingInfo(truckId: string): TrackedTruck | null {
     return this.trucks.get(truckId) || null;
+  }
+  
+  // Get path history for a truck
+  public getPathHistory(truckId: string): Array<{lat: number, lng: number, timestamp: Date}> {
+    const truck = this.trucks.get(truckId);
+    return truck ? truck.pathHistory : [];
   }
   
   // Check if truck is being tracked
