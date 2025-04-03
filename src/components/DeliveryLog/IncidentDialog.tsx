@@ -66,22 +66,33 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId, children }) =>
   });
   
   function onSubmit(values: z.infer<typeof incidentFormSchema>) {
-    const incidentData = {
-      type: values.type,
-      description: values.description,
-      impact: values.impact,
-      reportedBy: values.reportedBy,
-    };
-    
-    addIncident(orderId, incidentData);
-    setIsOpen(false);
-    form.reset();
-    
-    toast({
-      title: "Incident reported",
-      description: `The ${values.type} incident has been recorded successfully.`,
-      variant: values.impact === 'negative' ? 'destructive' : 'default',
-    });
+    try {
+      const incidentData = {
+        type: values.type,
+        description: values.description,
+        impact: values.impact,
+        reportedBy: values.reportedBy,
+      };
+      
+      console.log("Submitting incident:", incidentData, "for order:", orderId);
+      
+      addIncident(orderId, incidentData);
+      setIsOpen(false);
+      form.reset();
+      
+      toast({
+        title: "Incident reported",
+        description: `The ${values.type} incident has been recorded successfully.`,
+        variant: values.impact === 'negative' ? 'destructive' : 'default',
+      });
+    } catch (error) {
+      console.error("Error reporting incident:", error);
+      toast({
+        title: "Error",
+        description: "Failed to report incident. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
   
   const getIncidentIcon = (type: string) => {
@@ -114,13 +125,13 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId, children }) =>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {children || (
-          <Button variant="outline" size="sm" className="incident-button hover:bg-gray-100">
+          <Button variant="outline" size="sm" className="incident-button hover:bg-gray-100 rounded-md">
             <Flag className="h-4 w-4 mr-1" />
             Report Incident
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg rounded-lg">
         <DialogHeader>
           <DialogTitle>Report Incident</DialogTitle>
           <DialogDescription>
@@ -142,7 +153,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId, children }) =>
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="rounded-md">
                           <SelectValue placeholder="Select incident type" />
                         </SelectTrigger>
                       </FormControl>
@@ -195,7 +206,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId, children }) =>
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="rounded-md">
                           <SelectValue placeholder="Select impact" />
                         </SelectTrigger>
                       </FormControl>
@@ -236,7 +247,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId, children }) =>
                     <Textarea 
                       {...field}
                       placeholder="Describe the incident or feedback"
-                      className="min-h-[100px]"
+                      className="min-h-[100px] rounded-md"
                     />
                   </FormControl>
                   <FormMessage />
@@ -251,7 +262,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId, children }) =>
                 <FormItem>
                   <FormLabel>Reported By</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Your name" />
+                    <Input {...field} placeholder="Your name" className="rounded-md" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -259,10 +270,10 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId, children }) =>
             />
             
             <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="rounded-md">
                 Cancel
               </Button>
-              <Button type="submit">Record Incident</Button>
+              <Button type="submit" className="rounded-md bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">Record Incident</Button>
             </DialogFooter>
           </form>
         </Form>

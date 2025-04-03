@@ -8,9 +8,8 @@ import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { PurchaseOrder, DeliveryDetails } from '@/types';
-import GPSTrackingService from '@/services/GPSTrackingService';
 import { Separator } from '@/components/ui/separator';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 const GPSTracking: React.FC = () => {
   const { 
@@ -24,18 +23,8 @@ const GPSTracking: React.FC = () => {
   // Use state for updates instead of forceUpdate pattern
   const [updateTimestamp, setUpdateTimestamp] = useState(Date.now());
   
-  // Register the GPS update callback only once when component mounts
-  // Use useCallback to prevent unnecessary re-creation of the callback
-  const gpsUpdateCallback = useCallback((truckId: string, latitude: number, longitude: number, speed: number) => {
-    updateGPSData(truckId, latitude, longitude, speed);
-  }, [updateGPSData]);
-
+  // Setup interval for UI updates only
   useEffect(() => {
-    // Get GPS service and register the callback
-    const gpsService = GPSTrackingService.getInstance();
-    gpsService.registerUpdateCallback(gpsUpdateCallback);
-    
-    // Set up interval for UI updates only
     const intervalId = setInterval(() => {
       setUpdateTimestamp(Date.now());
     }, 5000);
@@ -44,7 +33,7 @@ const GPSTracking: React.FC = () => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [gpsUpdateCallback]);
+  }, []);
   
   // Get orders that are in transit with GPS-enabled trucks
   const inTransitOrders = purchaseOrders.filter(
@@ -161,6 +150,8 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
   updateDeliveryStatus,
   updateTimestamp
 }) => {
+  const { toast } = useToast();
+  
   // Get driver and truck details
   const driver = order.deliveryDetails?.driverId 
     ? getDriverById(order.deliveryDetails.driverId)
@@ -174,57 +165,21 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
     return <div>Missing delivery details</div>;
   }
   
-  // Get GPS tracking service
-  const gpsService = GPSTrackingService.getInstance();
-  const truckId = order.deliveryDetails.truckId!;
-  
-  // Start tracking if not already tracking
-  useEffect(() => {
-    if (!gpsService.isTracking(truckId) && order.deliveryDetails?.status === 'in_transit') {
-      const totalDistance = order.deliveryDetails.totalDistance || 100;
-      const distanceCovered = order.deliveryDetails.distanceCovered || 0;
-      
-      // Don't restart tracking if we've covered the distance
-      if (distanceCovered >= totalDistance) {
-        return;
-      }
-      
-      // Start tracking from current position
-      gpsService.startTracking(
-        truckId,
-        truck.lastLatitude || 6.5244,
-        truck.lastLongitude || 3.3792,
-        totalDistance
-      );
-      
-      toast({
-        title: "GPS Tracking Activated",
-        description: `Now tracking truck ${truck.plateNumber} in real-time.`,
-      });
-    }
-  }, [truckId, order.deliveryDetails, truck, gpsService]);
-  
-  // Get tracking info (includes the latest data)
-  const trackingInfo = gpsService.getTrackingInfo(truckId);
-  
-  // Calculate progress
+  // Calculate progress based on actual tracking data
   const totalDistance = order.deliveryDetails.totalDistance || 100;
-  const distanceCovered = trackingInfo?.distanceCovered || order.deliveryDetails.distanceCovered || 0;
+  const distanceCovered = order.deliveryDetails.distanceCovered || 0;
   const progressPercentage = Math.min(Math.round((distanceCovered / totalDistance) * 100), 100);
-  
-  // Get current speed
-  const currentSpeed = trackingInfo?.currentSpeed || 0;
   
   // Format expected arrival time
   const eta = order.deliveryDetails.expectedArrivalTime 
     ? format(new Date(order.deliveryDetails.expectedArrivalTime), 'h:mm a, MMM d')
     : 'Calculating...';
     
+  // Get current speed
+  const currentSpeed = truck.lastSpeed || 0;
+  
   // Handle mark as delivered
   const handleMarkDelivered = () => {
-    // Stop tracking
-    gpsService.stopTracking(truckId);
-    
     // Update delivery status
     updateDeliveryStatus(order.id, {
       status: 'delivered',
@@ -239,7 +194,7 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
   };
   
   return (
-    <div className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <h3 className="font-medium">PO #{order.poNumber}</h3>
@@ -250,7 +205,7 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
               : 'Not recorded'}
           </p>
           
-          <div className="mt-2 px-2 py-1 bg-blue-50 border border-blue-100 rounded-md">
+          <div className="mt-2 px-2 py-1 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-100 rounded-md">
             <p className="text-xs font-medium text-blue-800 flex items-center">
               <Navigation className="h-3 w-3 mr-1" /> 
               Current Speed: {currentSpeed.toFixed(1)} km/h
@@ -284,14 +239,22 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
             <span className="text-xs font-medium">ETA: {eta}</span>
             <span className="text-xs font-medium">{progressPercentage}%</span>
           </div>
-          <Progress value={progressPercentage} className="h-2" />
+          <Progress 
+            value={progressPercentage} 
+            className="h-2 rounded-full" 
+            indicatorClassName={
+              progressPercentage < 30 ? "bg-amber-500" : 
+              progressPercentage < 70 ? "bg-blue-500" : 
+              "bg-green-500"
+            }
+          />
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>Covered: {distanceCovered.toFixed(1)} km</span>
             <span>Total: {totalDistance.toFixed(1)} km</span>
           </div>
           <Button 
             size="sm" 
-            className="w-full mt-2"
+            className="w-full mt-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
             onClick={handleMarkDelivered}
           >
             Mark as Delivered
@@ -311,7 +274,7 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
             </a>
           </Button>
         </div>
-        <div className="mt-2 bg-slate-50 p-2 rounded-md h-16 relative overflow-hidden">
+        <div className="mt-2 bg-gradient-to-r from-slate-50 to-slate-100 p-2 rounded-md h-16 relative overflow-hidden">
           {/* Simple route visualization */}
           <div className="absolute inset-0 flex items-center justify-between px-4">
             <div className="h-3 w-3 rounded-full bg-green-500 z-10"></div>
@@ -348,6 +311,8 @@ const PendingDeliveryCard: React.FC<PendingDeliveryCardProps> = ({
   getTruckById,
   updateDeliveryStatus
 }) => {
+  const { toast } = useToast();
+  
   // Get driver and truck details
   const driver = order.deliveryDetails?.driverId 
     ? getDriverById(order.deliveryDetails.driverId)
@@ -392,7 +357,7 @@ const PendingDeliveryCard: React.FC<PendingDeliveryCardProps> = ({
   };
   
   return (
-    <div className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <h3 className="font-medium">PO #{order.poNumber}</h3>
@@ -425,7 +390,7 @@ const PendingDeliveryCard: React.FC<PendingDeliveryCardProps> = ({
         
         <div className="flex flex-col justify-center">
           {!hasGPS && (
-            <div className="mb-2 p-2 bg-amber-50 border border-amber-100 rounded-md">
+            <div className="mb-2 p-2 bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-100 rounded-md">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5" />
                 <p className="text-xs text-amber-800">
@@ -435,7 +400,7 @@ const PendingDeliveryCard: React.FC<PendingDeliveryCardProps> = ({
             </div>
           )}
           <Button 
-            className="w-full"
+            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
             onClick={handleStartDelivery}
             variant={hasGPS ? "default" : "outline"}
           >

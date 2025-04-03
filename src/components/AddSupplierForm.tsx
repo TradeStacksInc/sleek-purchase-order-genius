@@ -31,6 +31,10 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
   const [regNumber, setRegNumber] = useState('');
   const [depotLocation, setDepotLocation] = useState('');
   const [creditLimit, setCreditLimit] = useState('');
+  const [supplierType, setSupplierType] = useState('');
+  const [depotName, setDepotName] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
+  const [email, setEmail] = useState('');
   const [products, setProducts] = useState<Record<string, boolean>>({
     PMS: false,
     AGO: false,
@@ -75,6 +79,10 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
         creditLimit: creditLimit ? parseFloat(creditLimit) : 0,
         products: selectedProducts,
         paymentTerms: paymentTerms.trim(),
+        supplierType: supplierType.trim(),
+        depotName: depotName.trim(),
+        contactPerson: contactPerson.trim(),
+        email: email.trim(),
         createdAt: new Date(),
       };
       
@@ -115,6 +123,24 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
         </div>
         
         <div className="grid gap-2">
+          <Label htmlFor="supplierType">Supplier Type</Label>
+          <Select
+            value={supplierType}
+            onValueChange={setSupplierType}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select supplier type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Major">Major Marketer</SelectItem>
+              <SelectItem value="Independent">Independent Marketer</SelectItem>
+              <SelectItem value="Depot">Depot Owner</SelectItem>
+              <SelectItem value="International">International Supplier</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="grid gap-2">
           <Label htmlFor="regNumber">Company Registration Number</Label>
           <Input
             id="regNumber"
@@ -124,24 +150,59 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
           />
         </div>
         
-        <div className="grid gap-2">
-          <Label htmlFor="depotLocation">Depot Location</Label>
-          <Input
-            id="depotLocation"
-            value={depotLocation}
-            onChange={(e) => setDepotLocation(e.target.value)}
-            placeholder="Apapa, Lagos"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="depotLocation">Depot Location</Label>
+            <Input
+              id="depotLocation"
+              value={depotLocation}
+              onChange={(e) => setDepotLocation(e.target.value)}
+              placeholder="Apapa, Lagos"
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="depotName">Depot Name</Label>
+            <Input
+              id="depotName"
+              value={depotName}
+              onChange={(e) => setDepotName(e.target.value)}
+              placeholder="Main Terminal"
+            />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="contact" className="required">Contact Information</Label>
+            <Input
+              id="contact"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              placeholder="Phone number"
+              required
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="contact@supplier.com"
+            />
+          </div>
         </div>
         
         <div className="grid gap-2">
-          <Label htmlFor="contact" className="required">Contact Information</Label>
+          <Label htmlFor="contactPerson">Contact Person</Label>
           <Input
-            id="contact"
-            value={contact}
-            onChange={(e) => setContact(e.target.value)}
-            placeholder="Phone number, email, etc."
-            required
+            id="contactPerson"
+            value={contactPerson}
+            onChange={(e) => setContactPerson(e.target.value)}
+            placeholder="Name of primary contact"
           />
         </div>
         
