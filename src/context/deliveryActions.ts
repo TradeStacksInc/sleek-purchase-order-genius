@@ -15,12 +15,13 @@ import GPSTrackingService from '@/services/GPSTrackingService';
 export const useDeliveryActions = (
   purchaseOrders: PurchaseOrder[],
   setPurchaseOrders: React.Dispatch<React.SetStateAction<PurchaseOrder[]>>,
-  gpsData: GPSData[],
-  setGpsData: React.Dispatch<React.SetStateAction<GPSData[]>>,
-  logs: LogEntry[],
-  setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>,
+  drivers: any[],
+  setDrivers: React.Dispatch<React.SetStateAction<any[]>>,
   trucks: any[],
-  setTrucks: React.Dispatch<React.SetStateAction<any[]>>
+  setTrucks: React.Dispatch<React.SetStateAction<any[]>>,
+  setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>,
+  gpsData: GPSData[],
+  setGpsData: React.Dispatch<React.SetStateAction<GPSData[]>>
 ) => {
   const { toast } = useToast();
   
@@ -52,12 +53,6 @@ export const useDeliveryActions = (
       
       return newOrders;
     });
-    
-    // Update driver availability
-    // ... existing code
-    
-    // Update truck availability
-    // ... existing code
     
     const order = purchaseOrders.find((po) => po.id === orderId);
     if (!order) return;
@@ -96,7 +91,6 @@ export const useDeliveryActions = (
             ...updates
           };
           
-          // If status changed to 'in_transit', start GPS tracking
           if (
             updates.status === 'in_transit' && 
             order.deliveryDetails.status !== 'in_transit' &&
@@ -104,7 +98,6 @@ export const useDeliveryActions = (
           ) {
             const truck = trucks.find(t => t.id === order.deliveryDetails?.truckId);
             if (truck && truck.isGPSTagged) {
-              // Set initial position for tracking
               const gpsService = GPSTrackingService.getInstance();
               gpsService.startTracking(
                 truck.id,
@@ -115,7 +108,6 @@ export const useDeliveryActions = (
             }
           }
           
-          // If status changed to 'delivered', stop GPS tracking
           if (
             updates.status === 'delivered' && 
             order.deliveryDetails.status !== 'delivered' &&
@@ -171,7 +163,6 @@ export const useDeliveryActions = (
   };
 
   const updateGPSData = (truckId: string, latitude: number, longitude: number, speed: number) => {
-    // Create new GPS data entry
     const newGPSData: GPSData = {
       id: uuidv4(),
       truckId,
@@ -181,22 +172,18 @@ export const useDeliveryActions = (
       timestamp: new Date()
     };
     
-    // Add to state
     setGpsData((prevData) => {
-      // Keep only the last 100 GPS data points per truck to prevent memory issues
       const filteredPrevData = prevData.filter(d => d.truckId !== truckId || 
         prevData.filter(pd => pd.truckId === truckId).indexOf(d) >= 
         prevData.filter(pd => pd.truckId === truckId).length - 99);
       
       const newData = [...filteredPrevData, newGPSData];
       
-      // Save to localStorage
       saveToLocalStorage(STORAGE_KEYS.GPS_DATA, newData);
       
       return newData;
     });
     
-    // Update the truck's last known position
     setTrucks((prevTrucks) => {
       const newTrucks = prevTrucks.map((truck) => {
         if (truck.id === truckId) {
@@ -216,7 +203,6 @@ export const useDeliveryActions = (
       return newTrucks;
     });
     
-    // Update delivery distance for all orders with this truck
     setPurchaseOrders((prevOrders) => {
       const ordersToUpdate = prevOrders.filter(
         po => po.deliveryDetails?.truckId === truckId && 
@@ -230,7 +216,6 @@ export const useDeliveryActions = (
           order.deliveryDetails?.truckId === truckId && 
           order.deliveryDetails?.status === 'in_transit'
         ) {
-          // Get tracking info to get accurate distance covered
           const gpsService = GPSTrackingService.getInstance();
           const trackingInfo = gpsService.getTrackingInfo(truckId);
           
@@ -255,12 +240,163 @@ export const useDeliveryActions = (
     });
   };
 
-  // ... keep existing code (remaining functions)
+  const recordOffloadingDetails = (
+    orderId: string, 
+    offloadingData: Omit<OffloadingDetails, 'id' | 'deliveryId' | 'timestamp' | 'discrepancyPercentage' | 'isDiscrepancyFlagged' | 'status'>
+  ) => {
+    setPurchaseOrders((prevOrders) => {
+      const newOrders = prevOrders.map((order) => {
+        if (order.id === orderId && order.deliveryDetails) {
+          const deliveryId = order.deliveryDetails.id;
+          
+          const loadedVolume = offloadingData.loadedVolume;
+          const deliveredVolume = offloadingData.deliveredVolume;
+          const discrepancyPercentage = Math.abs(((deliveredVolume - loadedVolume) / loadedVolume) * 100);
+          const isDiscrepancyFlagged = discrepancyPercentage > 2;
+          
+          const offloadingDetails: OffloadingDetails = {
+            ...offloadingData,
+            id: `offload-${uuidv4().substring(0, 8)}`,
+            deliveryId,
+            timestamp: new Date(),
+            discrepancyPercentage,
+            isDiscrepancyFlagged,
+            status: isDiscrepancyFlagged ? 'under_investigation' : 'approved'
+          };
+          
+          return {
+            ...order,
+            offloadingDetails,
+            updatedAt: new Date()
+          };
+        }
+        return order;
+      });
+      
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      return newOrders;
+    });
+    
+    const order = purchaseOrders.find((po) => po.id === orderId);
+    if (!order) return;
+    
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: orderId,
+      action: `Offloading details recorded for Purchase Order ${order.poNumber}`,
+      user: 'Current User',
+      timestamp: new Date(),
+    };
+    
+    setLogs((prevLogs) => {
+      const newLogs = [newLog, ...prevLogs];
+      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
+      return newLogs;
+    });
+    
+    toast({
+      title: "Offloading Recorded",
+      description: `Fuel offloading details for PO #${order.poNumber} have been recorded.`,
+    });
+  };
+
+  const addIncident = (
+    orderId: string, 
+    incident: Omit<Incident, 'id' | 'deliveryId' | 'timestamp'>
+  ) => {
+    let updatedOrder: PurchaseOrder | undefined;
+    
+    setPurchaseOrders((prevOrders) => {
+      const newOrders = prevOrders.map((order) => {
+        if (order.id === orderId && order.deliveryDetails) {
+          const deliveryId = order.deliveryDetails.id;
+          
+          const newIncident: Incident = {
+            ...incident,
+            id: `incident-${uuidv4().substring(0, 8)}`,
+            deliveryId,
+            timestamp: new Date()
+          };
+          
+          const incidents = order.incidents ? [...order.incidents, newIncident] : [newIncident];
+          
+          updatedOrder = {
+            ...order,
+            incidents,
+            updatedAt: new Date()
+          };
+          
+          return updatedOrder;
+        }
+        return order;
+      });
+      
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      return newOrders;
+    });
+    
+    const order = purchaseOrders.find((po) => po.id === orderId);
+    if (!order) return;
+    
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: orderId,
+      action: `New ${incident.type} incident reported for Purchase Order ${order.poNumber}`,
+      user: 'Current User',
+      timestamp: new Date(),
+    };
+    
+    setLogs((prevLogs) => {
+      const newLogs = [newLog, ...prevLogs];
+      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
+      return newLogs;
+    });
+    
+    toast({
+      title: "Incident Reported",
+      description: `A new incident has been reported for PO #${order.poNumber}.`,
+    });
+    
+    return updatedOrder;
+  };
+
+  const startDelivery = (orderId: string) => {
+    const totalDistance = Math.floor(Math.random() * 50) + 70;
+    
+    const updatedOrder = updateDeliveryStatus(orderId, {
+      status: 'in_transit',
+      depotDepartureTime: new Date(),
+      distanceCovered: 0,
+      totalDistance,
+    });
+    
+    return updatedOrder;
+  };
+
+  const completeDelivery = (orderId: string) => {
+    const order = purchaseOrders.find(po => po.id === orderId);
+    if (!order || !order.deliveryDetails) return;
+    
+    const totalDistance = order.deliveryDetails.totalDistance || 100;
+    
+    const updatedOrder = updateDeliveryStatus(orderId, {
+      status: 'delivered',
+      destinationArrivalTime: new Date(),
+      distanceCovered: totalDistance
+    });
+    
+    return updatedOrder;
+  };
   
   return {
     assignDriverToOrder,
     updateDeliveryStatus,
     updateGPSData,
-    // ... existing exports
+    recordOffloadingDetails,
+    addIncident,
+    startDelivery,
+    completeDelivery
   };
 };

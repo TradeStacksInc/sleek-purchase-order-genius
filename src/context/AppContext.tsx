@@ -143,10 +143,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   
   const deliveryActions = useDeliveryActions(
-    purchaseOrders, persistentSetPurchaseOrders, 
-    drivers, persistentSetDrivers, 
+    purchaseOrders, persistentSetPurchaseOrders,
+    drivers, persistentSetDrivers,
     trucks, persistentSetTrucks, 
-    persistentSetLogs
+    persistentSetLogs,
+    gpsData, persistentSetGPSData
   );
   
   const aiActions = useAIActions(

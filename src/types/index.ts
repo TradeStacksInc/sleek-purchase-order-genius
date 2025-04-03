@@ -1,4 +1,3 @@
-
 export type Product = 'PMS' | 'AGO' | 'DPK';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled';
@@ -25,6 +24,7 @@ export interface Supplier {
   name: string;
   address: string;
   contact: string;
+  products?: string[];
 }
 
 export interface Driver {
