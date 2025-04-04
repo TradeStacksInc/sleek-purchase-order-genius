@@ -14,6 +14,17 @@ export const useSupplierActions = (
     try {
       console.log("Adding supplier in useSupplierActions:", supplier);
       
+      // Ensure the supplier has all required fields
+      if (!supplier.name || !supplier.contact || !supplier.address) {
+        console.error("Supplier missing required fields:", supplier);
+        toast({
+          title: "Invalid Supplier Data",
+          description: "Supplier is missing required fields. Please check your form inputs.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
       // Create the new suppliers array directly
       const newSuppliers = [supplier, ...suppliers];
       

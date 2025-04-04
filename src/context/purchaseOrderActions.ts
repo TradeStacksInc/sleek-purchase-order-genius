@@ -12,14 +12,24 @@ export const usePurchaseOrderActions = (
 ) => {
   const { toast } = useToast();
 
-  const addPurchaseOrder = (order: PurchaseOrder) => {
+  const addPurchaseOrder = (order: PurchaseOrder): PurchaseOrder | null => {
     try {
+      // Ensure we have a valid order with required fields
+      if (!order.supplier || !order.supplier.id || !order.poNumber || !order.items || order.items.length === 0) {
+        console.error("Invalid purchase order data:", order);
+        toast({
+          title: "Invalid Order Data",
+          description: "Purchase order is missing required fields. Please check your form inputs.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
       console.log("Adding purchase order:", order);
       
-      // Add initial status history
-      const orderWithHistory = {
-        ...order,
-        statusHistory: [
+      // Add initial status history if not present
+      if (!order.statusHistory || order.statusHistory.length === 0) {
+        order.statusHistory = [
           {
             id: uuidv4(),
             status: order.status,
@@ -27,11 +37,11 @@ export const usePurchaseOrderActions = (
             user: 'Current User', // In a real app, get from auth
             note: 'Order created'
           }
-        ]
-      };
+        ];
+      }
       
       // Create new array directly
-      const newOrders = [orderWithHistory, ...purchaseOrders];
+      const newOrders = [order, ...purchaseOrders];
       console.log("New orders array:", newOrders);
       
       // Save to localStorage immediately
@@ -62,18 +72,22 @@ export const usePurchaseOrderActions = (
       };
       
       // Add log directly
-      setLogs(prevLogs => {
-        const updatedLogs = [newLog, ...prevLogs];
-        saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
-        return updatedLogs;
-      });
+      const updatedLogs = [newLog, ...logs];
+      const logSaveSuccess = saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
+      
+      if (!logSaveSuccess) {
+        console.error("Failed to save log entry to localStorage");
+      } else {
+        console.log("Successfully saved log entry to localStorage");
+        setLogs(updatedLogs);
+      }
       
       toast({
         title: "Purchase Order Created",
         description: `PO #${order.poNumber} has been created successfully.`,
       });
       
-      return orderWithHistory;
+      return order;
     } catch (error) {
       console.error("Error adding purchase order:", error);
       toast({

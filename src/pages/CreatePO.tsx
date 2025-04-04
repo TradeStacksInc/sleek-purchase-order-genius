@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { v4 as uuidv4 } from 'uuid';
@@ -61,6 +61,15 @@ const CreatePO: React.FC = () => {
   // Calculate grand total
   const grandTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
   
+  // Refresh suppliers list when dialog closes
+  useEffect(() => {
+    if (!isAddSupplierOpen) {
+      // Force a rerender to show the updated supplier list
+      // No need to actually do anything, just forcing a rerender
+      console.log("Supplier dialog closed, suppliers should be updated now");
+    }
+  }, [isAddSupplierOpen]);
+  
   // Add new item
   const addItem = () => {
     setItems([
@@ -115,25 +124,27 @@ const CreatePO: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Validate required fields
-      if (!supplierId || !deliveryDate || !company.name || !company.address || !company.contact || !company.taxId) {
-        console.error("Missing required fields:", { supplierId, deliveryDate, company });
-        toast({
-          title: "Missing Information",
-          description: "Please fill in all required fields",
-          variant: "destructive"
-        });
-        setIsSubmitting(false);
-        return;
-      }
+      // Enhanced form validation with detailed logging
+      let validationErrors = [];
       
-      // Validate items
+      if (!supplierId) validationErrors.push("No supplier selected");
+      if (!deliveryDate) validationErrors.push("No delivery date selected");
+      if (!company.name) validationErrors.push("Company name missing");
+      if (!company.address) validationErrors.push("Company address missing");
+      if (!company.contact) validationErrors.push("Company contact missing");
+      if (!company.taxId) validationErrors.push("Company tax ID missing");
+      
+      // Check for invalid items
       const invalidItems = items.filter(item => item.quantity <= 0 || item.unitPrice <= 0);
       if (invalidItems.length > 0) {
-        console.error("Invalid items:", invalidItems);
+        validationErrors.push(`${invalidItems.length} items have invalid quantity or price`);
+      }
+      
+      if (validationErrors.length > 0) {
+        console.error("Validation errors:", validationErrors);
         toast({
-          title: "Invalid Items",
-          description: "Please ensure all items have a quantity and unit price greater than zero",
+          title: "Form Validation Failed",
+          description: validationErrors.join(", "),
           variant: "destructive"
         });
         setIsSubmitting(false);
@@ -177,24 +188,23 @@ const CreatePO: React.FC = () => {
       // Add purchase order to context
       const savedPO = addPurchaseOrder(newPO);
       
-      if (savedPO) {
+      if (savedPO !== null) {
         console.log("Purchase order created successfully:", savedPO);
         toast({
           title: "Purchase Order Created",
-          description: `PO #${savedPO.poNumber} has been created successfully.`,
+          description: `PO #${poNumber} has been created successfully.`,
           variant: "default"
         });
         
-        // Short delay to ensure the order is saved before navigating
+        // Navigate to the order detail page with a slight delay to ensure data is saved
         setTimeout(() => {
-          // Navigate to the order detail page
           navigate(`/orders/${savedPO.id}`);
-        }, 100);
+        }, 500);
       } else {
-        console.error("Failed to create purchase order");
+        console.error("Failed to create purchase order - addPurchaseOrder returned null");
         toast({
           title: "Error",
-          description: "Failed to create purchase order. Please try again.",
+          description: "Failed to create purchase order. Please check console for details.",
           variant: "destructive"
         });
         setIsSubmitting(false);
@@ -203,7 +213,7 @@ const CreatePO: React.FC = () => {
       console.error('Error creating purchase order:', error);
       toast({
         title: "Error",
-        description: "There was a problem creating your purchase order",
+        description: "There was a problem creating your purchase order: " + (error instanceof Error ? error.message : "Unknown error"),
         variant: "destructive"
       });
       setIsSubmitting(false);

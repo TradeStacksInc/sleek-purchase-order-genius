@@ -33,7 +33,7 @@ export const useSupplierFormSubmit = (onClose: () => void) => {
         ? formData.supplierType as 'Major' | 'Independent' | 'Government'
         : 'Independent'; // Default value
         
-      // Create new supplier object
+      // Create new supplier object with only essential fields
       const newSupplier = {
         id: uuidv4(),
         name: formData.name.trim(),
@@ -55,8 +55,6 @@ export const useSupplierFormSubmit = (onClose: () => void) => {
       
       console.log("addSupplier result:", result);
       
-      // Check if add was successful - this was causing the TypeScript error
-      // as we were directly checking a void function result
       if (result !== null) {
         toast({
           title: "Supplier Added",

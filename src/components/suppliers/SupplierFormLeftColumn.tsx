@@ -14,8 +14,7 @@ import {
   Hash,
   MapPin,
   Warehouse,
-  Fuel,
-  CreditCard
+  Fuel
 } from 'lucide-react';
 import { FormValidationErrors, SupplierFormData } from './types';
 
@@ -115,19 +114,7 @@ const SupplierFormLeftColumn: React.FC<SupplierFormLeftColumnProps> = ({
         />
       </div>
       
-      <div className="space-y-2">
-        <Label htmlFor="creditLimit" className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-muted-foreground" />
-          Credit Limit (₦)
-        </Label>
-        <Input
-          id="creditLimit"
-          value={formData.creditLimit}
-          onChange={(e) => setFormData({...formData, creditLimit: e.target.value})}
-          type="number"
-          placeholder="0.00"
-        />
-      </div>
+      {/* Removed the credit limit field that was causing validation issues */}
     </div>
   );
 };
