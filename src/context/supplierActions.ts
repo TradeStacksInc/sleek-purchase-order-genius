@@ -38,10 +38,14 @@ export const useSupplierActions = (
         timestamp: new Date(),
       };
       
-      // Add log directly instead of in state setter callback
-      const newLogs = [newLog, ...setLogs];
-      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-      setLogs(newLogs);
+      // Create new logs array correctly
+      setLogs(prevLogs => [newLog, ...prevLogs]);
+      
+      // Save the updated logs to localStorage
+      // We need to get the current logs first since we can't access the state directly after the update
+      const currentLogs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || '[]');
+      const updatedLogs = [newLog, ...currentLogs];
+      saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
       
       toast({
         title: "Supplier Added",

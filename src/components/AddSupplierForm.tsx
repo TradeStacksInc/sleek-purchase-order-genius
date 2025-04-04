@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { v4 as uuidv4 } from 'uuid';
@@ -23,7 +22,7 @@ import {
   User,
   Hash,
   Warehouse,
-  GasPump,
+  Fuel,
   CreditCard
 } from 'lucide-react';
 
@@ -114,10 +113,11 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
         products: selectedProducts
       };
       
-      // Add supplier to the context
+      // Add supplier to the context and store the result
       const result = addSupplier(newSupplier);
       
-      if (result) {
+      // Check if result is not null - this is the proper way to test the return value
+      if (result !== null) {
         toast({
           title: "Supplier Added",
           description: `${name} has been added to your suppliers.`,
@@ -172,7 +172,7 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
         
         <div className="space-y-2">
           <Label htmlFor="supplierType" className="flex items-center gap-2">
-            <GasPump className="h-4 w-4 text-muted-foreground" />
+            <Fuel className="h-4 w-4 text-muted-foreground" />
             Supplier Type
           </Label>
           <Select
@@ -328,7 +328,7 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
         
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
-            <GasPump className="h-4 w-4 text-muted-foreground" />
+            <Fuel className="h-4 w-4 text-muted-foreground" />
             Products Supplied
           </Label>
           <div className="flex flex-col gap-2 border rounded-md p-3">
