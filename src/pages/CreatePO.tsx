@@ -11,13 +11,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CalendarIcon, Trash2, Plus, UserPlus } from 'lucide-react';
+import { 
+  CalendarIcon, 
+  Trash2, 
+  Plus, 
+  UserPlus, 
+  ClipboardList, 
+  Building2, 
+  Truck, 
+  Receipt, 
+  CreditCard,
+  XCircle
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { OrderItem, PaymentTerm, Product, Company } from '@/types';
 import AddSupplierForm from '@/components/AddSupplierForm';
 import { useToast } from '@/hooks/use-toast';
-import StatusTracker from '@/components/PurchaseOrder/StatusTracker';
 
 const CreatePO: React.FC = () => {
   const navigate = useNavigate();
@@ -190,41 +200,39 @@ const CreatePO: React.FC = () => {
       <Card className="shadow-md">
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <CardTitle>Create Purchase Order</CardTitle>
-              <CardDescription>
-                Fill in the details to create a new purchase order
-              </CardDescription>
+            <div className="flex items-center">
+              <div className="mr-3 bg-blue-100 p-2 rounded-full">
+                <ClipboardList className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <CardTitle>Create Purchase Order</CardTitle>
+                <CardDescription>
+                  Fill in the details to create a new purchase order
+                </CardDescription>
+              </div>
             </div>
             <div className="w-full md:w-auto">
-              <Button variant="ghost" onClick={() => navigate('/')}>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2"
+              >
+                <XCircle className="h-4 w-4" />
                 Cancel
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {/* Status Tracker Preview */}
-          <div className="mb-6 border rounded-md p-4 bg-muted/30">
-            <h3 className="text-sm font-medium mb-2 text-muted-foreground">Order Status Preview</h3>
-            <StatusTracker 
-              currentStatus="pending" 
-              statusHistory={[
-                {
-                  id: 'preview',
-                  status: 'pending',
-                  timestamp: new Date(),
-                  user: 'Current User',
-                  note: 'Creating new purchase order'
-                }
-              ]}
-            />
-          </div>
-          
-          <form id="create-po-form" onSubmit={handleSubmit}>
+          <form id="create-po-form" onSubmit={handleSubmit} className="space-y-8">
             {/* Company Details Section */}
             <div className="po-form-section mb-8">
-              <h3 className="text-lg font-medium mb-4">Company Details</h3>
+              <div className="flex items-center mb-4">
+                <div className="mr-3 bg-emerald-100 p-2 rounded-full">
+                  <Building2 className="h-5 w-5 text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-medium">Company Details</h3>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="company-name" className="required">Filling Station Name</Label>
@@ -274,7 +282,12 @@ const CreatePO: React.FC = () => {
             {/* Supplier Details Section */}
             <div className="po-form-section mb-8">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Supplier Details</h3>
+                <div className="flex items-center">
+                  <div className="mr-3 bg-purple-100 p-2 rounded-full">
+                    <Truck className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <h3 className="text-lg font-medium">Supplier Details</h3>
+                </div>
                 <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
                   <DialogTrigger asChild>
                     <Button type="button" variant="outline" size="sm">
@@ -282,7 +295,7 @@ const CreatePO: React.FC = () => {
                       Add Supplier
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                  <DialogContent className="sm:max-w-4xl">
                     <DialogHeader>
                       <DialogTitle>Add New Supplier</DialogTitle>
                     </DialogHeader>
@@ -329,7 +342,12 @@ const CreatePO: React.FC = () => {
             {/* Order Items Section */}
             <div className="po-form-section mb-8">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Order Items</h3>
+                <div className="flex items-center">
+                  <div className="mr-3 bg-amber-100 p-2 rounded-full">
+                    <Receipt className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <h3 className="text-lg font-medium">Order Items</h3>
+                </div>
                 <Button type="button" variant="outline" size="sm" onClick={addItem}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Item
@@ -407,7 +425,12 @@ const CreatePO: React.FC = () => {
             
             {/* Order Summary Section */}
             <div className="po-form-section mb-8">
-              <h3 className="text-lg font-medium mb-4">Order Summary</h3>
+              <div className="flex items-center mb-4">
+                <div className="mr-3 bg-cyan-100 p-2 rounded-full">
+                  <CreditCard className="h-5 w-5 text-cyan-600" />
+                </div>
+                <h3 className="text-lg font-medium">Order Summary</h3>
+              </div>
               <div className="flex justify-between items-center py-2 border-b border-muted">
                 <span>Grand Total:</span>
                 <span className="text-xl font-semibold">₦{grandTotal.toLocaleString()}</span>
@@ -443,13 +466,14 @@ const CreatePO: React.FC = () => {
                         {deliveryDate ? format(deliveryDate, "PPP") : <span>Pick a date</span>}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
                       <Calendar
                         mode="single"
                         selected={deliveryDate}
                         onSelect={setDeliveryDate}
                         initialFocus
                         disabled={(date) => date < new Date()}
+                        className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
@@ -459,13 +483,20 @@ const CreatePO: React.FC = () => {
           </form>
         </CardContent>
         <CardFooter className="flex justify-end space-x-2">
-          <Button variant="outline" type="button" onClick={() => navigate('/')}>
+          <Button 
+            variant="outline" 
+            type="button" 
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2"
+          >
+            <XCircle className="h-4 w-4" />
             Cancel
           </Button>
           <Button 
             type="submit" 
             form="create-po-form"
             disabled={isSubmitting}
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
           >
             {isSubmitting ? 'Creating...' : 'Create Purchase Order'}
           </Button>

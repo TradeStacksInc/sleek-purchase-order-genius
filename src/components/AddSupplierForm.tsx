@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { v4 as uuidv4 } from 'uuid';
@@ -14,6 +15,17 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import {
+  Building,
+  Phone,
+  Mail,
+  MapPin,
+  User,
+  Hash,
+  Warehouse,
+  GasPump,
+  CreditCard
+} from 'lucide-react';
 
 interface AddSupplierFormProps {
   onClose: () => void;
@@ -41,9 +53,24 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
   });
   const [paymentTerms, setPaymentTerms] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   
   // Form validation
-  const isFormValid = name.trim() !== '' && contact.trim() !== '' && address.trim() !== '';
+  const validateForm = () => {
+    const errors: {[key: string]: string} = {};
+    
+    if (!name.trim()) errors.name = "Supplier name is required";
+    if (!contact.trim()) errors.contact = "Contact information is required";
+    if (!address.trim()) errors.address = "Address is required";
+    
+    // Email validation if provided
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+      errors.email = "Please enter a valid email address";
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
   
   const handleProductChange = (product: string, checked: boolean) => {
     setProducts(prev => ({ ...prev, [product]: checked }));
@@ -52,10 +79,10 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!isFormValid) {
+    if (!validateForm()) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required supplier fields",
+        description: "Please fix the validation errors in the form",
         variant: "destructive",
       });
       return;
@@ -88,15 +115,23 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
       };
       
       // Add supplier to the context
-      addSupplier(newSupplier);
+      const result = addSupplier(newSupplier);
       
-      toast({
-        title: "Supplier Added",
-        description: `${name} has been added to your suppliers.`,
-      });
-      
-      // Close the dialog
-      onClose();
+      if (result) {
+        toast({
+          title: "Supplier Added",
+          description: `${name} has been added to your suppliers.`,
+        });
+        
+        // Close the dialog
+        onClose();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to add supplier. Please try again.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Error adding supplier:", error);
       toast({
@@ -110,21 +145,36 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
   };
   
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="grid gap-4 py-4">
-        <div className="grid gap-2">
-          <Label htmlFor="name" className="required">Company Name</Label>
+    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto pr-1">
+      {/* Left column */}
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name" className="flex items-center gap-2 required">
+            <Building className="h-4 w-4 text-muted-foreground" />
+            Company Name
+          </Label>
           <Input
             id="name"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (validationErrors.name) {
+                setValidationErrors({...validationErrors, name: ''});
+              }
+            }}
             placeholder="NNPC Depot, Mobil, etc."
-            required
+            className={validationErrors.name ? "border-red-500" : ""}
           />
+          {validationErrors.name && (
+            <p className="text-sm text-red-500">{validationErrors.name}</p>
+          )}
         </div>
         
-        <div className="grid gap-2">
-          <Label htmlFor="supplierType">Supplier Type</Label>
+        <div className="space-y-2">
+          <Label htmlFor="supplierType" className="flex items-center gap-2">
+            <GasPump className="h-4 w-4 text-muted-foreground" />
+            Supplier Type
+          </Label>
           <Select
             value={supplierType}
             onValueChange={setSupplierType}
@@ -140,8 +190,11 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
           </Select>
         </div>
         
-        <div className="grid gap-2">
-          <Label htmlFor="regNumber">Company Registration Number</Label>
+        <div className="space-y-2">
+          <Label htmlFor="regNumber" className="flex items-center gap-2">
+            <Hash className="h-4 w-4 text-muted-foreground" />
+            Company Registration Number
+          </Label>
           <Input
             id="regNumber"
             value={regNumber}
@@ -150,54 +203,99 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
           />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="depotLocation">Depot Location</Label>
-            <Input
-              id="depotLocation"
-              value={depotLocation}
-              onChange={(e) => setDepotLocation(e.target.value)}
-              placeholder="Apapa, Lagos"
-            />
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="depotName">Depot Name</Label>
-            <Input
-              id="depotName"
-              value={depotName}
-              onChange={(e) => setDepotName(e.target.value)}
-              placeholder="Main Terminal"
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="depotLocation" className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            Depot Location
+          </Label>
+          <Input
+            id="depotLocation"
+            value={depotLocation}
+            onChange={(e) => setDepotLocation(e.target.value)}
+            placeholder="Apapa, Lagos"
+          />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="contact" className="required">Contact Information</Label>
-            <Input
-              id="contact"
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
-              placeholder="Phone number"
-              required
-            />
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email Address</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="contact@supplier.com"
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="depotName" className="flex items-center gap-2">
+            <Warehouse className="h-4 w-4 text-muted-foreground" />
+            Depot Name
+          </Label>
+          <Input
+            id="depotName"
+            value={depotName}
+            onChange={(e) => setDepotName(e.target.value)}
+            placeholder="Main Terminal"
+          />
         </div>
         
-        <div className="grid gap-2">
-          <Label htmlFor="contactPerson">Contact Person</Label>
+        <div className="space-y-2">
+          <Label htmlFor="creditLimit" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            Credit Limit (₦)
+          </Label>
+          <Input
+            id="creditLimit"
+            value={creditLimit}
+            onChange={(e) => setCreditLimit(e.target.value)}
+            type="number"
+            placeholder="0.00"
+          />
+        </div>
+      </div>
+      
+      {/* Right column */}
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="contact" className="flex items-center gap-2 required">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            Contact Information
+          </Label>
+          <Input
+            id="contact"
+            value={contact}
+            onChange={(e) => {
+              setContact(e.target.value);
+              if (validationErrors.contact) {
+                setValidationErrors({...validationErrors, contact: ''});
+              }
+            }}
+            placeholder="Phone number"
+            className={validationErrors.contact ? "border-red-500" : ""}
+          />
+          {validationErrors.contact && (
+            <p className="text-sm text-red-500">{validationErrors.contact}</p>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="email" className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-muted-foreground" />
+            Email Address
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (validationErrors.email) {
+                setValidationErrors({...validationErrors, email: ''});
+              }
+            }}
+            placeholder="contact@supplier.com"
+            className={validationErrors.email ? "border-red-500" : ""}
+          />
+          {validationErrors.email && (
+            <p className="text-sm text-red-500">{validationErrors.email}</p>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="contactPerson" className="flex items-center gap-2">
+            <User className="h-4 w-4 text-muted-foreground" />
+            Contact Person
+          </Label>
           <Input
             id="contactPerson"
             value={contactPerson}
@@ -206,20 +304,34 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
           />
         </div>
         
-        <div className="grid gap-2">
-          <Label htmlFor="address" className="required">Address</Label>
+        <div className="space-y-2">
+          <Label htmlFor="address" className="flex items-center gap-2 required">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            Address
+          </Label>
           <Input
             id="address"
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onChange={(e) => {
+              setAddress(e.target.value);
+              if (validationErrors.address) {
+                setValidationErrors({...validationErrors, address: ''});
+              }
+            }}
             placeholder="Enter full address"
-            required
+            className={validationErrors.address ? "border-red-500" : ""}
           />
+          {validationErrors.address && (
+            <p className="text-sm text-red-500">{validationErrors.address}</p>
+          )}
         </div>
         
-        <div className="grid gap-2">
-          <Label>Products Supplied</Label>
-          <div className="flex flex-col gap-2">
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <GasPump className="h-4 w-4 text-muted-foreground" />
+            Products Supplied
+          </Label>
+          <div className="flex flex-col gap-2 border rounded-md p-3">
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id="pms" 
@@ -247,8 +359,11 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
           </div>
         </div>
         
-        <div className="grid gap-2">
-          <Label htmlFor="paymentTerms">Payment Terms</Label>
+        <div className="space-y-2">
+          <Label htmlFor="paymentTerms" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            Payment Terms
+          </Label>
           <Select
             value={paymentTerms}
             onValueChange={setPaymentTerms}
@@ -264,24 +379,14 @@ const AddSupplierForm: React.FC<AddSupplierFormProps> = ({ onClose }) => {
             </SelectContent>
           </Select>
         </div>
-        
-        <div className="grid gap-2">
-          <Label htmlFor="creditLimit">Credit Limit (₦)</Label>
-          <Input
-            id="creditLimit"
-            value={creditLimit}
-            onChange={(e) => setCreditLimit(e.target.value)}
-            type="number"
-            placeholder="0.00"
-          />
-        </div>
       </div>
       
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+      {/* Footer - spans both columns */}
+      <DialogFooter className="col-span-1 md:col-span-2 pt-4">
+        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="mr-2">
           Cancel
         </Button>
-        <Button type="submit" disabled={!isFormValid || isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
           {isSubmitting ? "Adding..." : "Add Supplier"}
         </Button>
       </DialogFooter>

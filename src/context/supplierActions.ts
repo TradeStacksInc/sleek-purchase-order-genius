@@ -12,21 +12,23 @@ export const useSupplierActions = (
 
   const addSupplier = (supplier: Supplier) => {
     try {
-      // Add to state and save to localStorage immediately
-      setSuppliers((prevSuppliers) => {
-        const newSuppliers = [supplier, ...prevSuppliers];
-        const saveSuccess = saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
-        
-        if (!saveSuccess) {
-          toast({
-            title: "Save Error",
-            description: "There was a problem saving your supplier. Please try again.",
-            variant: "destructive"
-          });
-        }
-        
-        return newSuppliers;
-      });
+      // Create the new suppliers array directly
+      const newSuppliers = [supplier, ...suppliers];
+      
+      // Save to localStorage first to prevent potential issues
+      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
+      
+      if (!saveSuccess) {
+        toast({
+          title: "Save Error",
+          description: "There was a problem saving your supplier. Please try again.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      // Then update state only after successful save
+      setSuppliers(newSuppliers);
       
       const newLog: LogEntry = {
         id: `log-${Date.now()}`,
@@ -36,11 +38,10 @@ export const useSupplierActions = (
         timestamp: new Date(),
       };
       
-      setLogs((prevLogs) => {
-        const newLogs = [newLog, ...prevLogs];
-        saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-        return newLogs;
-      });
+      // Add log directly instead of in state setter callback
+      const newLogs = [newLog, ...setLogs];
+      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
+      setLogs(newLogs);
       
       toast({
         title: "Supplier Added",

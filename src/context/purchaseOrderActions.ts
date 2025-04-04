@@ -1,5 +1,4 @@
 
-import { useState } from 'react';
 import { PurchaseOrder, LogEntry, OrderStatus, StatusHistoryEntry } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
@@ -31,23 +30,23 @@ export const usePurchaseOrderActions = (
         ]
       };
       
-      // Add to state
-      setPurchaseOrders((prevOrders) => {
-        const newOrders = [orderWithHistory, ...prevOrders];
-        
-        // Save to localStorage immediately
-        const saveSuccess = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-        
-        if (!saveSuccess) {
-          toast({
-            title: "Save Error",
-            description: "There was a problem saving your purchase order. Please try again.",
-            variant: "destructive"
-          });
-        }
-        
-        return newOrders;
-      });
+      // Create new array directly
+      const newOrders = [orderWithHistory, ...purchaseOrders];
+      
+      // Save to localStorage immediately
+      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      if (!saveSuccess) {
+        toast({
+          title: "Save Error",
+          description: "There was a problem saving your purchase order. Please try again.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      // Update state only after successful save
+      setPurchaseOrders(newOrders);
       
       // Create log entry
       const newLog: LogEntry = {
@@ -58,12 +57,10 @@ export const usePurchaseOrderActions = (
         timestamp: new Date(),
       };
       
-      // Add log entry
-      setLogs((prevLogs) => {
-        const newLogs = [newLog, ...prevLogs];
-        saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-        return newLogs;
-      });
+      // Add log directly
+      const newLogs = [newLog, ...logs];
+      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
+      setLogs(newLogs);
       
       toast({
         title: "Purchase Order Created",
@@ -92,42 +89,59 @@ export const usePurchaseOrderActions = (
     try {
       let updatedOrder: PurchaseOrder | undefined;
       
-      setPurchaseOrders((prevOrders) => {
-        const newOrders = prevOrders.map((order) => {
-          if (order.id === id) {
-            const statusHistoryEntry: StatusHistoryEntry = {
-              id: uuidv4(),
-              status,
-              timestamp: new Date(),
-              user: 'Current User', // In a real app, get from auth
-              note: notes
-            };
-            
-            const statusHistory = order.statusHistory 
-              ? [...order.statusHistory, statusHistoryEntry]
-              : [statusHistoryEntry];
-              
-            updatedOrder = {
-              ...order,
-              status,
-              statusHistory,
-              updatedAt: new Date(),
-              ...(status === 'approved' && approvedBy ? { approvedBy } : {}),
-              ...(status === 'rejected' && rejectionReason ? { rejectionReason } : {})
-            };
-            return updatedOrder;
-          }
-          return order;
-        });
-        
-        // Save to localStorage immediately
-        saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-        
-        return newOrders;
-      });
-
+      // Find the order to update
       const order = purchaseOrders.find((po) => po.id === id);
-      if (!order) return;
+      if (!order) {
+        toast({
+          title: "Error",
+          description: "Could not find the specified order.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      // Create the status history entry
+      const statusHistoryEntry: StatusHistoryEntry = {
+        id: uuidv4(),
+        status,
+        timestamp: new Date(),
+        user: 'Current User', // In a real app, get from auth
+        note: notes
+      };
+      
+      const statusHistory = order.statusHistory 
+        ? [...order.statusHistory, statusHistoryEntry]
+        : [statusHistoryEntry];
+      
+      // Create the updated order
+      updatedOrder = {
+        ...order,
+        status,
+        statusHistory,
+        updatedAt: new Date(),
+        ...(status === 'approved' && approvedBy ? { approvedBy } : {}),
+        ...(status === 'rejected' && rejectionReason ? { rejectionReason } : {})
+      };
+      
+      // Create the new orders array
+      const newOrders = purchaseOrders.map((po) => 
+        po.id === id ? updatedOrder! : po
+      );
+      
+      // Save to localStorage first
+      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      if (!saveSuccess) {
+        toast({
+          title: "Save Error",
+          description: "There was a problem updating the order status. Please try again.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      // Update state only after successful save
+      setPurchaseOrders(newOrders);
 
       const statusDescription = getStatusDescription(status);
       
@@ -139,11 +153,9 @@ export const usePurchaseOrderActions = (
         timestamp: new Date(),
       };
       
-      setLogs((prevLogs) => {
-        const newLogs = [newLog, ...prevLogs];
-        saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-        return newLogs;
-      });
+      const newLogs = [newLog, ...logs];
+      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
+      setLogs(newLogs);
       
       toast({
         title: "Status Updated",
