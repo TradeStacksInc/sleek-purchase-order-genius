@@ -38,11 +38,10 @@ export const useSupplierActions = (
         timestamp: new Date(),
       };
       
-      // Create new logs array correctly
+      // Update logs state with the new log
       setLogs(prevLogs => [newLog, ...prevLogs]);
       
-      // Save the updated logs to localStorage
-      // We need to get the current logs first since we can't access the state directly after the update
+      // Get current logs from localStorage and update with new log
       const currentLogs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || '[]');
       const updatedLogs = [newLog, ...currentLogs];
       saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
