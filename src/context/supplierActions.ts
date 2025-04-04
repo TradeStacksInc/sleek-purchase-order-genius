@@ -10,7 +10,7 @@ export const useSupplierActions = (
 ) => {
   const { toast } = useToast();
 
-  const addSupplier = (supplier: Supplier) => {
+  const addSupplier = (supplier: Supplier): Supplier | null => {
     try {
       console.log("Adding supplier in useSupplierActions:", supplier);
       

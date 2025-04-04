@@ -50,13 +50,14 @@ export const useSupplierFormSubmit = (onClose: () => void) => {
       
       console.log("Created new supplier object:", newSupplier);
       
-      // Add supplier to the context
+      // Add supplier to the context and check the result
       const result = addSupplier(newSupplier);
       
       console.log("addSupplier result:", result);
       
-      // Check if add was successful
-      if (result) {
+      // Check if add was successful - this was causing the TypeScript error
+      // as we were directly checking a void function result
+      if (result !== null) {
         toast({
           title: "Supplier Added",
           description: `${formData.name} has been added to your suppliers.`,
