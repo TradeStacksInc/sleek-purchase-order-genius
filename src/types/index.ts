@@ -1,4 +1,3 @@
-
 export type Product = 'PMS' | 'AGO' | 'DPK';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled';
@@ -82,6 +81,7 @@ export interface GPSData {
   longitude: number;
   speed: number;
   timestamp: Date;
+  heading?: number;
 }
 
 export interface DeliveryDetails {

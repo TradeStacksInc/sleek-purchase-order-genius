@@ -222,7 +222,7 @@ export const useDeliveryActions = (
           if (trackingInfo) {
             const updatedDeliveryDetails = {
               ...order.deliveryDetails,
-              distanceCovered: trackingInfo.distanceCovered
+              distanceCovered: trackingInfo.distanceCovered || 0
             };
             
             return {

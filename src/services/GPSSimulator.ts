@@ -1,4 +1,3 @@
-
 import { GPSData, Truck } from '@/types';
 
 // Define a type for the tracking information
@@ -15,6 +14,8 @@ export interface TrackingInfo {
   totalDistance: number;
   sourceLocation: { lat: number, lng: number, name: string };
   destinationLocation: { lat: number, lng: number, name: string };
+  distanceCovered: number;
+  currentSpeed: number;
 }
 
 // Singleton class for GPS simulation
@@ -88,7 +89,9 @@ class GPSSimulator {
         lat: path[path.length - 1].lat, 
         lng: path[path.length - 1].lng, 
         name: 'Destination' 
-      }
+      },
+      distanceCovered: 0,
+      currentSpeed: 40 + Math.random() * 20
     };
     
     // Store tracking info
@@ -196,7 +199,9 @@ class GPSSimulator {
       speed,
       heading,
       lastUpdate: new Date(),
-      distanceRemaining
+      distanceRemaining,
+      distanceCovered: info.totalDistance - distanceRemaining,
+      currentSpeed: speed
     };
     
     this.trackedTrucks.set(truckId, updatedInfo);
@@ -209,11 +214,7 @@ class GPSSimulator {
       longitude: newLongitude,
       speed,
       heading,
-      timestamp: new Date(),
-      fuelLevel: 75 + Math.random() * 20, // 75-95%
-      engineStatus: 'running',
-      distanceRemaining,
-      alerts: []
+      timestamp: new Date()
     };
     
     // Notify callbacks

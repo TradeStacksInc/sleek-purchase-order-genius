@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import GPSTrackingService from '@/services/GPSTrackingService';
 import { useToast } from './use-toast';
+import { GPSData } from '@/types';
 
 export function useTruckTracking() {
   const { updateGPSData, updateDeliveryStatus, getTruckById } = useApp();
@@ -14,8 +15,12 @@ export function useTruckTracking() {
   useEffect(() => {
     const gpsService = GPSTrackingService.getInstance();
     
-    // Register the callback with the service
-    gpsService.registerUpdateCallback(updateGPSData);
+    // Register the callback with the service - ensure it handles GPSData correctly
+    gpsService.registerUpdateCallback((data: GPSData) => {
+      if (data && data.truckId) {
+        updateGPSData(data.truckId, data.latitude, data.longitude, data.speed);
+      }
+    });
     
     // Set up interval to update UI
     const intervalId = setInterval(() => {
