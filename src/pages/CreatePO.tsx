@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { OrderItem, PaymentTerm, Product, Company, Supplier } from '@/types';
+import { OrderItem, PaymentTerm, Product, Company, Supplier, PurchaseOrder } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
 interface ValidationErrors {

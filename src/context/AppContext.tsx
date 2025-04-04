@@ -36,16 +36,13 @@ import { loadAppState, saveToLocalStorage, STORAGE_KEYS } from '../utils/localSt
 import { resetDatabase, exportDatabase, importDatabase } from '../utils/databaseManager';
 import { useToast } from '@/hooks/use-toast';
 
-// Create the context with an undefined initial value
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   
-  // Load data from local storage or use default initial state
   const loadedState = loadAppState(defaultInitialState);
   
-  // Initialize state with loaded data
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(loadedState.purchaseOrders);
   const [logs, setLogs] = useState<LogEntry[]>(loadedState.logs);
   const [suppliers, setSuppliers] = useState<Supplier[]>(loadedState.suppliers);
@@ -62,7 +59,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(loadedState.activityLogs || []);
   const [tanks, setTanks] = useState<Tank[]>(loadedState.tanks || []);
 
-  // Log state load completion
   useEffect(() => {
     console.log('AppContext initialized with data:', {
       purchaseOrders: purchaseOrders.length,
@@ -83,7 +79,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
-  // Setup persistent state handlers
   const persistentSetPurchaseOrders: typeof setPurchaseOrders = (value) => {
     setPurchaseOrders((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
@@ -224,13 +219,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTanks((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        localStorage.setItem('tanks', JSON.stringify(newValue));
+        saveToLocalStorage(STORAGE_KEYS.TANKS, newValue);
       }
       return newValue;
     });
   };
 
-  // Initialize action hooks with persistent state handlers
   const purchaseOrderActions = usePurchaseOrderActions(
     purchaseOrders, 
     persistentSetPurchaseOrders, 
@@ -305,11 +299,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     persistentSetActivityLogs
   );
 
-  // Database management functions
   const handleResetDatabase = (includeSeedData = false) => {
     resetDatabase(includeSeedData);
     
-    // Reload the page to refresh all data
     window.location.reload();
   };
 
@@ -321,14 +313,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const success = importDatabase(jsonData);
     
     if (success) {
-      // Reload the page to refresh all data
       window.location.reload();
     }
     
     return success;
   };
 
-  // Combine all actions and state into the context value
   const contextValue: AppContextType = {
     purchaseOrders,
     logs,

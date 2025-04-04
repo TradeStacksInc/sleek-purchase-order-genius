@@ -1,5 +1,5 @@
 
-import { Driver, GPSData, LogEntry, PurchaseOrder, Supplier, Truck, AIInsight, Staff, Dispenser, Shift, Sale, PriceRecord, Incident, ActivityLog } from '../../types';
+import { Driver, GPSData, LogEntry, PurchaseOrder, Supplier, Truck, AIInsight, Staff, Dispenser, Shift, Sale, PriceRecord, Incident, ActivityLog, Tank } from '../../types';
 
 // Type for all storable data
 export interface StoredAppData {
@@ -17,6 +17,7 @@ export interface StoredAppData {
   prices: PriceRecord[];
   incidents: Incident[];
   activityLogs: ActivityLog[];
+  tanks: Tank[];
 }
 
 // Pagination parameters
