@@ -1,55 +1,56 @@
 
+import { v4 as uuidv4 } from 'uuid';
 import { 
-  Driver, 
-  Truck, 
-  Supplier, 
   PurchaseOrder, 
   LogEntry, 
-  GPSData, 
-  AIInsight, 
-  StatusHistoryEntry,
+  Supplier, 
+  Driver,
+  Truck,
+  GPSData,
+  AIInsight,
   Staff,
   Dispenser,
   Shift,
   Sale,
   PriceRecord,
+  Incident,
   ActivityLog,
-  Tank,
-  Incident
+  Tank
 } from '../types';
 
-// Initial empty states for all data types
-export const initialDrivers: Driver[] = [];
-export const initialTrucks: Truck[] = [];
-export const initialSuppliers: Supplier[] = [];
-export const initialPurchaseOrders: PurchaseOrder[] = [];
-export const initialLogs: LogEntry[] = [];
-export const initialGPSData: GPSData[] = [];
-export const initialAIInsights: AIInsight[] = [];
-export const initialStatusHistory: StatusHistoryEntry[] = [];
-export const initialStaff: Staff[] = [];
-export const initialDispensers: Dispenser[] = [];
-export const initialShifts: Shift[] = [];
-export const initialSales: Sale[] = [];
-export const initialPrices: PriceRecord[] = [];
-export const initialIncidents: Incident[] = [];
-export const initialActivityLogs: ActivityLog[] = [];
-export const initialTanks: Tank[] = [];
+export interface AppState {
+  purchaseOrders: PurchaseOrder[];
+  logs: LogEntry[];
+  suppliers: Supplier[];
+  drivers: Driver[];
+  trucks: Truck[];
+  gpsData: GPSData[];
+  aiInsights: AIInsight[];
+  staff: Staff[];
+  dispensers: Dispenser[];
+  shifts: Shift[];
+  sales: Sale[];
+  prices: PriceRecord[];
+  incidents: Incident[];
+  activityLogs: ActivityLog[];
+  tanks: Tank[];
+}
 
-// Default initial state for the entire app
-export const defaultInitialState = {
-  purchaseOrders: initialPurchaseOrders,
-  logs: initialLogs,
-  suppliers: initialSuppliers,
-  drivers: initialDrivers,
-  trucks: initialTrucks,
-  gpsData: initialGPSData,
-  aiInsights: initialAIInsights,
-  staff: initialStaff,
-  dispensers: initialDispensers,
-  shifts: initialShifts,
-  sales: initialSales,
-  prices: initialPrices,
-  incidents: initialIncidents,
-  activityLogs: initialActivityLogs
+// Initial empty state with no mock data
+export const defaultInitialState: AppState = {
+  purchaseOrders: [],
+  logs: [],
+  suppliers: [],
+  drivers: [],
+  trucks: [],
+  gpsData: [],
+  aiInsights: [],
+  staff: [],
+  dispensers: [],
+  shifts: [],
+  sales: [],
+  prices: [],
+  incidents: [],
+  activityLogs: [],
+  tanks: []
 };

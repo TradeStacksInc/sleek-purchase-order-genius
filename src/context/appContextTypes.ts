@@ -1,3 +1,4 @@
+
 import { 
   LogEntry, 
   PurchaseOrder, 
@@ -40,7 +41,7 @@ export interface AppContextType {
   
   // Purchase Order actions
   addPurchaseOrder: (order: PurchaseOrder) => PurchaseOrder | null;
-  updateOrderStatus: (id: string, status: OrderStatus, notes?: string, approvedBy?: string, rejectionReason?: string) => void;
+  updateOrderStatus: (id: string, status: OrderStatus, notes?: string, approvedBy?: string, rejectionReason?: string) => PurchaseOrder | null;
   getOrderById: (id: string) => PurchaseOrder | undefined;
   getOrdersWithDeliveryStatus: (status: 'pending' | 'in_transit' | 'delivered') => PurchaseOrder[];
   getOrdersWithDiscrepancies: () => PurchaseOrder[];

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   LogEntry, 
@@ -61,7 +60,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [prices, setPrices] = useState<PriceRecord[]>(loadedState.prices || []);
   const [incidents, setIncidents] = useState<Incident[]>(loadedState.incidents || []);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(loadedState.activityLogs || []);
-  const [tanks, setTanks] = useState<Tank[]>(JSON.parse(localStorage.getItem('tanks') || '[]'));
+  const [tanks, setTanks] = useState<Tank[]>(loadedState.tanks || []);
 
   // Log state load completion
   useEffect(() => {
@@ -84,16 +83,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
-  // Setup persistent state handlers with silent error handling
+  // Setup persistent state handlers
   const persistentSetPurchaseOrders: typeof setPurchaseOrders = (value) => {
     setPurchaseOrders((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      
-      if (!Array.isArray(newValue)) {
-        console.error('Cannot save purchase orders: value is not an array');
-        return prev;
-      }
-      
       saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newValue);
       return newValue;
     });
@@ -102,9 +95,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const persistentSetLogs: typeof setLogs = (value) => {
     setLogs((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.LOGS, newValue);
-      }
+      saveToLocalStorage(STORAGE_KEYS.LOGS, newValue);
       return newValue;
     });
   };

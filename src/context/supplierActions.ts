@@ -1,6 +1,6 @@
 
 import { Supplier, LogEntry } from '../types';
-import { useToast } from '@/hooks/use-toast';
+import { v4 as uuidv4 } from 'uuid';
 import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
 
 export const useSupplierActions = (
@@ -8,103 +8,63 @@ export const useSupplierActions = (
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>,
   setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>
 ) => {
-  const { toast } = useToast();
-
   const addSupplier = (supplier: Supplier): Supplier | null => {
     try {
-      console.log("Adding supplier in useSupplierActions:", supplier);
-      
-      // Ensure the supplier has all required fields
-      if (!supplier.name || !supplier.contact || !supplier.address) {
-        console.error("Supplier missing required fields:", supplier);
-        toast({
-          title: "Invalid Supplier Data",
-          description: "Supplier is missing required fields. Please check your form inputs.",
-          variant: "destructive"
-        });
-        return null;
-      }
-      
-      // Check if a supplier with the same name already exists
-      const existingSupplier = suppliers.find(s => s.name.toLowerCase() === supplier.name.toLowerCase());
+      // Check if supplier with same name already exists
+      const existingSupplier = suppliers.find(
+        (s) => s.name.toLowerCase() === supplier.name.toLowerCase()
+      );
+
       if (existingSupplier) {
-        console.log("Supplier with this name already exists, returning existing supplier:", existingSupplier);
-        // We return the existing supplier to allow the order to be created
+        console.log("Using existing supplier:", existingSupplier);
         return existingSupplier;
       }
-      
-      // Create the new suppliers array directly
-      const newSuppliers = [supplier, ...suppliers];
-      
-      // Save to localStorage first to prevent potential issues
-      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
-      
-      if (!saveSuccess) {
-        console.error("Failed to save suppliers to localStorage");
-        toast({
-          title: "Save Error",
-          description: "There was a problem saving your supplier. Please try again.",
-          variant: "destructive"
-        });
+
+      // Ensure required fields
+      if (!supplier.name || !supplier.contact || !supplier.address) {
+        console.error("Missing required supplier fields");
         return null;
       }
+
+      // Add creation timestamp and ensure ID
+      const newSupplier = {
+        ...supplier,
+        id: supplier.id || uuidv4(),
+        createdAt: new Date(),
+      };
+
+      // Create new array
+      const newSuppliers = [...suppliers, newSupplier];
       
-      console.log("Successfully saved suppliers to localStorage");
-      
-      // Then update state only after successful save
+      // Update state
       setSuppliers(newSuppliers);
       
+      // Save to localStorage
+      saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
+
+      // Add activity log
       const newLog: LogEntry = {
         id: `log-${Date.now()}`,
         poId: "system",
-        action: `New supplier "${supplier.name}" added to the system`,
+        action: `New supplier "${newSupplier.name}" added`,
         user: 'Current User', // In a real app, get from auth
         timestamp: new Date(),
       };
-      
-      // Update logs state with the new log
-      setLogs(prevLogs => {
+
+      setLogs((prevLogs) => {
         const updatedLogs = [newLog, ...prevLogs];
-        // Get current logs from localStorage and update with new log
         saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
         return updatedLogs;
       });
-      
-      toast({
-        title: "Supplier Added",
-        description: `${supplier.name} has been added to your suppliers list.`,
-      });
-      
-      return supplier;
+
+      return newSupplier;
     } catch (error) {
-      console.error("Error in addSupplier:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add supplier. Please try again.",
-        variant: "destructive"
-      });
+      console.error("Error adding supplier:", error);
       return null;
     }
   };
 
-  const getSupplierById = (id: string): Supplier | undefined => {
-    return suppliers.find(supplier => supplier.id === id);
-  };
-
-  const getAllSuppliers = () => {
-    return suppliers;
-  };
-
-  const getSuppliersByProduct = (product: string): Supplier[] => {
-    return suppliers.filter(supplier => 
-      supplier.products && supplier.products.includes(product)
-    );
-  };
-
   return {
     addSupplier,
-    getSupplierById,
-    getAllSuppliers,
-    getSuppliersByProduct
   };
 };

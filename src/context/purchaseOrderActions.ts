@@ -1,4 +1,3 @@
-
 import { PurchaseOrder, LogEntry, OrderStatus, StatusHistoryEntry } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
@@ -44,22 +43,7 @@ export const usePurchaseOrderActions = (
       const newOrders = [order, ...purchaseOrders];
       console.log("New orders array:", newOrders);
       
-      // Save to localStorage immediately
-      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      
-      if (!saveSuccess) {
-        console.error("Failed to save purchase orders to localStorage");
-        toast({
-          title: "Save Error",
-          description: "There was a problem saving your purchase order. Please try again.",
-          variant: "destructive"
-        });
-        return null;
-      }
-      
-      console.log("Successfully saved purchase orders to localStorage");
-      
-      // Update state only after successful save
+      // Update state
       setPurchaseOrders(newOrders);
       
       // Create log entry
@@ -73,14 +57,11 @@ export const usePurchaseOrderActions = (
       
       // Add log directly
       const updatedLogs = [newLog, ...logs];
-      const logSaveSuccess = saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
+      setLogs(updatedLogs);
       
-      if (!logSaveSuccess) {
-        console.error("Failed to save log entry to localStorage");
-      } else {
-        console.log("Successfully saved log entry to localStorage");
-        setLogs(updatedLogs);
-      }
+      // Save to localStorage after state updates
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
       
       toast({
         title: "Purchase Order Created",

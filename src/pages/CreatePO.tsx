@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -242,7 +243,7 @@ const CreatePO: React.FC = () => {
     try {
       console.log("Creating supplier:", supplierData);
       
-      const selectedProducts = Object.keys(supplierData.products).filter(key => supplierData.products[key]);
+      const selectedProducts = Object.keys(supplierData.products).filter(key => supplierData.products[key as keyof typeof supplierData.products]);
       
       const validatedSupplierType = (supplierData.supplierType === 'Major' || supplierData.supplierType === 'Independent' || supplierData.supplierType === 'Government') 
         ? supplierData.supplierType as 'Major' | 'Independent' | 'Government'
@@ -259,10 +260,10 @@ const CreatePO: React.FC = () => {
         taxId: supplierData.regNumber.trim(),
         accountNumber: '',
         bankName: '',
-        products: selectedProducts
+        products: selectedProducts as Product[]
       };
       
-      const savedSupplier: Supplier | null = addSupplier(newSupplier);
+      const savedSupplier = addSupplier(newSupplier);
       
       if (savedSupplier === null) {
         console.error("Failed to create supplier");
@@ -280,7 +281,7 @@ const CreatePO: React.FC = () => {
       const poNumber = `PO-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
       console.log("Generated PO number:", poNumber);
       
-      const newPO = {
+      const newPO: PurchaseOrder = {
         id: uuidv4(),
         poNumber,
         company,
@@ -288,7 +289,7 @@ const CreatePO: React.FC = () => {
         items,
         grandTotal,
         paymentTerm,
-        deliveryDate,
+        deliveryDate: deliveryDate!,
         status: 'pending' as const,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -306,9 +307,11 @@ const CreatePO: React.FC = () => {
           variant: "default"
         });
         
+        // Use setTimeout to avoid immediate navigation 
+        // which can prevent toast from showing
         setTimeout(() => {
           navigate(`/orders/${savedPO.id}`);
-        }, 500);
+        }, 1000);
       } else {
         console.error("Failed to create purchase order - addPurchaseOrder returned null");
         toast({
