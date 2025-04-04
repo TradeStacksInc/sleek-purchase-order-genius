@@ -25,12 +25,27 @@ import {
   Mail,
   MapPin,
   User,
-  Fuel
+  Fuel,
+  Hash,
+  Warehouse
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { OrderItem, PaymentTerm, Product, Company, Supplier } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+
+// Define the types for validation errors
+interface ValidationErrors {
+  company: {
+    [key: string]: string | undefined;
+  };
+  supplier: {
+    [key: string]: string | undefined;
+  };
+  items: {
+    [key: string]: string | undefined;
+  };
+}
 
 const CreatePO: React.FC = () => {
   const navigate = useNavigate();
@@ -78,7 +93,7 @@ const CreatePO: React.FC = () => {
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default to 7 days from now
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [validationErrors, setValidationErrors] = useState({
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({
     company: {},
     supplier: {},
     items: {}
@@ -158,7 +173,7 @@ const CreatePO: React.FC = () => {
         ...prev,
         supplier: {
           ...prev.supplier,
-          [field]: null
+          [field]: undefined
         }
       }));
     }
@@ -166,7 +181,7 @@ const CreatePO: React.FC = () => {
   
   // Validate the form
   const validateForm = () => {
-    let errors = {
+    let errors: ValidationErrors = {
       company: {},
       supplier: {},
       items: {}
@@ -272,7 +287,7 @@ const CreatePO: React.FC = () => {
       // Add the supplier first
       const savedSupplier = addSupplier(newSupplier);
       
-      if (savedSupplier === null) {
+      if (!savedSupplier) {
         console.error("Failed to create supplier");
         toast({
           title: "Error",
@@ -342,7 +357,7 @@ const CreatePO: React.FC = () => {
   };
   
   // Display validation error for a field
-  const getFieldError = (section: string, field: string) => {
+  const getFieldError = (section: keyof ValidationErrors, field: string) => {
     const sectionErrors = validationErrors[section];
     return sectionErrors && sectionErrors[field] ? (
       <p className="text-sm text-red-500 mt-1">{sectionErrors[field]}</p>
