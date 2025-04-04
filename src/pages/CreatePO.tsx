@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -284,10 +283,11 @@ const CreatePO: React.FC = () => {
         products: selectedProducts
       };
       
-      // Add the supplier first
-      const savedSupplier = addSupplier(newSupplier);
+      // Add the supplier first - store the return value
+      const savedSupplier: Supplier | null = addSupplier(newSupplier);
       
-      if (!savedSupplier) {
+      // Check if the supplier was created successfully
+      if (savedSupplier === null) {
         console.error("Failed to create supplier");
         toast({
           title: "Error",
