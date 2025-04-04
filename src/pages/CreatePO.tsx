@@ -25,15 +25,14 @@ import {
   MapPin,
   User,
   Fuel,
-  Hash,
-  Warehouse
+  Hash as HashIcon,
+  Warehouse as WarehouseIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { OrderItem, PaymentTerm, Product, Company, Supplier } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
-// Define the types for validation errors
 interface ValidationErrors {
   company: {
     [key: string]: string | undefined;
@@ -51,7 +50,6 @@ const CreatePO: React.FC = () => {
   const { addPurchaseOrder, addSupplier } = useApp();
   const { toast } = useToast();
   
-  // Form state
   const [company, setCompany] = useState<Company>({
     name: '',
     address: '',
@@ -59,7 +57,6 @@ const CreatePO: React.FC = () => {
     taxId: '',
   });
   
-  // Supplier state
   const [supplierData, setSupplierData] = useState({
     name: '',
     contact: '',
@@ -89,7 +86,7 @@ const CreatePO: React.FC = () => {
   ]);
   const [paymentTerm, setPaymentTerm] = useState<PaymentTerm>('50% Advance');
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default to 7 days from now
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({
@@ -98,10 +95,8 @@ const CreatePO: React.FC = () => {
     items: {}
   });
   
-  // Calculate grand total
   const grandTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
   
-  // Add new item
   const addItem = () => {
     setItems([
       ...items,
@@ -115,21 +110,18 @@ const CreatePO: React.FC = () => {
     ]);
   };
   
-  // Remove item
   const removeItem = (id: string) => {
     if (items.length > 1) {
       setItems(items.filter((item) => item.id !== id));
     }
   };
   
-  // Update item
   const updateItem = (id: string, field: keyof OrderItem, value: any) => {
     setItems(
       items.map((item) => {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
           
-          // Recalculate total price if quantity or unit price changes
           if (field === 'quantity' || field === 'unitPrice') {
             updatedItem.totalPrice = updatedItem.quantity * updatedItem.unitPrice;
           }
@@ -141,7 +133,6 @@ const CreatePO: React.FC = () => {
     );
   };
   
-  // Update company information
   const updateCompany = (field: keyof Company, value: string) => {
     setCompany(prev => ({
       ...prev,
@@ -149,7 +140,6 @@ const CreatePO: React.FC = () => {
     }));
   };
   
-  // Update supplier information
   const updateSupplier = (field: string, value: any) => {
     if (field === 'products') {
       setSupplierData(prev => ({
@@ -166,7 +156,6 @@ const CreatePO: React.FC = () => {
       }));
     }
     
-    // Clear validation error if it exists
     if (validationErrors.supplier[field]) {
       setValidationErrors(prev => ({
         ...prev,
@@ -178,7 +167,6 @@ const CreatePO: React.FC = () => {
     }
   };
   
-  // Validate the form
   const validateForm = () => {
     let errors: ValidationErrors = {
       company: {},
@@ -187,7 +175,6 @@ const CreatePO: React.FC = () => {
     };
     let isValid = true;
     
-    // Validate company info
     if (!company.name) {
       errors.company.name = "Company name is required";
       isValid = false;
@@ -205,7 +192,6 @@ const CreatePO: React.FC = () => {
       isValid = false;
     }
     
-    // Validate supplier info
     if (!supplierData.name) {
       errors.supplier.name = "Supplier name is required";
       isValid = false;
@@ -219,20 +205,17 @@ const CreatePO: React.FC = () => {
       isValid = false;
     }
     
-    // Validate email format if provided
     if (supplierData.email && !/^\S+@\S+\.\S+$/.test(supplierData.email)) {
       errors.supplier.email = "Please enter a valid email address";
       isValid = false;
     }
     
-    // Validate items
     const invalidItems = items.some(item => !item.product || item.quantity <= 0 || item.unitPrice <= 0);
     if (invalidItems) {
       errors.items.general = "All items must have a product, quantity and price";
       isValid = false;
     }
     
-    // Validate delivery date
     if (!deliveryDate) {
       errors.items.deliveryDate = "Expected delivery date is required";
       isValid = false;
@@ -242,7 +225,6 @@ const CreatePO: React.FC = () => {
     return isValid;
   };
   
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -260,15 +242,12 @@ const CreatePO: React.FC = () => {
     try {
       console.log("Creating supplier:", supplierData);
       
-      // Get selected products
       const selectedProducts = Object.keys(supplierData.products).filter(key => supplierData.products[key]);
       
-      // Ensure supplierType is one of the allowed values
       const validatedSupplierType = (supplierData.supplierType === 'Major' || supplierData.supplierType === 'Independent' || supplierData.supplierType === 'Government') 
         ? supplierData.supplierType as 'Major' | 'Independent' | 'Government'
-        : 'Independent'; // Default value
+        : 'Independent';
       
-      // Create supplier record
       const newSupplier: Supplier = {
         id: uuidv4(),
         name: supplierData.name.trim(),
@@ -283,10 +262,8 @@ const CreatePO: React.FC = () => {
         products: selectedProducts
       };
       
-      // Add the supplier first - store the return value
       const savedSupplier: Supplier | null = addSupplier(newSupplier);
       
-      // Check if the supplier was created successfully
       if (savedSupplier === null) {
         console.error("Failed to create supplier");
         toast({
@@ -300,11 +277,9 @@ const CreatePO: React.FC = () => {
       
       console.log("Supplier created successfully:", savedSupplier);
       
-      // Generate unique PO number
       const poNumber = `PO-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
       console.log("Generated PO number:", poNumber);
       
-      // Create new purchase order
       const newPO = {
         id: uuidv4(),
         poNumber,
@@ -321,7 +296,6 @@ const CreatePO: React.FC = () => {
       
       console.log("Creating purchase order:", newPO);
       
-      // Add purchase order to context
       const savedPO = addPurchaseOrder(newPO);
       
       if (savedPO !== null) {
@@ -332,7 +306,6 @@ const CreatePO: React.FC = () => {
           variant: "default"
         });
         
-        // Navigate to the order detail page with a slight delay to ensure data is saved
         setTimeout(() => {
           navigate(`/orders/${savedPO.id}`);
         }, 500);
@@ -356,7 +329,6 @@ const CreatePO: React.FC = () => {
     }
   };
   
-  // Display validation error for a field
   const getFieldError = (section: keyof ValidationErrors, field: string) => {
     const sectionErrors = validationErrors[section];
     return sectionErrors && sectionErrors[field] ? (
@@ -394,7 +366,6 @@ const CreatePO: React.FC = () => {
         </CardHeader>
         <CardContent>
           <form id="create-po-form" onSubmit={handleSubmit} className="space-y-8">
-            {/* Company Details Section */}
             <div className="po-form-section mb-8">
               <div className="flex items-center mb-4">
                 <div className="mr-3 bg-emerald-100 p-2 rounded-full">
@@ -452,7 +423,6 @@ const CreatePO: React.FC = () => {
               </div>
             </div>
             
-            {/* Supplier Details Section */}
             <div className="po-form-section mb-8">
               <div className="flex items-center mb-4">
                 <div className="mr-3 bg-purple-100 p-2 rounded-full">
@@ -559,7 +529,7 @@ const CreatePO: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
                   <Label htmlFor="supplier-reg-number" className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <HashIcon className="h-4 w-4 text-muted-foreground" />
                     Company Registration Number
                   </Label>
                   <Input
@@ -571,7 +541,7 @@ const CreatePO: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="supplier-depot-name" className="flex items-center gap-2">
-                    <Warehouse className="h-4 w-4 text-muted-foreground" />
+                    <WarehouseIcon className="h-4 w-4 text-muted-foreground" />
                     Depot Name
                   </Label>
                   <Input
@@ -652,7 +622,6 @@ const CreatePO: React.FC = () => {
               </div>
             </div>
             
-            {/* Order Items Section */}
             <div className="po-form-section mb-8">
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center">
@@ -737,7 +706,6 @@ const CreatePO: React.FC = () => {
               {getFieldError('items', 'general')}
             </div>
             
-            {/* Order Summary Section */}
             <div className="po-form-section mb-8">
               <div className="flex items-center mb-4">
                 <div className="mr-3 bg-cyan-100 p-2 rounded-full">

@@ -1,4 +1,3 @@
-
 import { 
   LogEntry, 
   PurchaseOrder, 
@@ -49,7 +48,7 @@ export interface AppContextType {
   getStatusDescription: (status: OrderStatus) => string;
   
   // Supplier actions
-  addSupplier: (supplier: Supplier) => void;
+  addSupplier: (supplier: Supplier) => Supplier | null;
   
   // Log actions
   getLogsByOrderId: (id: string) => LogEntry[];
