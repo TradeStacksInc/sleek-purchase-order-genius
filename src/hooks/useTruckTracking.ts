@@ -37,7 +37,9 @@ export function useTruckTracking() {
     truckId: string, 
     initialLatitude?: number, 
     initialLongitude?: number,
-    totalDistance?: number
+    totalDistance?: number,
+    sourceLocation?: { lat: number, lng: number, name: string },
+    destinationLocation?: { lat: number, lng: number, name: string }
   ) => {
     const gpsService = GPSTrackingService.getInstance();
     const truck = getTruckById(truckId);
@@ -46,15 +48,6 @@ export function useTruckTracking() {
       toast({
         title: "Error",
         description: "Could not find truck with the provided ID.",
-        variant: "destructive"
-      });
-      return false;
-    }
-    
-    if (!truck.isGPSTagged) {
-      toast({
-        title: "GPS Required",
-        description: "This truck is not GPS-tagged. Please tag it first.",
         variant: "destructive"
       });
       return false;
@@ -70,7 +63,9 @@ export function useTruckTracking() {
       truckId,
       startLatitude,
       startLongitude,
-      distance
+      distance,
+      sourceLocation,
+      destinationLocation
     );
     
     // Update UI

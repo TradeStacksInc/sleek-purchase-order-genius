@@ -1,167 +1,436 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
+import { format, startOfToday, startOfWeek, startOfMonth, subDays, isWithinInterval } from 'date-fns';
+import { DateRange } from 'react-day-picker';
+import { DateRangePicker } from '@/components/DateRangePicker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import GPSTrackingTab from '@/components/Dashboard/GPSTrackingTab';
-import OrdersTab from '@/components/Dashboard/OrdersTab';
 import { 
-  ChartContainer, 
-  ChartTooltip,
-  ChartTooltipContent
-} from '@/components/ui/chart';
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
 import { 
   Area, 
-  AreaChart,
+  AreaChart, 
   Bar, 
-  BarChart,
+  BarChart, 
   CartesianGrid, 
   Legend, 
   Line, 
   LineChart, 
+  PieChart,
+  Pie,
   ResponsiveContainer, 
   Tooltip, 
   XAxis, 
-  YAxis 
+  YAxis,
+  Cell
 } from 'recharts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   CircleDollarSign, 
   FileCheck, 
-  Hourglass,
   Truck,
   Users,
   BarChart3,
   Droplets,
   AlertCircle,
-  GaugeCircle
+  ArrowRight,
+  Calendar,
+  Clock,
+  Navigation,
+  ShieldAlert
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 
 const Dashboard: React.FC = () => {
-  const { purchaseOrders, updateOrderStatus, getDriverById, getTruckById, tanks = [] } = useApp();
-  const [timeRange, setTimeRange] = useState('1y');
+  const { 
+    purchaseOrders, 
+    drivers, 
+    tanks, 
+    suppliers, 
+    sales, 
+    incidents, 
+    activityLogs 
+  } = useApp();
   
-  // Calculate stats
-  const totalOrders = purchaseOrders.length;
-  const pendingOrders = purchaseOrders.filter(po => po.status === 'pending').length;
-  const activeOrders = purchaseOrders.filter(po => po.status === 'active').length;
-  const fulfilledOrders = purchaseOrders.filter(po => po.status === 'fulfilled').length;
+  // Date range filter state
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [filterType, setFilterType] = useState('today');
   
-  const totalValue = purchaseOrders.reduce((sum, po) => sum + po.grandTotal, 0);
-  const activeTotalValue = purchaseOrders
-    .filter(po => po.status === 'active')
-    .reduce((sum, po) => sum + po.grandTotal, 0);
+  // Get date range based on filter type
+  const getDateRange = useMemo(() => {
+    const today = new Date();
+    let from: Date, to: Date;
     
-  // Get active deliveries
-  const activeDeliveries = purchaseOrders.filter(po => 
-    po.deliveryDetails?.status === 'in_transit'
-  );
-
-  // Mock data for charts
-  const monthlyRevenue = [
-    { month: 'Jan', revenue: 1200000 },
-    { month: 'Feb', revenue: 900000 },
-    { month: 'Mar', revenue: 1500000 },
-    { month: 'Apr', revenue: 1800000 },
-    { month: 'May', revenue: 1600000 },
-    { month: 'Jun', revenue: 2100000 },
-    { month: 'Jul', revenue: 1900000 },
-    { month: 'Aug', revenue: 2300000 },
-    { month: 'Sep', revenue: 2500000 },
-    { month: 'Oct', revenue: 2700000 },
-    { month: 'Nov', revenue: 2400000 },
-    { month: 'Dec', revenue: 3100000 },
-  ];
-
-  const fuelSales = [
-    { name: 'PMS', value: 65 },
-    { name: 'AGO', value: 25 },
-    { name: 'DPK', value: 10 },
-  ];
-
-  // Use actual tank data if available, otherwise use mock data
-  const tankLevels = tanks.length > 0 
-    ? tanks.map(tank => ({
-        name: `${tank.name} (${tank.productType})`,
-        level: Math.round((tank.currentVolume / tank.capacity) * 100),
-        capacity: `${tank.capacity.toLocaleString()}L`,
-        current: `${tank.currentVolume.toLocaleString()}L`,
-      }))
-    : [
-        { name: 'Tank 1 (PMS)', level: 75, capacity: '45,000L', current: '33,750L' },
-        { name: 'Tank 2 (PMS)', level: 60, capacity: '45,000L', current: '27,000L' },
-        { name: 'Tank 3 (AGO)', level: 45, capacity: '45,000L', current: '20,250L' },
-        { name: 'Tank 4 (AGO)', level: 30, capacity: '45,000L', current: '13,500L' },
-      ];
-
-  const alerts = [
-    { id: 1, type: 'critical', message: 'Tank 4 level below 35%', timestamp: '2 hours ago' },
-    { id: 2, type: 'warning', message: 'Dispenser 3 offline', timestamp: '3 hours ago' },
-    { id: 3, type: 'info', message: 'Truck PMS-001 arrived at station', timestamp: '6 hours ago' },
-  ];
-
+    switch (filterType) {
+      case 'today':
+        from = startOfToday();
+        to = new Date(today.setHours(23, 59, 59, 999));
+        break;
+      case 'week':
+        from = startOfWeek(today);
+        to = new Date(today.setHours(23, 59, 59, 999));
+        break;
+      case 'month':
+        from = startOfMonth(today);
+        to = new Date(today.setHours(23, 59, 59, 999));
+        break;
+      case 'custom':
+        if (dateRange?.from) {
+          from = dateRange.from;
+          to = dateRange.to || dateRange.from;
+          
+          // Set time to end of day for 'to' date
+          to = new Date(to);
+          to.setHours(23, 59, 59, 999);
+        } else {
+          from = startOfToday();
+          to = new Date(today.setHours(23, 59, 59, 999));
+        }
+        break;
+      default:
+        from = startOfToday();
+        to = new Date(today.setHours(23, 59, 59, 999));
+    }
+    
+    return { from, to };
+  }, [filterType, dateRange]);
+  
+  // Filter data based on date range
+  const filteredOrders = useMemo(() => {
+    return purchaseOrders.filter(order => {
+      const orderDate = order.createdAt;
+      return isWithinInterval(orderDate, { 
+        start: getDateRange.from, 
+        end: getDateRange.to 
+      });
+    });
+  }, [purchaseOrders, getDateRange]);
+  
+  const filteredSales = useMemo(() => {
+    return sales.filter(sale => {
+      const saleDate = sale.timestamp;
+      return isWithinInterval(saleDate, { 
+        start: getDateRange.from, 
+        end: getDateRange.to 
+      });
+    });
+  }, [sales, getDateRange]);
+  
+  const filteredIncidents = useMemo(() => {
+    return incidents.filter(incident => {
+      const incidentDate = incident.timestamp;
+      return isWithinInterval(incidentDate, { 
+        start: getDateRange.from, 
+        end: getDateRange.to 
+      });
+    });
+  }, [incidents, getDateRange]);
+  
+  // Calculate statistics from real data
+  const stats = useMemo(() => {
+    const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    
+    const totalCost = filteredOrders.reduce((sum, order) => sum + order.grandTotal, 0);
+    
+    const profit = totalRevenue - totalCost;
+    
+    const ordersCount = filteredOrders.length;
+    
+    const driversCount = drivers.length;
+    
+    const incidentsCount = filteredIncidents.length;
+    
+    // Calculate fuel stock
+    const fuelStock = {
+      PMS: 0,
+      AGO: 0,
+      DPK: 0
+    };
+    
+    tanks.forEach(tank => {
+      if (tank.productType === 'PMS') fuelStock.PMS += tank.currentVolume;
+      if (tank.productType === 'AGO') fuelStock.AGO += tank.currentVolume;
+      if (tank.productType === 'DPK') fuelStock.DPK += tank.currentVolume;
+    });
+    
+    // Calculate sales by fuel type
+    const salesByFuelType = [
+      { name: 'PMS', value: 0 },
+      { name: 'AGO', value: 0 },
+      { name: 'DPK', value: 0 }
+    ];
+    
+    filteredSales.forEach(sale => {
+      const fuelType = sale.productType;
+      const foundIndex = salesByFuelType.findIndex(item => item.name === fuelType);
+      if (foundIndex !== -1) {
+        salesByFuelType[foundIndex].value += sale.totalAmount;
+      }
+    });
+    
+    // Monthly revenue data for chart
+    const monthlyRevenue: { month: string, revenue: number }[] = [];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // Initialize with zeros
+    months.forEach(month => {
+      monthlyRevenue.push({ month, revenue: 0 });
+    });
+    
+    // Populate with actual data
+    sales.forEach(sale => {
+      const month = sale.timestamp.getMonth();
+      monthlyRevenue[month].revenue += sale.totalAmount;
+    });
+    
+    // Get active deliveries
+    const activeDeliveries = purchaseOrders.filter(po => 
+      po.deliveryDetails?.status === 'in_transit'
+    );
+    
+    // Recent activity logs
+    const recentLogs = activityLogs
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, 5);
+    
+    return {
+      totalRevenue,
+      totalCost,
+      profit,
+      ordersCount,
+      driversCount,
+      incidentsCount,
+      fuelStock,
+      salesByFuelType,
+      monthlyRevenue,
+      activeDeliveries,
+      recentLogs
+    };
+  }, [filteredOrders, filteredSales, filteredIncidents, drivers, tanks, activityLogs, sales]);
+  
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl font-bold">Business Dashboard</h1>
-        <div className="flex items-center space-x-2">
-          <Badge variant="outline" className="cursor-pointer hover:bg-secondary" onClick={() => setTimeRange('7d')}>
-            7D
-          </Badge>
-          <Badge variant="outline" className="cursor-pointer hover:bg-secondary" onClick={() => setTimeRange('1m')}>
-            1M
-          </Badge>
-          <Badge variant="outline" className={`cursor-pointer ${timeRange === '1y' ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`} onClick={() => setTimeRange('1y')}>
-            1Y
-          </Badge>
-          <Badge variant="outline" className="cursor-pointer hover:bg-secondary" onClick={() => setTimeRange('all')}>
-            All
-          </Badge>
+        
+        <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4">
+          <div className="flex space-x-2 bg-gray-100 p-1 rounded-lg">
+            <Button 
+              variant={filterType === 'today' ? 'default' : 'ghost'} 
+              size="sm" 
+              className="rounded-md"
+              onClick={() => setFilterType('today')}
+            >
+              Today
+            </Button>
+            <Button 
+              variant={filterType === 'week' ? 'default' : 'ghost'} 
+              size="sm" 
+              className="rounded-md"
+              onClick={() => setFilterType('week')}
+            >
+              This Week
+            </Button>
+            <Button 
+              variant={filterType === 'month' ? 'default' : 'ghost'} 
+              size="sm" 
+              className="rounded-md"
+              onClick={() => setFilterType('month')}
+            >
+              This Month
+            </Button>
+            <Button 
+              variant={filterType === 'custom' ? 'default' : 'ghost'} 
+              size="sm" 
+              className="rounded-md"
+              onClick={() => setFilterType('custom')}
+            >
+              <Calendar className="h-4 w-4 mr-1" />
+              Custom
+            </Button>
+          </div>
+          
+          {filterType === 'custom' && (
+            <DateRangePicker 
+              date={dateRange} 
+              onDateChange={(range) => {
+                setDateRange(range);
+              }} 
+            />
+          )}
         </div>
       </div>
+      
+      <div className="text-sm text-muted-foreground">
+        Showing data from {format(getDateRange.from, 'MMM dd, yyyy')} to {format(getDateRange.to, 'MMM dd, yyyy')}
+      </div>
 
+      {/* Financial Insights Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard 
-          title="Total Orders" 
-          value={totalOrders.toString()} 
-          description={`${fulfilledOrders} fulfilled orders`}
-          icon={<FileCheck className="h-4 w-4" />}
-          trend={7.2}
-          trendUp={true}
-        />
-        <MetricCard 
-          title="Pending Orders" 
-          value={pendingOrders.toString()} 
-          description={`Awaiting payment or approval`}
-          icon={<Hourglass className="h-4 w-4" />}
-          iconColor="bg-amber-100 text-amber-700"
-          trend={2.1}
-          trendUp={false}
-        />
-        <MetricCard 
-          title="Active Orders" 
-          value={activeOrders.toString()} 
-          description={`${activeDeliveries.length} deliveries in transit`}
-          icon={<Truck className="h-4 w-4" />}
-          iconColor="bg-blue-100 text-blue-700"
-          trend={12.5}
-          trendUp={true}
-        />
-        <MetricCard 
-          title="Total Revenue" 
-          value={`₦${(totalValue/1000000).toFixed(2)}M`}
-          description={`₦${(activeTotalValue/1000000).toFixed(2)}M in active orders`}
-          icon={<CircleDollarSign className="h-4 w-4" />}
-          iconColor="bg-green-100 text-green-700"
-          trend={15.3}
-          trendUp={true}
-        />
+        <Link to="/orders" className="no-underline text-foreground">
+          <Card className="shadow-md hover:shadow-lg transition-all duration-200 hover:translate-y-[-2px] cursor-pointer rounded-xl overflow-hidden border-t-4 border-t-blue-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between space-x-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Revenue</p>
+                  <p className="text-2xl font-bold">₦{stats.totalRevenue.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    From {filteredSales.length} sales
+                  </p>
+                </div>
+                <div className="p-2 rounded-full bg-blue-100 text-blue-700">
+                  <CircleDollarSign className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        
+        <Link to="/orders" className="no-underline text-foreground">
+          <Card className="shadow-md hover:shadow-lg transition-all duration-200 hover:translate-y-[-2px] cursor-pointer rounded-xl overflow-hidden border-t-4 border-t-amber-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between space-x-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Cost of Purchase</p>
+                  <p className="text-2xl font-bold">₦{stats.totalCost.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    From {stats.ordersCount} orders
+                  </p>
+                </div>
+                <div className="p-2 rounded-full bg-amber-100 text-amber-700">
+                  <FileCheck className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        
+        <Link to="/analytics" className="no-underline text-foreground">
+          <Card className="shadow-md hover:shadow-lg transition-all duration-200 hover:translate-y-[-2px] cursor-pointer rounded-xl overflow-hidden border-t-4 border-t-green-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between space-x-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Profit / Loss</p>
+                  <p className="text-2xl font-bold">
+                    <span className={stats.profit >= 0 ? "text-green-600" : "text-red-600"}>
+                      ₦{stats.profit.toLocaleString()}
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stats.profit >= 0 ? "Profit" : "Loss"} in selected period
+                  </p>
+                </div>
+                <div className={`p-2 rounded-full ${stats.profit >= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  <BarChart3 className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        
+        <Link to="/logs" className="no-underline text-foreground">
+          <Card className="shadow-md hover:shadow-lg transition-all duration-200 hover:translate-y-[-2px] cursor-pointer rounded-xl overflow-hidden border-t-4 border-t-red-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between space-x-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Incidents</p>
+                  <p className="text-2xl font-bold">{stats.incidentsCount}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    In selected period
+                  </p>
+                </div>
+                <div className="p-2 rounded-full bg-red-100 text-red-700">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+      
+      {/* Second row of insights */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Link to="/staff-management" className="no-underline text-foreground">
+          <Card className="shadow-md hover:shadow-lg transition-all duration-200 hover:translate-y-[-2px] cursor-pointer rounded-xl overflow-hidden border-t-4 border-t-purple-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between space-x-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Drivers</p>
+                  <p className="text-2xl font-bold">{stats.driversCount}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stats.activeDeliveries.length} currently on delivery
+                  </p>
+                </div>
+                <div className="p-2 rounded-full bg-purple-100 text-purple-700">
+                  <Users className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        
+        <Link to="/tank-management" className="no-underline text-foreground md:col-span-2">
+          <Card className="shadow-md hover:shadow-lg transition-all duration-200 hover:translate-y-[-2px] cursor-pointer rounded-xl overflow-hidden border-t-4 border-t-blue-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-medium">Fuel Stock Levels</p>
+                <div className="p-2 rounded-full bg-blue-100 text-blue-700">
+                  <Droplets className="h-5 w-5" />
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>PMS (Petrol)</span>
+                    <span className="font-medium">{stats.fuelStock.PMS.toLocaleString()} Liters</span>
+                  </div>
+                  <Progress 
+                    value={Math.min(100, (stats.fuelStock.PMS / 50000) * 100)} 
+                    className="h-2 bg-gray-200" 
+                    indicatorClassName="bg-green-500"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>AGO (Diesel)</span>
+                    <span className="font-medium">{stats.fuelStock.AGO.toLocaleString()} Liters</span>
+                  </div>
+                  <Progress 
+                    value={Math.min(100, (stats.fuelStock.AGO / 30000) * 100)} 
+                    className="h-2 bg-gray-200" 
+                    indicatorClassName="bg-amber-500"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>DPK (Kerosene)</span>
+                    <span className="font-medium">{stats.fuelStock.DPK.toLocaleString()} Liters</span>
+                  </div>
+                  <Progress 
+                    value={Math.min(100, (stats.fuelStock.DPK / 20000) * 100)} 
+                    className="h-2 bg-gray-200" 
+                    indicatorClassName="bg-blue-500"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2 shadow-md rounded-xl overflow-hidden border-t-4 border-t-blue-500 transition-transform hover:scale-[1.01] hover:shadow-lg">
-          <CardHeader className="pb-2 bg-gradient-to-r from-blue-50 to-white">
+        <Card className="lg:col-span-2 shadow-md rounded-xl overflow-hidden border-t-4 border-t-blue-500">
+          <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">Revenue Overview</CardTitle>
             <CardDescription>Monthly revenue for the current year</CardDescription>
           </CardHeader>
@@ -169,7 +438,7 @@ const Dashboard: React.FC = () => {
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
-                  data={monthlyRevenue}
+                  data={stats.monthlyRevenue}
                   margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
                 >
                   <defs>
@@ -181,12 +450,12 @@ const Dashboard: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f5f5f5" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis 
-                    tickFormatter={(value) => `₦${value/1000000}M`} 
+                    tickFormatter={(value) => `₦${(value/1000).toFixed(0)}K`} 
                     tick={{ fontSize: 12 }}
                     width={60}
                   />
                   <Tooltip 
-                    formatter={(value: number) => [`₦${(value/1000000).toFixed(2)}M`, 'Revenue']}
+                    formatter={(value: number) => [`₦${value.toLocaleString()}`, 'Revenue']}
                     contentStyle={{ borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}
                   />
                   <Area 
@@ -203,153 +472,43 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-green-500 transition-transform hover:scale-[1.01] hover:shadow-lg">
-          <CardHeader className="pb-2 bg-gradient-to-r from-green-50 to-white">
-            <CardTitle className="text-base font-medium">Fuel Sales Distribution</CardTitle>
+        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-green-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium">Sales Distribution</CardTitle>
             <CardDescription>Sales by fuel type</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center items-center">
             <div className="h-[250px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={fuelSales}
-                  margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-                  layout="vertical"
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f5f5f5" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} />
-                  <YAxis 
-                    type="category" 
-                    dataKey="name" 
-                    tick={{ fontSize: 12 }}
-                    width={40}
-                  />
-                  <Tooltip 
-                    formatter={(value: number) => [`${value}%`, 'Percentage']}
-                    contentStyle={{ borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}
-                  />
-                  <Bar 
-                    dataKey="value" 
-                    fill="#10B981"
-                    radius={[0, 4, 4, 0]}
-                    barSize={30}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-blue-500 transition-transform hover:scale-[1.01] hover:shadow-lg">
-          <CardHeader className="pb-2 bg-gradient-to-r from-blue-50 to-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-medium">Tank Levels</CardTitle>
-                <CardDescription>Current storage capacity</CardDescription>
-              </div>
-              <Droplets className="h-5 w-5 text-blue-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {tankLevels.map((tank, index) => (
-                <div key={index} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span>{tank.name}</span>
-                    <span className="font-medium">{tank.level}% ({tank.current}/{tank.capacity})</span>
-                  </div>
-                  <Progress 
-                    value={tank.level} 
-                    className="h-2 rounded-full" 
-                    indicatorClassName={
-                      tank.level < 30 ? "bg-red-500 rounded-full" : 
-                      tank.level < 50 ? "bg-amber-500 rounded-full" : 
-                      "bg-green-500 rounded-full"
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-purple-500 transition-transform hover:scale-[1.01] hover:shadow-lg">
-          <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 to-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-medium">Staff Overview</CardTitle>
-                <CardDescription>Shift and attendance</CardDescription>
-              </div>
-              <Users className="h-5 w-5 text-purple-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-purple-50 rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-sm text-purple-600 font-medium">On Shift</p>
-                <p className="text-2xl font-bold text-purple-700">12</p>
-                <p className="text-xs text-purple-600">of 15 staff</p>
-              </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-sm text-blue-600 font-medium">Attendance</p>
-                <p className="text-2xl font-bold text-blue-700">92%</p>
-                <p className="text-xs text-blue-600">This month</p>
-              </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-sm text-green-600 font-medium">Productivity</p>
-                <p className="text-2xl font-bold text-green-700">94%</p>
-                <p className="text-xs text-green-600">Target: 85%</p>
-              </div>
-              <div className="bg-amber-50 rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-sm text-amber-600 font-medium">Drivers</p>
-                <p className="text-2xl font-bold text-amber-700">8</p>
-                <p className="text-xs text-amber-600">5 in transit</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-red-500 transition-transform hover:scale-[1.01] hover:shadow-lg">
-          <CardHeader className="pb-2 bg-gradient-to-r from-red-50 to-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-medium">System Alerts</CardTitle>
-                <CardDescription>Issues that need attention</CardDescription>
-              </div>
-              <AlertCircle className="h-5 w-5 text-red-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {alerts.map((alert) => (
-                <div 
-                  key={alert.id} 
-                  className={`p-3 rounded-lg flex items-start space-x-3 shadow-sm hover:shadow-md transition-all duration-200
-                    ${alert.type === 'critical' ? 'bg-red-50 text-red-800' : 
-                      alert.type === 'warning' ? 'bg-amber-50 text-amber-800' :
-                      'bg-blue-50 text-blue-800'}`}
-                >
-                  <div 
-                    className={`p-1 rounded-full
-                      ${alert.type === 'critical' ? 'bg-red-200' : 
-                        alert.type === 'warning' ? 'bg-amber-200' :
-                        'bg-blue-200'}`}
-                  >
-                    <AlertCircle className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{alert.message}</p>
-                      <span className="text-xs opacity-70">{alert.timestamp}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {alerts.length === 0 && (
-                <div className="text-center py-6 text-muted-foreground">
-                  <p>No alerts at this time</p>
+              {stats.salesByFuelType.some(item => item.value > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={stats.salesByFuelType.filter(item => item.value > 0)}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {stats.salesByFuelType.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={index === 0 ? '#10B981' : index === 1 ? '#F59E0B' : '#3B82F6'} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => [`₦${value.toLocaleString()}`, 'Sales']}
+                      contentStyle={{ borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-gray-400">
+                  <p>No sales data available for the selected period</p>
                 </div>
               )}
             </div>
@@ -357,70 +516,115 @@ const Dashboard: React.FC = () => {
         </Card>
       </div>
       
-      <Tabs defaultValue="orders" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-4 rounded-lg">
-          <TabsTrigger value="orders" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Purchase Orders</TabsTrigger>
-          <TabsTrigger value="tracking" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">GPS Tracking</TabsTrigger>
-        </TabsList>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-amber-500">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-medium">Active Deliveries</CardTitle>
+                <CardDescription>Trucks currently in transit</CardDescription>
+              </div>
+              <Truck className="h-5 w-5 text-amber-500" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {stats.activeDeliveries.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground">
+                <Truck className="mx-auto h-12 w-12 opacity-20 mb-2" />
+                <p>No active deliveries at this time</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {stats.activeDeliveries.slice(0, 3).map((delivery) => {
+                  const driverId = delivery.deliveryDetails?.driverId;
+                  const driver = drivers.find(d => d.id === driverId);
+                  
+                  return (
+                    <Link 
+                      key={delivery.id} 
+                      to={`/delivery-tracking?id=${delivery.id}`}
+                      className="block no-underline"
+                    >
+                      <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors">
+                        <div className="flex items-center">
+                          <div className="mr-3 bg-amber-100 p-2 rounded-full">
+                            <Navigation className="h-5 w-5 text-amber-700" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-foreground">{delivery.poNumber}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Driver: {driver ? driver.name : 'Unassigned'}
+                            </p>
+                          </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </Link>
+                  );
+                })}
+                
+                {stats.activeDeliveries.length > 3 && (
+                  <Link to="/gps-tracking" className="block no-underline">
+                    <Button variant="ghost" size="sm" className="w-full text-amber-700">
+                      View all {stats.activeDeliveries.length} active deliveries
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
         
-        <TabsContent value="orders" className="animate-fade-in">
-          <OrdersTab 
-            purchaseOrders={purchaseOrders}
-            updateOrderStatus={updateOrderStatus}
-            getDriverById={getDriverById}
-          />
-        </TabsContent>
-        
-        <TabsContent value="tracking" className="animate-fade-in">
-          <GPSTrackingTab 
-            activeDeliveries={activeDeliveries}
-            getDriverById={getDriverById}
-            getTruckById={getTruckById}
-          />
-        </TabsContent>
-      </Tabs>
+        <Card className="shadow-md rounded-xl overflow-hidden border-t-4 border-t-indigo-500">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-medium">Recent Activity</CardTitle>
+                <CardDescription>System activity log</CardDescription>
+              </div>
+              <Clock className="h-5 w-5 text-indigo-500" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {stats.recentLogs.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground">
+                <Clock className="mx-auto h-12 w-12 opacity-20 mb-2" />
+                <p>No recent activity to display</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {stats.recentLogs.map((log) => (
+                  <div key={log.id} className="flex items-start space-x-3">
+                    <div className="bg-indigo-100 p-1.5 rounded-full mt-0.5">
+                      {log.entityType === 'incident' ? (
+                        <ShieldAlert className="h-4 w-4 text-indigo-700" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-indigo-700" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm">{log.action}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(log.timestamp, 'MMM dd, yyyy HH:mm')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                
+                <Link to="/logs" className="block no-underline">
+                  <Button variant="ghost" size="sm" className="w-full text-indigo-700">
+                    View all activity logs
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
-
-interface MetricCardProps {
-  title: string;
-  value: string;
-  description: string;
-  icon: React.ReactNode;
-  iconColor?: string;
-  trend: number;
-  trendUp: boolean;
-}
-
-const MetricCard: React.FC<MetricCardProps> = ({ 
-  title, 
-  value, 
-  description, 
-  icon, 
-  iconColor = "bg-primary/20 text-primary",
-  trend,
-  trendUp
-}) => (
-  <Card className="shadow-md rounded-xl overflow-hidden transition-transform hover:scale-[1.02] hover:shadow-lg border-t-4 border-t-primary">
-    <CardContent className="p-6 bg-gradient-to-br from-gray-50 to-white">
-      <div className="flex items-center justify-between space-x-4">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold">{value}</p>
-          <div className="flex items-center mt-1 text-xs">
-            <span className={`mr-1 ${trendUp ? 'text-green-600' : 'text-red-600'}`}>
-              {trendUp ? '↑' : '↓'} {trend}%
-            </span>
-            <span className="text-muted-foreground">{description}</span>
-          </div>
-        </div>
-        <div className={`p-2 rounded-full ${iconColor}`}>
-          {icon}
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
 
 export default Dashboard;
