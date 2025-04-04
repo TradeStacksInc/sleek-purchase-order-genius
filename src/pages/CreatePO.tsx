@@ -115,7 +115,9 @@ const CreatePO: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      // Validate required fields
       if (!supplierId || !deliveryDate || !company.name || !company.address || !company.contact || !company.taxId) {
+        console.error("Missing required fields:", { supplierId, deliveryDate, company });
         toast({
           title: "Missing Information",
           description: "Please fill in all required fields",
@@ -128,6 +130,7 @@ const CreatePO: React.FC = () => {
       // Validate items
       const invalidItems = items.filter(item => item.quantity <= 0 || item.unitPrice <= 0);
       if (invalidItems.length > 0) {
+        console.error("Invalid items:", invalidItems);
         toast({
           title: "Invalid Items",
           description: "Please ensure all items have a quantity and unit price greater than zero",
@@ -140,6 +143,7 @@ const CreatePO: React.FC = () => {
       // Find selected supplier
       const supplier = suppliers.find((s) => s.id === supplierId);
       if (!supplier) {
+        console.error("Supplier not found:", supplierId, "Available suppliers:", suppliers);
         toast({
           title: "Supplier Not Found",
           description: "Please select a valid supplier",
@@ -149,10 +153,14 @@ const CreatePO: React.FC = () => {
         return;
       }
       
+      // Generate unique PO number
+      const poNumber = `PO-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+      console.log("Generated PO number:", poNumber);
+      
       // Create new purchase order
       const newPO = {
         id: uuidv4(),
-        poNumber: `PO-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+        poNumber,
         company,
         supplier,
         items,
@@ -164,24 +172,32 @@ const CreatePO: React.FC = () => {
         updatedAt: new Date(),
       };
       
+      console.log("Creating purchase order:", newPO);
+      
       // Add purchase order to context
       const savedPO = addPurchaseOrder(newPO);
       
       if (savedPO) {
+        console.log("Purchase order created successfully:", savedPO);
         toast({
           title: "Purchase Order Created",
           description: `PO #${savedPO.poNumber} has been created successfully.`,
           variant: "default"
         });
         
-        // Navigate to the order detail page
-        navigate(`/orders/${savedPO.id}`);
+        // Short delay to ensure the order is saved before navigating
+        setTimeout(() => {
+          // Navigate to the order detail page
+          navigate(`/orders/${savedPO.id}`);
+        }, 100);
       } else {
+        console.error("Failed to create purchase order");
         toast({
           title: "Error",
           description: "Failed to create purchase order. Please try again.",
           variant: "destructive"
         });
+        setIsSubmitting(false);
       }
     } catch (error) {
       console.error('Error creating purchase order:', error);
@@ -190,7 +206,6 @@ const CreatePO: React.FC = () => {
         description: "There was a problem creating your purchase order",
         variant: "destructive"
       });
-    } finally {
       setIsSubmitting(false);
     }
   };

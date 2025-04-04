@@ -32,11 +32,13 @@ export const usePurchaseOrderActions = (
       
       // Create new array directly
       const newOrders = [orderWithHistory, ...purchaseOrders];
+      console.log("New orders array:", newOrders);
       
       // Save to localStorage immediately
       const saveSuccess = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
       
       if (!saveSuccess) {
+        console.error("Failed to save purchase orders to localStorage");
         toast({
           title: "Save Error",
           description: "There was a problem saving your purchase order. Please try again.",
@@ -44,6 +46,8 @@ export const usePurchaseOrderActions = (
         });
         return null;
       }
+      
+      console.log("Successfully saved purchase orders to localStorage");
       
       // Update state only after successful save
       setPurchaseOrders(newOrders);
@@ -58,9 +62,11 @@ export const usePurchaseOrderActions = (
       };
       
       // Add log directly
-      const newLogs = [newLog, ...logs];
-      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-      setLogs(newLogs);
+      setLogs(prevLogs => {
+        const updatedLogs = [newLog, ...prevLogs];
+        saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
+        return updatedLogs;
+      });
       
       toast({
         title: "Purchase Order Created",

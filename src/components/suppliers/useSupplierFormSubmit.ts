@@ -23,6 +23,8 @@ export const useSupplierFormSubmit = (onClose: () => void) => {
     setIsSubmitting(true);
     
     try {
+      console.log("Submitting supplier form:", formData);
+      
       // Get selected products
       const selectedProducts = Object.keys(formData.products).filter(key => formData.products[key]);
       
@@ -31,7 +33,7 @@ export const useSupplierFormSubmit = (onClose: () => void) => {
         ? formData.supplierType as 'Major' | 'Independent' | 'Government'
         : 'Independent'; // Default value
         
-      // Create new supplier object with enhanced fields
+      // Create new supplier object
       const newSupplier = {
         id: uuidv4(),
         name: formData.name.trim(),
@@ -46,11 +48,15 @@ export const useSupplierFormSubmit = (onClose: () => void) => {
         products: selectedProducts
       };
       
-      // Add supplier to the context and store the result
+      console.log("Created new supplier object:", newSupplier);
+      
+      // Add supplier to the context
       const result = addSupplier(newSupplier);
       
+      console.log("addSupplier result:", result);
+      
       // Check if add was successful
-      if (result !== null) {
+      if (result) {
         toast({
           title: "Supplier Added",
           description: `${formData.name} has been added to your suppliers.`,

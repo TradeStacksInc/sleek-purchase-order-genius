@@ -12,6 +12,8 @@ export const useSupplierActions = (
 
   const addSupplier = (supplier: Supplier) => {
     try {
+      console.log("Adding supplier in useSupplierActions:", supplier);
+      
       // Create the new suppliers array directly
       const newSuppliers = [supplier, ...suppliers];
       
@@ -19,6 +21,7 @@ export const useSupplierActions = (
       const saveSuccess = saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
       
       if (!saveSuccess) {
+        console.error("Failed to save suppliers to localStorage");
         toast({
           title: "Save Error",
           description: "There was a problem saving your supplier. Please try again.",
@@ -26,6 +29,8 @@ export const useSupplierActions = (
         });
         return null;
       }
+      
+      console.log("Successfully saved suppliers to localStorage");
       
       // Then update state only after successful save
       setSuppliers(newSuppliers);
@@ -39,12 +44,12 @@ export const useSupplierActions = (
       };
       
       // Update logs state with the new log
-      setLogs(prevLogs => [newLog, ...prevLogs]);
-      
-      // Get current logs from localStorage and update with new log
-      const currentLogs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || '[]');
-      const updatedLogs = [newLog, ...currentLogs];
-      saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
+      setLogs(prevLogs => {
+        const updatedLogs = [newLog, ...prevLogs];
+        // Get current logs from localStorage and update with new log
+        saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
+        return updatedLogs;
+      });
       
       toast({
         title: "Supplier Added",
