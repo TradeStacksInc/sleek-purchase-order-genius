@@ -51,6 +51,7 @@ export const loadAppState = (defaultState: Partial<StoredAppData>): StoredAppDat
     prices: [],
     incidents: [],
     activityLogs: [],
+    tanks: [],
     ...defaultState
   };
   
@@ -68,7 +69,8 @@ export const loadAppState = (defaultState: Partial<StoredAppData>): StoredAppDat
     sales: getFromLocalStorage(STORAGE_KEYS.SALES, completeDefaultState.sales),
     prices: getFromLocalStorage(STORAGE_KEYS.PRICES, completeDefaultState.prices),
     incidents: getFromLocalStorage(STORAGE_KEYS.INCIDENTS, completeDefaultState.incidents),
-    activityLogs: getFromLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, completeDefaultState.activityLogs)
+    activityLogs: getFromLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, completeDefaultState.activityLogs),
+    tanks: getFromLocalStorage(STORAGE_KEYS.TANKS, completeDefaultState.tanks)
   };
   
   // Check if we're using all defaults, which means no saved data was found
@@ -188,6 +190,23 @@ export const setDatabaseMetadata = (metadata: { version: string, lastReset: Date
 // Initialize database with default data
 export const initializeDatabase = (defaultData: Partial<StoredAppData>): void => {
   clearAppState();
-  saveAppState(defaultData as StoredAppData);
+  saveAppState({
+    purchaseOrders: [],
+    logs: [],
+    suppliers: [],
+    drivers: [],
+    trucks: [],
+    gpsData: [],
+    aiInsights: [],
+    staff: [],
+    dispensers: [],
+    shifts: [],
+    sales: [],
+    prices: [],
+    incidents: [],
+    activityLogs: [],
+    tanks: [],
+    ...defaultData
+  });
   setDatabaseMetadata({ version: DB_VERSION, lastReset: new Date() });
 };
