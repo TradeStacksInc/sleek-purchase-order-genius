@@ -25,6 +25,14 @@ export const useSupplierActions = (
         return null;
       }
       
+      // Check if a supplier with the same name already exists
+      const existingSupplier = suppliers.find(s => s.name.toLowerCase() === supplier.name.toLowerCase());
+      if (existingSupplier) {
+        console.log("Supplier with this name already exists, returning existing supplier:", existingSupplier);
+        // We return the existing supplier to allow the order to be created
+        return existingSupplier;
+      }
+      
       // Create the new suppliers array directly
       const newSuppliers = [supplier, ...suppliers];
       

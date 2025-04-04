@@ -10,38 +10,60 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   CalendarIcon, 
   Trash2, 
   Plus, 
-  UserPlus, 
   ClipboardList, 
   Building2, 
   Truck, 
   Receipt, 
   CreditCard,
-  XCircle
+  XCircle,
+  Phone,
+  Mail,
+  MapPin,
+  User,
+  Fuel
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { OrderItem, PaymentTerm, Product, Company } from '@/types';
-import AddSupplierForm from '@/components/AddSupplierForm';
+import { OrderItem, PaymentTerm, Product, Company, Supplier } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
 const CreatePO: React.FC = () => {
   const navigate = useNavigate();
-  const { suppliers, addPurchaseOrder } = useApp();
+  const { addPurchaseOrder, addSupplier } = useApp();
   const { toast } = useToast();
   
   // Form state
-  const [supplierId, setSupplierId] = useState('');
   const [company, setCompany] = useState<Company>({
     name: '',
     address: '',
     contact: '',
     taxId: '',
   });
+  
+  // Supplier state
+  const [supplierData, setSupplierData] = useState({
+    name: '',
+    contact: '',
+    address: '',
+    regNumber: '',
+    depotLocation: '',
+    supplierType: 'Independent',
+    depotName: '',
+    contactPerson: '',
+    email: '',
+    products: {
+      PMS: false,
+      AGO: false,
+      DPK: false
+    },
+    paymentTerms: '50% Advance'
+  });
+  
   const [items, setItems] = useState<OrderItem[]>([
     {
       id: uuidv4(),
@@ -55,20 +77,15 @@ const CreatePO: React.FC = () => {
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default to 7 days from now
   );
-  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({
+    company: {},
+    supplier: {},
+    items: {}
+  });
   
   // Calculate grand total
   const grandTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-  
-  // Refresh suppliers list when dialog closes
-  useEffect(() => {
-    if (!isAddSupplierOpen) {
-      // Force a rerender to show the updated supplier list
-      // No need to actually do anything, just forcing a rerender
-      console.log("Supplier dialog closed, suppliers should be updated now");
-    }
-  }, [isAddSupplierOpen]);
   
   // Add new item
   const addItem = () => {
@@ -118,51 +135,155 @@ const CreatePO: React.FC = () => {
     }));
   };
   
+  // Update supplier information
+  const updateSupplier = (field: string, value: any) => {
+    if (field === 'products') {
+      setSupplierData(prev => ({
+        ...prev,
+        products: {
+          ...prev.products,
+          [value.product]: value.checked
+        }
+      }));
+    } else {
+      setSupplierData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
+    
+    // Clear validation error if it exists
+    if (validationErrors.supplier[field]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        supplier: {
+          ...prev.supplier,
+          [field]: null
+        }
+      }));
+    }
+  };
+  
+  // Validate the form
+  const validateForm = () => {
+    let errors = {
+      company: {},
+      supplier: {},
+      items: {}
+    };
+    let isValid = true;
+    
+    // Validate company info
+    if (!company.name) {
+      errors.company.name = "Company name is required";
+      isValid = false;
+    }
+    if (!company.address) {
+      errors.company.address = "Company address is required";
+      isValid = false;
+    }
+    if (!company.contact) {
+      errors.company.contact = "Company contact is required";
+      isValid = false;
+    }
+    if (!company.taxId) {
+      errors.company.taxId = "Company tax ID is required";
+      isValid = false;
+    }
+    
+    // Validate supplier info
+    if (!supplierData.name) {
+      errors.supplier.name = "Supplier name is required";
+      isValid = false;
+    }
+    if (!supplierData.contact) {
+      errors.supplier.contact = "Contact information is required";
+      isValid = false;
+    }
+    if (!supplierData.address) {
+      errors.supplier.address = "Address is required";
+      isValid = false;
+    }
+    
+    // Validate email format if provided
+    if (supplierData.email && !/^\S+@\S+\.\S+$/.test(supplierData.email)) {
+      errors.supplier.email = "Please enter a valid email address";
+      isValid = false;
+    }
+    
+    // Validate items
+    const invalidItems = items.some(item => !item.product || item.quantity <= 0 || item.unitPrice <= 0);
+    if (invalidItems) {
+      errors.items.general = "All items must have a product, quantity and price";
+      isValid = false;
+    }
+    
+    // Validate delivery date
+    if (!deliveryDate) {
+      errors.items.deliveryDate = "Expected delivery date is required";
+      isValid = false;
+    }
+    
+    setValidationErrors(errors);
+    return isValid;
+  };
+  
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors in the form",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
-      // Enhanced form validation with detailed logging
-      let validationErrors = [];
+      console.log("Creating supplier:", supplierData);
       
-      if (!supplierId) validationErrors.push("No supplier selected");
-      if (!deliveryDate) validationErrors.push("No delivery date selected");
-      if (!company.name) validationErrors.push("Company name missing");
-      if (!company.address) validationErrors.push("Company address missing");
-      if (!company.contact) validationErrors.push("Company contact missing");
-      if (!company.taxId) validationErrors.push("Company tax ID missing");
+      // Get selected products
+      const selectedProducts = Object.keys(supplierData.products).filter(key => supplierData.products[key]);
       
-      // Check for invalid items
-      const invalidItems = items.filter(item => item.quantity <= 0 || item.unitPrice <= 0);
-      if (invalidItems.length > 0) {
-        validationErrors.push(`${invalidItems.length} items have invalid quantity or price`);
-      }
+      // Ensure supplierType is one of the allowed values
+      const validatedSupplierType = (supplierData.supplierType === 'Major' || supplierData.supplierType === 'Independent' || supplierData.supplierType === 'Government') 
+        ? supplierData.supplierType as 'Major' | 'Independent' | 'Government'
+        : 'Independent'; // Default value
       
-      if (validationErrors.length > 0) {
-        console.error("Validation errors:", validationErrors);
+      // Create supplier record
+      const newSupplier: Supplier = {
+        id: uuidv4(),
+        name: supplierData.name.trim(),
+        contact: supplierData.contact.trim(),
+        address: supplierData.address.trim(),
+        email: supplierData.email.trim(),
+        supplierType: validatedSupplierType,
+        depotName: supplierData.depotName.trim(),
+        taxId: supplierData.regNumber.trim(),
+        accountNumber: '',
+        bankName: '',
+        products: selectedProducts
+      };
+      
+      // Add the supplier first
+      const savedSupplier = addSupplier(newSupplier);
+      
+      if (savedSupplier === null) {
+        console.error("Failed to create supplier");
         toast({
-          title: "Form Validation Failed",
-          description: validationErrors.join(", "),
+          title: "Error",
+          description: "Failed to create supplier. Please check the form data.",
           variant: "destructive"
         });
         setIsSubmitting(false);
         return;
       }
       
-      // Find selected supplier
-      const supplier = suppliers.find((s) => s.id === supplierId);
-      if (!supplier) {
-        console.error("Supplier not found:", supplierId, "Available suppliers:", suppliers);
-        toast({
-          title: "Supplier Not Found",
-          description: "Please select a valid supplier",
-          variant: "destructive"
-        });
-        setIsSubmitting(false);
-        return;
-      }
+      console.log("Supplier created successfully:", savedSupplier);
       
       // Generate unique PO number
       const poNumber = `PO-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
@@ -173,7 +294,7 @@ const CreatePO: React.FC = () => {
         id: uuidv4(),
         poNumber,
         company,
-        supplier,
+        supplier: savedSupplier,
         items,
         grandTotal,
         paymentTerm,
@@ -218,6 +339,14 @@ const CreatePO: React.FC = () => {
       });
       setIsSubmitting(false);
     }
+  };
+  
+  // Display validation error for a field
+  const getFieldError = (section: string, field: string) => {
+    const sectionErrors = validationErrors[section];
+    return sectionErrors && sectionErrors[field] ? (
+      <p className="text-sm text-red-500 mt-1">{sectionErrors[field]}</p>
+    ) : null;
   };
   
   return (
@@ -268,6 +397,7 @@ const CreatePO: React.FC = () => {
                     placeholder="Enter filling station name"
                     required
                   />
+                  {getFieldError('company', 'name')}
                 </div>
                 <div>
                   <Label htmlFor="company-address" className="required">Address</Label>
@@ -278,6 +408,7 @@ const CreatePO: React.FC = () => {
                     placeholder="Enter address"
                     required
                   />
+                  {getFieldError('company', 'address')}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -290,6 +421,7 @@ const CreatePO: React.FC = () => {
                     placeholder="Phone number, email, etc."
                     required
                   />
+                  {getFieldError('company', 'contact')}
                 </div>
                 <div>
                   <Label htmlFor="company-tax" className="required">Tax ID / RC Number</Label>
@@ -300,68 +432,209 @@ const CreatePO: React.FC = () => {
                     placeholder="Enter Tax ID or RC Number"
                     required
                   />
+                  {getFieldError('company', 'taxId')}
                 </div>
               </div>
             </div>
             
             {/* Supplier Details Section */}
             <div className="po-form-section mb-8">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center">
-                  <div className="mr-3 bg-purple-100 p-2 rounded-full">
-                    <Truck className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <h3 className="text-lg font-medium">Supplier Details</h3>
+              <div className="flex items-center mb-4">
+                <div className="mr-3 bg-purple-100 p-2 rounded-full">
+                  <Truck className="h-5 w-5 text-purple-600" />
                 </div>
-                <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
-                  <DialogTrigger asChild>
-                    <Button type="button" variant="outline" size="sm">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Add Supplier
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-4xl">
-                    <DialogHeader>
-                      <DialogTitle>Add New Supplier</DialogTitle>
-                    </DialogHeader>
-                    <AddSupplierForm onClose={() => setIsAddSupplierOpen(false)} />
-                  </DialogContent>
-                </Dialog>
+                <h3 className="text-lg font-medium">Supplier Details</h3>
               </div>
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="supplier" className="required">Supplier</Label>
-                  <Select value={supplierId} onValueChange={setSupplierId}>
+                  <Label htmlFor="supplier-name" className="flex items-center gap-2 required">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    Company Name
+                  </Label>
+                  <Input
+                    id="supplier-name"
+                    value={supplierData.name}
+                    onChange={(e) => updateSupplier('name', e.target.value)}
+                    placeholder="NNPC Depot, Mobil, etc."
+                    required
+                  />
+                  {getFieldError('supplier', 'name')}
+                </div>
+                <div>
+                  <Label htmlFor="supplier-type" className="flex items-center gap-2">
+                    <Fuel className="h-4 w-4 text-muted-foreground" />
+                    Supplier Type
+                  </Label>
+                  <Select
+                    value={supplierData.supplierType}
+                    onValueChange={(value) => updateSupplier('supplierType', value)}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select supplier" />
+                      <SelectValue placeholder="Select supplier type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {suppliers.length > 0 ? (
-                        suppliers.map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.id}>
-                            {supplier.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-suppliers" disabled>
-                          No suppliers found. Add a supplier first.
-                        </SelectItem>
-                      )}
+                      <SelectItem value="Major">Major Marketer</SelectItem>
+                      <SelectItem value="Independent">Independent Marketer</SelectItem>
+                      <SelectItem value="Government">Government</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              {supplierId && (
-                <div className="mt-4">
-                  <div className="rounded-md bg-muted p-3">
-                    <div className="text-sm">
-                      <p className="font-medium">{suppliers.find((s) => s.id === supplierId)?.name}</p>
-                      <p className="text-muted-foreground mt-1">{suppliers.find((s) => s.id === supplierId)?.address}</p>
-                      <p className="text-muted-foreground mt-1">{suppliers.find((s) => s.id === supplierId)?.contact}</p>
-                    </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="supplier-contact" className="flex items-center gap-2 required">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    Contact Information
+                  </Label>
+                  <Input
+                    id="supplier-contact"
+                    value={supplierData.contact}
+                    onChange={(e) => updateSupplier('contact', e.target.value)}
+                    placeholder="Phone number"
+                    required
+                  />
+                  {getFieldError('supplier', 'contact')}
+                </div>
+                <div>
+                  <Label htmlFor="supplier-email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    Email Address
+                  </Label>
+                  <Input
+                    id="supplier-email"
+                    type="email"
+                    value={supplierData.email}
+                    onChange={(e) => updateSupplier('email', e.target.value)}
+                    placeholder="contact@supplier.com"
+                  />
+                  {getFieldError('supplier', 'email')}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="supplier-address" className="flex items-center gap-2 required">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Address
+                  </Label>
+                  <Input
+                    id="supplier-address"
+                    value={supplierData.address}
+                    onChange={(e) => updateSupplier('address', e.target.value)}
+                    placeholder="Enter full address"
+                    required
+                  />
+                  {getFieldError('supplier', 'address')}
+                </div>
+                <div>
+                  <Label htmlFor="supplier-contact-person" className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    Contact Person
+                  </Label>
+                  <Input
+                    id="supplier-contact-person"
+                    value={supplierData.contactPerson}
+                    onChange={(e) => updateSupplier('contactPerson', e.target.value)}
+                    placeholder="Name of primary contact"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="supplier-reg-number" className="flex items-center gap-2">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    Company Registration Number
+                  </Label>
+                  <Input
+                    id="supplier-reg-number"
+                    value={supplierData.regNumber}
+                    onChange={(e) => updateSupplier('regNumber', e.target.value)}
+                    placeholder="RC12345678"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="supplier-depot-name" className="flex items-center gap-2">
+                    <Warehouse className="h-4 w-4 text-muted-foreground" />
+                    Depot Name
+                  </Label>
+                  <Input
+                    id="supplier-depot-name"
+                    value={supplierData.depotName}
+                    onChange={(e) => updateSupplier('depotName', e.target.value)}
+                    placeholder="Main Terminal"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="supplier-depot-location" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Depot Location
+                  </Label>
+                  <Input
+                    id="supplier-depot-location"
+                    value={supplierData.depotLocation}
+                    onChange={(e) => updateSupplier('depotLocation', e.target.value)}
+                    placeholder="Apapa, Lagos"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="supplier-payment-terms" className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                    Payment Terms
+                  </Label>
+                  <Select
+                    value={supplierData.paymentTerms}
+                    onValueChange={(value) => updateSupplier('paymentTerms', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment terms" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Full Payment">Full Payment</SelectItem>
+                      <SelectItem value="50% Advance">50% Advance</SelectItem>
+                      <SelectItem value="Credit">Credit</SelectItem>
+                      <SelectItem value="Net 30">Net 30</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <Label className="flex items-center gap-2">
+                  <Fuel className="h-4 w-4 text-muted-foreground" />
+                  Products Supplied
+                </Label>
+                <div className="flex flex-col gap-2 border rounded-md p-3 mt-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="pms" 
+                      checked={supplierData.products.PMS}
+                      onCheckedChange={(checked) => updateSupplier('products', { product: 'PMS', checked: checked === true })}
+                    />
+                    <Label htmlFor="pms" className="cursor-pointer">PMS (Petrol)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="ago" 
+                      checked={supplierData.products.AGO}
+                      onCheckedChange={(checked) => updateSupplier('products', { product: 'AGO', checked: checked === true })}
+                    />
+                    <Label htmlFor="ago" className="cursor-pointer">AGO (Diesel)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="dpk" 
+                      checked={supplierData.products.DPK}
+                      onCheckedChange={(checked) => updateSupplier('products', { product: 'DPK', checked: checked === true })}
+                    />
+                    <Label htmlFor="dpk" className="cursor-pointer">DPK (Kerosene)</Label>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
             
             {/* Order Items Section */}
@@ -446,6 +719,7 @@ const CreatePO: React.FC = () => {
                   </table>
                 </div>
               </div>
+              {getFieldError('items', 'general')}
             </div>
             
             {/* Order Summary Section */}
@@ -502,6 +776,7 @@ const CreatePO: React.FC = () => {
                       />
                     </PopoverContent>
                   </Popover>
+                  {getFieldError('items', 'deliveryDate')}
                 </div>
               </div>
             </div>

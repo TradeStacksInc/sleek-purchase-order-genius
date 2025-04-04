@@ -1,5 +1,13 @@
 
-// This file is now just a re-export to maintain backward compatibility
-// while we transition to the new component structure
-import AddSupplierForm from './suppliers/AddSupplierForm';
-export default AddSupplierForm;
+// This file is now deprecated as supplier entry has been integrated directly into the Purchase Order form
+import React from 'react';
+
+const DeprecatedAddSupplierForm: React.FC = () => {
+  return (
+    <div>
+      <p>This component has been deprecated. Supplier information is now entered directly in the Purchase Order form.</p>
+    </div>
+  );
+};
+
+export default DeprecatedAddSupplierForm;
