@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   name: string;
@@ -18,8 +19,17 @@ export interface Supplier {
   contactEmail: string;
   contactPhone: string;
   address: string;
+  email?: string; // Added
+  contact?: string; // Added
   createdAt: Date;
   updatedAt: Date;
+  // Extra properties used in the app
+  supplierType?: 'Major' | 'Independent' | 'Government';
+  depotName?: string;
+  taxId?: string;
+  accountNumber?: string;
+  bankName?: string;
+  products?: string[];
 }
 
 export interface Truck {
@@ -31,6 +41,16 @@ export interface Truck {
   driverName: string;
   createdAt: Date;
   updatedAt: Date;
+  // Additional properties used in the app
+  hasGPS?: boolean;
+  isGPSTagged?: boolean;
+  isAvailable?: boolean;
+  gpsDeviceId?: string;
+  lastLatitude?: number;
+  lastLongitude?: number;
+  lastSpeed?: number;
+  lastUpdate?: Date;
+  year?: number;
 }
 
 export interface Driver {
@@ -41,6 +61,9 @@ export interface Driver {
   address: string;
   createdAt: Date;
   updatedAt: Date;
+  // Additional properties used in the app
+  contact?: string;
+  isAvailable?: boolean;
 }
 
 export interface GPSData {
@@ -52,6 +75,7 @@ export interface GPSData {
   speed: number;
   fuelLevel: number;
   location: string;
+  heading?: number; // Added
 }
 
 export interface AIInsights {
@@ -61,7 +85,14 @@ export interface AIInsights {
   anomalyType: string;
   description: string;
   severity: 'low' | 'medium' | 'high';
+  // Additional properties
+  type?: string;
+  relatedEntityIds?: string[];
+  generatedAt?: Date;
+  isRead?: boolean;
 }
+
+export type AIInsight = AIInsights; // Alias for compatibility
 
 export interface PurchaseOrder {
   id: string;
@@ -71,10 +102,29 @@ export interface PurchaseOrder {
   deliveryDate: Date;
   items: PurchaseOrderItem[];
   totalAmount: number;
-  status: 'pending' | 'approved' | 'rejected' | 'delivered';
+  status: OrderStatus;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
+  // Additional properties used in the app
+  poNumber?: string;
+  supplier?: {
+    name: string;
+    contact?: string;
+    address?: string;
+  };
+  grandTotal?: number;
+  company?: {
+    name: string;
+    address: string;
+    contact: string;
+    email: string;
+  };
+  deliveryDetails?: DeliveryDetails;
+  offloadingDetails?: OffloadingDetails;
+  incidents?: Incident[];
+  statusHistory?: StatusHistoryEntry[];
+  paymentTerm?: string;
 }
 
 export interface PurchaseOrderItem {
@@ -83,6 +133,10 @@ export interface PurchaseOrderItem {
   quantity: number;
   unitPrice: number;
   totalAmount: number;
+  // Additional properties used in the app
+  id?: string;
+  product?: string;
+  totalPrice?: number;
 }
 
 export interface Staff {
@@ -115,6 +169,7 @@ export interface Dispenser {
   shift?: 'morning' | 'afternoon';
   lastActivity?: Date;
   lastShiftReset?: Date;
+  unitPrice?: number;
 }
 
 export interface Shift {
@@ -123,6 +178,11 @@ export interface Shift {
   startTime: Date;
   endTime: Date;
   staffMembers: string[];
+  // Additional properties used in the app
+  staffId?: string;
+  status?: 'active' | 'completed';
+  salesVolume?: number;
+  salesAmount?: number;
 }
 
 export interface Sale {
@@ -151,9 +211,11 @@ export interface Price {
   effectiveDate: Date;
 }
 
+export type PriceRecord = Price; // Alias for compatibility
+
 export interface Incident {
   id: string;
-  type: 'theft' | 'spillage' | 'equipment_failure' | 'other';
+  type: 'theft' | 'spillage' | 'equipment_failure' | 'other' | 'delay' | 'mechanical' | 'accident' | 'feedback';
   description: string;
   location: string;
   timestamp: Date;
@@ -161,13 +223,18 @@ export interface Incident {
   truckInvolved?: string;
   amountLost?: number;
   status: 'open' | 'closed';
+  // Additional properties used in the app
+  severity?: 'low' | 'medium' | 'high';
+  impact?: 'positive' | 'negative' | 'neutral';
+  reportedBy?: string;
+  deliveryId?: string;
 }
 
 export interface ActivityLog {
   id: string;
   entityType: 'supplier' | 'truck' | 'driver' | 'purchase_order' | 'staff' | 'dispenser' | 'shift' | 'sale' | 'price' | 'incident' | 'tank';
   entityId: string;
-  action: 'create' | 'update' | 'delete' | 'view' | 'approve' | 'reject' | 'sale' | 'other';
+  action: 'create' | 'update' | 'delete' | 'view' | 'approve' | 'reject' | 'other' | 'sale';
   details: string;
   user: string;
   timestamp: Date;
@@ -183,4 +250,94 @@ export interface Tank {
   productType: Product;
   lastRefillDate: Date;
   nextInspectionDate: Date;
+  // Additional properties used in the app
+  currentVolume?: number;
+  minVolume?: number;
+  status?: 'operational' | 'maintenance' | 'offline';
+  isActive?: boolean;
+  connectedDispensers?: string[];
+}
+
+// Additional interfaces used in the application
+export interface DeliveryDetails {
+  id: string;
+  poId: string;
+  driverId?: string;
+  truckId?: string;
+  status: 'pending' | 'in_transit' | 'delivered' | 'completed';
+  depotDepartureTime?: Date;
+  destinationArrivalTime?: Date;
+  distanceCovered?: number;
+  totalDistance?: number;
+  expectedArrivalTime?: Date;
+  isGPSTagged?: boolean;
+  gpsDeviceId?: string;
+}
+
+export interface OffloadingDetails {
+  id: string;
+  deliveryId: string;
+  timestamp: Date;
+  loadedVolume: number;
+  deliveredVolume: number;
+  initialTankVolume: number;
+  finalTankVolume: number;
+  discrepancyPercentage: number;
+  isDiscrepancyFlagged: boolean;
+  tankId: string;
+  productType: string;
+  measuredBy: string;
+  measuredByRole: string;
+  notes?: string;
+  status?: 'approved' | 'under_investigation';
+}
+
+export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled';
+
+export interface StatusHistoryEntry {
+  status: OrderStatus;
+  timestamp: Date;
+  user: string;
+  note?: string;
+}
+
+export interface LogEntry {
+  id: string;
+  poId: string;
+  action: string;
+  user: string;
+  timestamp: Date;
+  details?: string;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  zipCode: string;
+  phone: string;
+  email: string;
+  website?: string;
+  logo?: string;
+  taxId?: string;
+  registrationNumber?: string;
+}
+
+export interface OrderItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface PaymentTerm {
+  id: string;
+  name: string;
+  days: number;
+  description?: string;
 }
