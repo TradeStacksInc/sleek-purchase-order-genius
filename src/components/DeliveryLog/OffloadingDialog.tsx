@@ -11,7 +11,7 @@ import {
   ClipboardCheck, 
   User, 
   Save, 
-  Tank,
+  Database,
   AlertTriangle,
   CheckCircle,
   Clock,
@@ -79,7 +79,7 @@ interface OffloadingDialogProps {
 }
 
 const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }) => {
-  const { recordOffloadingDetails, getPurchaseOrderById, getAllTanks, recordOffloadingToTank } = useApp();
+  const { recordOffloadingDetails, getOrderById, getAllTanks, recordOffloadingToTank } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('tank-selection');
   const [selectedTank, setSelectedTank] = useState<TankType | null>(null);
@@ -98,7 +98,7 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
   // Load purchase order and tank data
   useEffect(() => {
     if (isOpen && orderId) {
-      const order = getPurchaseOrderById(orderId);
+      const order = getOrderById(orderId);
       if (order) {
         setPurchaseOrder(order);
         
@@ -131,7 +131,7 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
         clearInterval(waitIntervalId);
       }
     };
-  }, [isOpen, orderId, getPurchaseOrderById, getAllTanks]);
+  }, [isOpen, orderId, getOrderById, getAllTanks]);
   
   // Filter tanks by product type
   useEffect(() => {
@@ -320,9 +320,7 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
         measurementMethod: values.measurementMethod,
         weatherConditions: values.weatherConditions || 'Clear',
         siteConditions: values.siteConditions || 'Accessible',
-        tankId: selectedTank.id,
-        productType: productToOffload,
-        waitDuration: waitDuration > 0 ? waitDuration : undefined,
+        tankId: selectedTank.id
       };
       
       recordOffloadingDetails(orderId, offloadingData);
@@ -391,7 +389,7 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="tank-selection" className="flex items-center text-xs">
-              <IconWithBackground icon={Tank} color="bg-blue-100 text-blue-600" />
+              <IconWithBackground icon={Database} color="bg-blue-100 text-blue-600" />
               <span>Tank Selection</span>
             </TabsTrigger>
             <TabsTrigger value="details" className="flex items-center text-xs" disabled={!selectedTank}>
@@ -410,7 +408,7 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
                 <TabsContent value="tank-selection" className="space-y-4 mt-0">
                   <div className="space-y-4">
                     <h3 className="text-sm font-semibold mb-2 flex items-center">
-                      <IconWithBackground icon={Tank} color="bg-blue-100 text-blue-600" />
+                      <IconWithBackground icon={Database} color="bg-blue-100 text-blue-600" />
                       Available Tanks for {productToOffload}
                     </h3>
                     
