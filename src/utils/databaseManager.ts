@@ -1,233 +1,188 @@
+import { Company, Driver, ProductType, Staff, Tank } from '../types';
 
-import { v4 as uuidv4 } from 'uuid';
-import { clearAppState, initializeDatabase, getDatabaseMetadata } from './localStorage/appState';
-import { STORAGE_KEYS, DB_VERSION } from './localStorage/constants';
-import { saveToLocalStorage } from './localStorage/core';
-import { StoredAppData } from './localStorage/types';
-import { Staff, Dispenser, Tank, PriceRecord, Product } from '../types';
-
-// This function will reset the database and optionally initialize with seed data
-export const resetDatabase = (includeSeedData = false): void => {
-  // Clear all existing data
-  clearAppState();
-  
-  // If seed data is requested, initialize with default values
-  if (includeSeedData) {
-    const seedData = generateSeedData();
-    initializeDatabase(seedData);
-    return;
-  }
-  
-  // Otherwise, initialize with empty collections
-  initializeDatabase({
-    purchaseOrders: [],
-    logs: [],
-    suppliers: [],
-    drivers: [],
-    trucks: [],
-    gpsData: [],
-    aiInsights: [],
-    staff: [],
-    dispensers: [],
-    shifts: [],
-    sales: [],
-    prices: [],
-    incidents: [],
-    activityLogs: []
-  });
-};
-
-// Generate minimal seed data for testing
-export const generateSeedData = (): Partial<StoredAppData> => {
-  // Create a few starter records for essential collections
-  
-  // Create default staff
-  const defaultStaff: Staff[] = [{
-    id: `staff-${uuidv4().substring(0, 8)}`,
-    name: 'Admin User',
-    role: 'Admin',
-    contact: '+1234567890',
-    email: 'admin@fuelstation.com',
-    employeeId: 'EMP001',
-    hireDate: new Date(),
-    status: 'active'
-  }];
-  
-  // Create default dispensers
-  const defaultDispensers: Dispenser[] = [
+// Seed database with initial data
+export const seedDatabase = () => {
+  const staff: Staff[] = [
     {
-      id: `dispenser-${uuidv4().substring(0, 8)}`,
-      number: 1,
-      productType: 'PMS',
-      status: 'operational',
-      lastCalibrationDate: new Date(),
-      nextCalibrationDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
-      totalVolumeSold: 0,
-      connectedTankId: `tank-pms-${uuidv4().substring(0, 8)}`
+      id: 'staff-1',
+      name: 'Admin User',
+      role: 'admin', // Fixed from "Admin" to "admin"
+      contactPhone: '+1234567890',
+      address: '123 Main St',
+      email: 'admin@example.com',
+      password: 'admin', // Note: In a real application, passwords would be hashed
+      createdAt: new Date(),
+      updatedAt: new Date()
     },
     {
-      id: `dispenser-${uuidv4().substring(0, 8)}`,
-      number: 2,
-      productType: 'AGO',
-      status: 'operational',
-      lastCalibrationDate: new Date(),
-      nextCalibrationDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
-      totalVolumeSold: 0,
-      connectedTankId: `tank-ago-${uuidv4().substring(0, 8)}`
+      id: 'staff-2',
+      name: 'Manager User',
+      role: 'manager',
+      contactPhone: '+1987654321',
+      address: '456 Elm St',
+      email: 'manager@example.com',
+      password: 'manager',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    },
+    {
+      id: 'staff-3',
+      name: 'Operator User',
+      role: 'operator',
+      contactPhone: '+1122334455',
+      address: '789 Oak St',
+      email: 'operator@example.com',
+      password: 'operator',
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
   ];
-  
-  // Create default tanks
-  const defaultTanks: Tank[] = [
+
+  const companies: Company[] = [
     {
-      id: defaultDispensers[0].connectedTankId!,
+      id: 'company-1',
+      name: 'FuelCo',
+      address: '789 Oak St',
+      city: 'Springfield',
+      state: 'IL',
+      country: 'USA',
+      zipCode: '62704',
+      phone: '+15551234567',
+      email: 'info@fuelco.com',
+      website: 'www.fuelco.com',
+      logo: 'fuelco_logo.png',
+      taxId: '12-3456789',
+      registrationNumber: 'FC123456',
+      contact: 'John Doe'
+    }
+  ];
+
+  const tanks: Tank[] = [
+    {
+      id: 'tank-1',
       name: 'PMS Tank 1',
-      capacity: 33000,
-      currentVolume: 15000,
-      productType: 'PMS',
+      capacity: 25000,
+      currentLevel: 18000,
+      productType: 'PMS' as unknown as ProductType, // Use the ProductType alias
       lastRefillDate: new Date(),
+      nextInspectionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      currentVolume: 18000,
       minVolume: 5000,
       status: 'operational',
-      connectedDispensers: [defaultDispensers[0].id]
+      isActive: true,
+      connectedDispensers: []
     },
     {
-      id: defaultDispensers[1].connectedTankId!,
+      id: 'tank-2',
       name: 'AGO Tank 1',
-      capacity: 33000,
-      currentVolume: 20000,
-      productType: 'AGO',
+      capacity: 20000,
+      currentLevel: 12000,
+      productType: 'AGO' as unknown as ProductType,
       lastRefillDate: new Date(),
-      minVolume: 5000,
+      nextInspectionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      currentVolume: 12000,
+      minVolume: 3000,
       status: 'operational',
-      connectedDispensers: [defaultDispensers[1].id]
-    }
-  ];
-  
-  // Create default prices
-  const defaultPrices: PriceRecord[] = [
-    {
-      id: `price-${uuidv4().substring(0, 8)}`,
-      productType: 'PMS',
-      purchasePrice: 550,
-      sellingPrice: 617,
-      effectiveDate: new Date(),
       isActive: true,
-      setBy: defaultStaff[0].id
+      connectedDispensers: []
     },
     {
-      id: `price-${uuidv4().substring(0, 8)}`,
-      productType: 'AGO',
-      purchasePrice: 625,
-      sellingPrice: 700,
-      effectiveDate: new Date(),
+      id: 'tank-3',
+      name: 'DPK Tank 1',
+      capacity: 15000,
+      currentLevel: 9000,
+      productType: 'DPK' as unknown as ProductType,
+      lastRefillDate: new Date(),
+      nextInspectionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      currentVolume: 9000,
+      minVolume: 2000,
+      status: 'operational',
       isActive: true,
-      setBy: defaultStaff[0].id
+      connectedDispensers: []
+    },
+    {
+      id: 'tank-4',
+      name: 'PMS Tank 2',
+      capacity: 25000,
+      currentLevel: 20000,
+      productType: 'PMS' as unknown as ProductType,
+      lastRefillDate: new Date(),
+      nextInspectionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      currentVolume: 20000,
+      minVolume: 5000,
+      status: 'operational',
+      isActive: true,
+      connectedDispensers: []
+    },
+    {
+      id: 'tank-5',
+      name: 'AGO Tank 2',
+      capacity: 20000,
+      currentLevel: 15000,
+      productType: 'AGO' as unknown as ProductType,
+      lastRefillDate: new Date(),
+      nextInspectionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      currentVolume: 15000,
+      minVolume: 3000,
+      status: 'operational',
+      isActive: true,
+      connectedDispensers: []
+    },
+    {
+      id: 'tank-6',
+      name: 'DPK Tank 2',
+      capacity: 15000,
+      currentLevel: 10000,
+      productType: 'DPK' as unknown as ProductType,
+      lastRefillDate: new Date(),
+      nextInspectionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      currentVolume: 10000,
+      minVolume: 2000,
+      status: 'operational',
+      isActive: true,
+      connectedDispensers: []
     }
   ];
-  
-  // Save tanks separately since they're not part of the main state
-  saveToLocalStorage('tanks', defaultTanks);
-  
-  return {
-    staff: defaultStaff,
-    dispensers: defaultDispensers,
-    prices: defaultPrices
-  };
+
+  localStorage.setItem('staff', JSON.stringify(staff));
+  localStorage.setItem('companies', JSON.stringify(companies));
+  localStorage.setItem('tanks', JSON.stringify(tanks));
 };
 
-// Get database info for display
-export const getDatabaseInfo = (): {
-  version: string;
-  lastReset: Date | null;
-  recordCounts: Record<string, number>;
-} => {
-  const metadata = getDatabaseMetadata();
-  
-  // Count records in each collection
-  const recordCounts: Record<string, number> = {};
-  
-  Object.entries(STORAGE_KEYS).forEach(([key, storageKey]) => {
-    const data = localStorage.getItem(storageKey);
-    recordCounts[key] = data ? JSON.parse(data).length : 0;
-  });
-  
-  return {
-    version: metadata.version,
-    lastReset: metadata.lastReset,
-    recordCounts
-  };
+export const resetDatabase = (includeSeedData: boolean = true) => {
+  localStorage.clear();
+   if (includeSeedData) {
+    seedDatabase();
+  }
 };
 
-// Check if database is initialized
-export const isDatabaseInitialized = (): boolean => {
-  return !!localStorage.getItem('db_metadata');
-};
-
-// Export database to JSON file
 export const exportDatabase = (): string => {
-  const exportData: Record<string, any> = {};
-  
-  Object.entries(STORAGE_KEYS).forEach(([key, storageKey]) => {
-    const data = localStorage.getItem(storageKey);
-    exportData[key] = data ? JSON.parse(data) : [];
-  });
-  
-  return JSON.stringify(exportData, null, 2);
+  const data: { [key: string]: any } = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key) {
+      try {
+        data[key] = JSON.parse(localStorage.getItem(key) || 'null');
+      } catch (e) {
+        console.warn(`Could not parse value for key "${key}". Storing as string.`);
+        data[key] = localStorage.getItem(key);
+      }
+    }
+  }
+  return JSON.stringify(data);
 };
 
-// Import database from JSON
 export const importDatabase = (jsonData: string): boolean => {
   try {
-    const importData = JSON.parse(jsonData);
-    
-    // Validate import data structure
-    const requiredKeys = ['PURCHASE_ORDERS', 'SUPPLIERS', 'DRIVERS', 'TRUCKS'];
-    const hasRequiredKeys = requiredKeys.every(key => key in importData);
-    
-    if (!hasRequiredKeys) {
-      throw new Error('Import data is missing required collections');
-    }
-    
-    // Clear existing data
-    clearAppState();
-    
-    // Import each collection
-    Object.entries(importData).forEach(([key, value]) => {
-      const storageKey = (STORAGE_KEYS as any)[key];
-      if (storageKey && Array.isArray(value)) {
-        saveToLocalStorage(storageKey, value);
+    const data = JSON.parse(jsonData);
+    for (const key in data) {
+      if (data.hasOwnProperty(key)) {
+        localStorage.setItem(key, JSON.stringify(data[key]));
       }
-    });
-    
-    // Update metadata
-    setDatabaseMetadata({ version: DB_VERSION, lastReset: new Date() });
-    
+    }
     return true;
-  } catch (error) {
-    console.error('Error importing database:', error);
+  } catch (e) {
+    console.error("Failed to import database:", e);
     return false;
   }
-};
-
-// Create a migration function for future database structure updates
-export const migrateDatabase = (fromVersion: string, toVersion: string): boolean => {
-  try {
-    // This will be implemented as the database schema evolves
-    console.log(`Migrating database from ${fromVersion} to ${toVersion}`);
-    
-    // Example migration logic:
-    // if (fromVersion === '1.0.0' && toVersion === '1.1.0') {
-    //   // Convert data structure from 1.0.0 to 1.1.0
-    // }
-    
-    return true;
-  } catch (error) {
-    console.error('Error migrating database:', error);
-    return false;
-  }
-};
-
-// Set database metadata
-const setDatabaseMetadata = (metadata: { version: string, lastReset: Date | null }): void => {
-  localStorage.setItem('db_metadata', JSON.stringify(metadata));
 };

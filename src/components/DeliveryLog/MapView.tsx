@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ArrowLeft, MapPin, Truck, Navigation, Clock, User, AlertTriangle, Route } from 'lucide-react';
@@ -18,7 +17,6 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
   const [selectedDelivery, setSelectedDelivery] = useState<string | null>(null);
   const [updateTimestamp, setUpdateTimestamp] = useState(Date.now());
   
-  // Set up interval for UI updates
   useEffect(() => {
     const intervalId = setInterval(() => {
       setUpdateTimestamp(Date.now());
@@ -27,7 +25,6 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     return () => clearInterval(intervalId);
   }, []);
   
-  // Filter only active or delivered orders with delivery details
   const activeDeliveries = useMemo(() => {
     return purchaseOrders.filter(order => 
       order.deliveryDetails && 
@@ -35,13 +32,11 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     );
   }, [purchaseOrders]);
 
-  // Get selected delivery details
   const selectedDeliveryDetails = useMemo(() => {
     if (!selectedDelivery) return null;
     return activeDeliveries.find(order => order.id === selectedDelivery);
   }, [selectedDelivery, activeDeliveries]);
 
-  // Get GPS data for the selected delivery
   const deliveryGpsData = useMemo(() => {
     if (!selectedDeliveryDetails?.deliveryDetails?.truckId) return [];
     
@@ -50,12 +45,10 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [selectedDeliveryDetails, gpsData]);
 
-  // Get the latest GPS position
   const latestPosition = useMemo(() => {
     return deliveryGpsData[0] || null;
   }, [deliveryGpsData]);
 
-  // Get path history from GPS tracking service
   const pathHistory = useMemo(() => {
     if (!selectedDeliveryDetails?.deliveryDetails?.truckId) return [];
     
@@ -63,14 +56,12 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     return gpsService.getPathHistory(selectedDeliveryDetails.deliveryDetails.truckId);
   }, [selectedDeliveryDetails, updateTimestamp]);
 
-  // If no delivery is selected, select the first one
   useEffect(() => {
     if (activeDeliveries.length > 0 && !selectedDelivery) {
       setSelectedDelivery(activeDeliveries[0].id);
     }
   }, [activeDeliveries, selectedDelivery]);
 
-  // Prepare driver and truck information
   const driverInfo = useMemo(() => {
     if (!selectedDeliveryDetails?.deliveryDetails?.driverId) return null;
     return getDriverById(selectedDeliveryDetails.deliveryDetails.driverId);
@@ -81,13 +72,11 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     return getTruckById(selectedDeliveryDetails.deliveryDetails.truckId);
   }, [selectedDeliveryDetails, getTruckById]);
 
-  // Helper function to calculate the progress percentage
   const calculateProgress = (order: PurchaseOrder) => {
     if (!order.deliveryDetails) return 0;
     
     if (order.deliveryDetails.status === 'delivered') return 100;
     
-    // Get most up-to-date distance from GPS tracking service if possible
     const gpsService = GPSTrackingService.getInstance();
     const trackingInfo = gpsService.getTrackingInfo(order.deliveryDetails.truckId || '');
     
@@ -97,7 +86,6 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     return Math.min(Math.round((distanceCovered / totalDistance) * 100), 99);
   };
 
-  // This would be replaced with an actual map implementation
   const MapSimulation = () => {
     if (!selectedDeliveryDetails) return (
       <div className="h-full flex items-center justify-center bg-gray-100 rounded-lg">
@@ -105,45 +93,36 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
       </div>
     );
     
-    // For demonstration, just show a basic visualization
     const progress = calculateProgress(selectedDeliveryDetails);
     
-    // Get GPS tracking service for this truck
     const gpsService = GPSTrackingService.getInstance();
     const trackingInfo = gpsService.getTrackingInfo(selectedDeliveryDetails.deliveryDetails?.truckId || '');
     
-    // Current location
     const currentLat = latestPosition?.latitude || trackingInfo?.currentLatitude || 0;
     const currentLng = latestPosition?.longitude || trackingInfo?.currentLongitude || 0;
     
     return (
       <div className="relative w-full h-full bg-blue-50 rounded-lg overflow-hidden">
-        {/* Simulated Map Background */}
         <div className="absolute inset-0 grid grid-cols-6 grid-rows-6">
           {Array.from({ length: 36 }).map((_, i) => (
             <div key={i} className="border border-blue-100/50"></div>
           ))}
         </div>
         
-        {/* Origin Point */}
         <div className="absolute top-3/4 left-1/4 flex flex-col items-center">
           <div className="w-4 h-4 rounded-full bg-green-500 shadow-lg z-10"></div>
           <p className="text-xs font-medium mt-1 px-2 py-1 bg-white rounded shadow">Origin</p>
         </div>
         
-        {/* Destination Point */}
         <div className="absolute top-1/4 right-1/4 flex flex-col items-center">
           <div className="w-4 h-4 rounded-full bg-red-500 shadow-lg z-10"></div>
           <p className="text-xs font-medium mt-1 px-2 py-1 bg-white rounded shadow">Destination</p>
         </div>
         
-        {/* Path History - Draw all points from history */}
         <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          {/* Render path history as a polyline */}
           {pathHistory.length > 1 && (
             <polyline 
               points={pathHistory.map(point => {
-                // Convert GPS coordinates to screen coordinates (simplified)
                 const x = 25 + (point.lng - pathHistory[0].lng) * 3000;
                 const y = 75 - (point.lat - pathHistory[0].lat) * 3000;
                 return `${x}% ${y}%`;
@@ -155,7 +134,6 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
           )}
         </svg>
         
-        {/* Vehicle Position */}
         {selectedDeliveryDetails.deliveryDetails?.status === 'in_transit' && (
           <div className="absolute flex flex-col items-center"
                style={{ 
@@ -181,7 +159,6 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Legend */}
         <div className="absolute bottom-3 left-3 bg-white p-2 rounded-md shadow space-y-1 text-xs">
           <div className="flex items-center">
             <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
@@ -197,7 +174,6 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
           </div>
         </div>
         
-        {/* Map Data */}
         <div className="absolute top-3 right-3 bg-white p-2 rounded-md shadow text-xs">
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
             <div className="text-gray-500">Latitude:</div>
@@ -226,7 +202,6 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Deliveries List */}
           <Card className="md:col-span-1 overflow-hidden">
             <CardHeader className="bg-slate-50">
               <CardTitle className="text-lg flex items-center">
@@ -242,24 +217,20 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
               ) : (
                 <div className="divide-y">
                   {activeDeliveries.map(delivery => {
-                    // Get driver and truck info
                     const driver = delivery.deliveryDetails?.driverId ? 
                       getDriverById(delivery.deliveryDetails.driverId) : null;
                     const truck = delivery.deliveryDetails?.truckId ? 
                       getTruckById(delivery.deliveryDetails.truckId) : null;
                     
-                    // Add driverName and vehicleDetails for UI display
-                    if (delivery.deliveryDetails && driver) {
-                      delivery.deliveryDetails.driverName = driver.name;
-                    }
+                    let deliveryDetailsWithUI = delivery.deliveryDetails ? { ...delivery.deliveryDetails } : undefined;
                     
-                    if (delivery.deliveryDetails && truck) {
-                      delivery.deliveryDetails.vehicleDetails = truck.plateNumber;
+                    if (deliveryDetailsWithUI) {
+                      deliveryDetailsWithUI.driverName = driver?.name || 'Unassigned';
+                      deliveryDetailsWithUI.vehicleDetails = truck?.plateNumber || 'Unassigned';
                     }
                     
                     const progress = calculateProgress(delivery);
                     
-                    // Get tracking info
                     const gpsService = GPSTrackingService.getInstance();
                     const trackingInfo = gpsService.getTrackingInfo(delivery.deliveryDetails?.truckId || '');
                     
@@ -286,11 +257,11 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
                         <div className="text-sm text-gray-500 space-y-1">
                           <div className="flex items-center">
                             <User className="h-3 w-3 mr-2" />
-                            <span>{delivery.deliveryDetails?.driverName || 'Unassigned'}</span>
+                            <span>{deliveryDetailsWithUI?.driverName || 'Unassigned'}</span>
                           </div>
                           <div className="flex items-center">
                             <Truck className="h-3 w-3 mr-2" />
-                            <span>{delivery.deliveryDetails?.vehicleDetails || 'Unassigned'}</span>
+                            <span>{deliveryDetailsWithUI?.vehicleDetails || 'Unassigned'}</span>
                           </div>
                           <div className="flex items-center">
                             <Clock className="h-3 w-3 mr-2" />
@@ -330,7 +301,6 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
             </CardContent>
           </Card>
           
-          {/* Map View */}
           <Card className="md:col-span-2">
             <CardHeader className="bg-slate-50">
               <CardTitle className="text-lg flex items-center">
@@ -346,7 +316,6 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
           </Card>
         </div>
         
-        {/* Delivery Details */}
         {selectedDeliveryDetails && (
           <Card>
             <CardHeader className="bg-slate-50">

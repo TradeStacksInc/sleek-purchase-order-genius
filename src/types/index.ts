@@ -1,4 +1,3 @@
-
 export interface Product {
   id: string;
   name: string;
@@ -12,6 +11,8 @@ export interface Product {
   updatedAt: Date;
 }
 
+export type ProductType = 'PMS' | 'AGO' | 'DPK' | string;
+
 export interface Supplier {
   id: string;
   name: string;
@@ -19,8 +20,8 @@ export interface Supplier {
   contactEmail: string;
   contactPhone: string;
   address: string;
-  email?: string; // Added
-  contact?: string; // Added
+  email?: string; 
+  contact?: string;
   createdAt: Date;
   updatedAt: Date;
   // Extra properties used in the app
@@ -75,7 +76,7 @@ export interface GPSData {
   speed: number;
   fuelLevel: number;
   location: string;
-  heading?: number; // Added
+  heading?: number;
 }
 
 export interface AIInsights {
@@ -86,7 +87,7 @@ export interface AIInsights {
   description: string;
   severity: 'low' | 'medium' | 'high';
   // Additional properties
-  type?: string;
+  type?: 'discrepancy_pattern' | 'driver_analysis' | 'efficiency_recommendation' | string;
   relatedEntityIds?: string[];
   generatedAt?: Date;
   isRead?: boolean;
@@ -110,7 +111,9 @@ export interface PurchaseOrder {
   poNumber?: string;
   supplier?: {
     name: string;
+    id?: string;
     contact?: string;
+    email?: string;
     address?: string;
   };
   grandTotal?: number;
@@ -119,12 +122,13 @@ export interface PurchaseOrder {
     address: string;
     contact: string;
     email: string;
+    taxId?: string;
   };
   deliveryDetails?: DeliveryDetails;
   offloadingDetails?: OffloadingDetails;
   incidents?: Incident[];
   statusHistory?: StatusHistoryEntry[];
-  paymentTerm?: string;
+  paymentTerm?: string | PaymentTerm;
 }
 
 export interface PurchaseOrderItem {
@@ -154,7 +158,7 @@ export interface Staff {
 export interface Dispenser {
   id: string;
   number: number;
-  productType: Product;
+  productType: ProductType;
   status: 'operational' | 'maintenance' | 'offline';
   lastCalibrationDate?: Date;
   nextCalibrationDate?: Date;
@@ -190,7 +194,7 @@ export interface Sale {
   dispenserId: string;
   dispenserNumber?: number;
   staffId: string;
-  productType: Product;
+  productType: ProductType;
   volume: number;
   unitPrice: number;
   totalAmount: number;
@@ -206,9 +210,13 @@ export interface Sale {
 
 export interface Price {
   id: string;
-  productType: Product;
+  productType: ProductType;
   price: number;
   effectiveDate: Date;
+  isActive?: boolean;
+  endDate?: Date;
+  purchasePrice?: number;
+  sellingPrice?: number;
 }
 
 export type PriceRecord = Price; // Alias for compatibility
@@ -247,7 +255,7 @@ export interface Tank {
   name: string;
   capacity: number;
   currentLevel: number;
-  productType: Product;
+  productType: ProductType;
   lastRefillDate: Date;
   nextInspectionDate: Date;
   // Additional properties used in the app
@@ -263,7 +271,9 @@ export interface DeliveryDetails {
   id: string;
   poId: string;
   driverId?: string;
+  driverName?: string; // Added for MapView component
   truckId?: string;
+  vehicleDetails?: string; // Added for MapView component
   status: 'pending' | 'in_transit' | 'delivered' | 'completed';
   depotDepartureTime?: Date;
   destinationArrivalTime?: Date;
@@ -299,6 +309,7 @@ export interface StatusHistoryEntry {
   timestamp: Date;
   user: string;
   note?: string;
+  id?: string; // Added to fix purchase order history errors
 }
 
 export interface LogEntry {
@@ -320,6 +331,7 @@ export interface Company {
   zipCode: string;
   phone: string;
   email: string;
+  contact?: string; // Added for compatibility
   website?: string;
   logo?: string;
   taxId?: string;

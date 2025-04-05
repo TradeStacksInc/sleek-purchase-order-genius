@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { Shift, Staff, ActivityLog } from '../types';
 import { PaginationParams, PaginatedResult } from '../utils/localStorage/types';
@@ -15,116 +14,123 @@ export const useShiftActions = (
   const { toast } = useToast();
 
   const startShift = (staffId: string): Shift => {
+    // Find the staff member
+    const staffMember = staff.find(s => s.id === staffId);
+    if (!staffMember) {
+      throw new Error(`No staff member found with ID: ${staffId}`);
+    }
+    
+    // Check if there's already an active shift for this staff
+    const existingActiveShift = shifts.find(shift => 
+      shift.staffId === staffId && 
+      shift.status === 'active'
+    );
+    
+    if (existingActiveShift) {
+      toast({
+        title: "Shift Already Active",
+        description: `${staffMember.name} already has an active shift.`,
+        variant: "destructive",
+      });
+      return existingActiveShift;
+    }
+    
+    // Create a new shift with all required fields
+    const newShift: Shift = {
+      id: `shift-${uuidv4().substring(0, 8)}`,
+      name: `${staffMember.name}'s Shift`,
+      startTime: new Date(),
+      endTime: new Date(new Date().getTime() + (8 * 60 * 60 * 1000)), // Default 8-hour shift
+      staffMembers: [staffId],
+      staffId: staffId,
+      status: 'active',
+      salesVolume: 0,
+      salesAmount: 0
+    };
+    
+    setShifts(prev => [newShift, ...prev]);
+    
+    // Log the action
+    const newActivityLog: ActivityLog = {
+      id: `log-${uuidv4()}`,
+      entityType: 'shift',
+      entityId: newShift.id,
+      action: 'create',
+      details: `Shift started by ${staffMember.name}`,
+      user: staffMember.name,
+      timestamp: new Date()
+    };
+    
+    setActivityLogs(prev => [newActivityLog, ...prev]);
+    
+    toast({
+      title: "Shift Started",
+      description: `${staffMember.name} has started a new shift.`,
+    });
+    
+    return newShift;
+  };
+
+  const endShift = (shiftId: string): Shift | undefined => {
     try {
-      const staffMember = staff.find(s => s.id === staffId);
-      if (!staffMember) {
-        throw new Error("Staff member not found");
-      }
-      
-      // Check if staff already has an active shift
-      const existingActiveShift = shifts.find(
-        shift => shift.staffId === staffId && shift.status === 'active'
-      );
-      
-      if (existingActiveShift) {
+      const shiftToEnd = shifts.find(shift => shift.id === shiftId);
+      if (!shiftToEnd) {
         toast({
-          title: "Shift Already Active",
-          description: `${staffMember.name} already has an active shift.`,
+          title: "Error",
+          description: "Shift not found.",
           variant: "destructive",
         });
-        return existingActiveShift;
+        return undefined;
       }
       
-      const newShift: Shift = {
-        id: `shift-${uuidv4().substring(0, 8)}`,
-        staffId,
-        startTime: new Date(),
-        status: 'active'
-      };
+      // Find the staff member
+      const staffMember = staff.find(s => s.id === shiftToEnd.staffId);
+      if (!staffMember) {
+        throw new Error(`No staff member found with ID: ${shiftToEnd.staffId}`);
+      }
       
-      setShifts(prev => [newShift, ...prev]);
+      // Update the shift
+      let updatedShift: Shift | undefined;
+      setShifts(prev =>
+        prev.map(shift => {
+          if (shift.id === shiftId) {
+            updatedShift = {
+              ...shift,
+              endTime: new Date(),
+              status: 'completed'
+            };
+            return updatedShift;
+          }
+          return shift;
+        })
+      );
+      
+      if (!updatedShift) {
+        toast({
+          title: "Error",
+          description: "Failed to end shift. Please try again.",
+          variant: "destructive",
+        });
+        return undefined;
+      }
       
       // Log the action
       const newActivityLog: ActivityLog = {
         id: `log-${uuidv4()}`,
         entityType: 'shift',
-        entityId: newShift.id,
-        action: 'create',
-        details: `Started shift for ${staffMember.name}`,
-        user: 'Current User',
+        entityId: shiftId,
+        action: 'update',
+        details: `Shift ended by ${staffMember.name}`,
+        user: staffMember.name,
         timestamp: new Date()
       };
       
       setActivityLogs(prev => [newActivityLog, ...prev]);
       
       toast({
-        title: "Shift Started",
-        description: `${staffMember.name}'s shift has been started.`,
+        title: "Shift Ended",
+        description: `Shift for ${staffMember.name} has been ended.`,
       });
-      
-      return newShift;
-    } catch (error) {
-      console.error("Error starting shift:", error);
-      toast({
-        title: "Error",
-        description: "Failed to start shift. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const endShift = (shiftId: string): Shift | undefined => {
-    try {
-      let updatedShift: Shift | undefined;
-      let staffMember: Staff | undefined;
-      
-      setShifts(prev => {
-        const updatedShiftList = prev.map(shift => {
-          if (shift.id === shiftId && shift.status === 'active') {
-            updatedShift = {
-              ...shift,
-              endTime: new Date(),
-              status: 'completed'
-            };
-            
-            staffMember = staff.find(s => s.id === shift.staffId);
-            return updatedShift;
-          }
-          return shift;
-        });
-        
-        // If shift not found or not active, return unmodified list
-        if (!updatedShift) return prev;
-        
-        return updatedShiftList;
-      });
-      
-      if (updatedShift && staffMember) {
-        // Log the action
-        const newActivityLog: ActivityLog = {
-          id: `log-${uuidv4()}`,
-          entityType: 'shift',
-          entityId: updatedShift.id,
-          action: 'update',
-          details: `Ended shift for ${staffMember.name}`,
-          user: 'Current User',
-          timestamp: new Date()
-        };
-        
-        setActivityLogs(prev => [newActivityLog, ...prev]);
-        
-        toast({
-          title: "Shift Ended",
-          description: `${staffMember.name}'s shift has been ended.`,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Shift not found or already ended.",
-          variant: "destructive",
-        });
-      }
       
       return updatedShift;
     } catch (error) {
@@ -143,10 +149,13 @@ export const useShiftActions = (
   };
 
   const getShiftsByStaffId = (staffId: string, params?: PaginationParams): PaginatedResult<Shift> => {
-    const staffShifts = shifts.filter(shift => shift.staffId === staffId);
-    return getPaginatedData(staffShifts, params || { page: 1, limit: 10 });
+    const filteredShifts = shifts
+      .filter(shift => shift.staffId === staffId)
+      .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+      
+    return getPaginatedData(filteredShifts, params || { page: 1, limit: 10 });
   };
-
+  
   return {
     startShift,
     endShift,

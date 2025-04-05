@@ -122,39 +122,21 @@ export const useDriverTruckActions = (
 
   const tagTruckWithGPS = (truckId: string, gpsDeviceId: string, initialLatitude: number, initialLongitude: number) => {
     try {
-      console.log("Tagging truck with GPS:", truckId, gpsDeviceId);
-      
-      const truck = trucks.find(t => t.id === truckId);
-      
+      const truck = getTruckById(truckId);
       if (!truck) {
-        console.error("Could not find truck with the provided ID.");
-        toast({
-          title: "Error",
-          description: "Could not find truck with the provided ID.",
-          variant: "destructive"
-        });
+        console.error(`Cannot tag truck with GPS. No truck found with ID: ${truckId}`);
         return;
       }
       
-      if (!truck.hasGPS) {
-        console.error("This truck does not have GPS capability.");
-        toast({
-          title: "Error",
-          description: "This truck does not have GPS capability.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Update truck with GPS device information
-      setTrucks(prevTrucks =>
-        prevTrucks.map(t => 
+      setTrucks(prev => 
+        prev.map(t => 
           t.id === truckId 
             ? { 
                 ...t, 
-                isGPSTagged: true, 
+                hasGPS: true,
+                isGPSTagged: true,
                 gpsDeviceId,
-                lastLatitude: initialLatitude,
+                lastLatitude: initialLatitude, 
                 lastLongitude: initialLongitude,
                 lastUpdate: new Date()
               } 
@@ -162,40 +144,31 @@ export const useDriverTruckActions = (
         )
       );
       
-      // Create initial GPS data point
-      const newGPSData: GPSData = {
-        id: `gps-${Date.now()}`,
+      const initialGPSData: GPSData = {
+        id: `gps-${uuidv4().substring(0, 8)}`,
         truckId,
         latitude: initialLatitude,
         longitude: initialLongitude,
         speed: 0,
-        timestamp: new Date()
-      };
-      
-      setGPSData(prev => [newGPSData, ...prev]);
-      
-      // Log the GPS tagging
-      const newLog: LogEntry = {
-        id: `log-${Date.now()}`,
-        poId: "system",
-        action: `Truck ${truck.plateNumber} tagged with GPS device ${gpsDeviceId}`,
-        user: 'Current User',
         timestamp: new Date(),
+        fuelLevel: 100,
+        location: `Initial location at ${initialLatitude.toFixed(4)}, ${initialLongitude.toFixed(4)}`
       };
       
-      setLogs(prev => [newLog, ...prev]);
+      setGPSData(prev => [initialGPSData, ...prev]);
       
-      toast({
-        title: "GPS Tagged Successfully",
-        description: `Truck ${truck.plateNumber} is now GPS-enabled and ready for tracking.`,
-      });
+      const logEntry: LogEntry = {
+        id: uuidv4(),
+        poId: 'system',
+        action: `GPS Device ${gpsDeviceId} assigned to truck ${truck.plateNumber}`,
+        user: 'System',
+        timestamp: new Date(),
+        details: `Initial position: ${initialLatitude}, ${initialLongitude}`
+      };
+      
+      setLogs(prev => [...prev, logEntry]);
     } catch (error) {
       console.error("Error tagging truck with GPS:", error);
-      toast({
-        title: "Error",
-        description: "Failed to tag truck with GPS. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -208,13 +181,11 @@ export const useDriverTruckActions = (
         return;
       }
       
-      // Stop any active GPS tracking
       const gpsService = GPSTrackingService.getInstance();
       if (gpsService.isTracking(truckId)) {
         gpsService.stopTracking(truckId);
       }
       
-      // Update truck to remove GPS tagging
       setTrucks(prevTrucks =>
         prevTrucks.map(t => 
           t.id === truckId 
@@ -231,7 +202,6 @@ export const useDriverTruckActions = (
         )
       );
       
-      // Log the GPS untagging
       const newLog: LogEntry = {
         id: `log-${Date.now()}`,
         poId: "system",
@@ -267,9 +237,7 @@ export const useDriverTruckActions = (
         timestamp: new Date()
       };
       
-      // Add to GPS data with limit to prevent excessive memory usage
       setGPSData(prev => {
-        // Keep only the latest 1000 GPS points total
         let newData = [newGPSData, ...prev];
         if (newData.length > 1000) {
           newData = newData.slice(0, 1000);
@@ -277,7 +245,6 @@ export const useDriverTruckActions = (
         return newData;
       });
       
-      // Update truck's last known position
       setTrucks(prevTrucks =>
         prevTrucks.map(t => 
           t.id === truckId 
@@ -292,15 +259,12 @@ export const useDriverTruckActions = (
         )
       );
       
-      // Update PO details for in-transit orders
       setPurchaseOrders(prevOrders =>
         prevOrders.map(po => {
           if (po.deliveryDetails?.truckId === truckId && po.deliveryDetails.status === 'in_transit') {
-            // Calculate remaining distance and ETA
             const distanceCovered = po.deliveryDetails.distanceCovered || 0;
             const totalDistance = po.deliveryDetails.totalDistance || 100;
             
-            // Update with new position info
             const newDistanceCovered = Math.min(distanceCovered + (speed * 0.01), totalDistance);
             const remainingDistance = Math.max(0, totalDistance - newDistanceCovered);
             const estimatedTimeInHours = remainingDistance / (speed > 0 ? speed : 10);
@@ -320,8 +284,65 @@ export const useDriverTruckActions = (
       );
     } catch (error) {
       console.error("Error updating GPS data:", error);
-      // Not showing toast here as this function is called frequently
     }
+  };
+
+  const simulateGPSMovement = (truckId: string) => {
+    const truck = getTruckById(truckId);
+    if (!truck || !truck.lastLatitude || !truck.lastLongitude) {
+      return;
+    }
+    
+    const latChange = (Math.random() - 0.5) * 0.01;
+    const lngChange = (Math.random() - 0.5) * 0.01;
+    
+    const newLat = truck.lastLatitude + latChange;
+    const newLng = truck.lastLongitude + lngChange;
+    const speed = Math.random() * 60;
+    
+    const newGPSData: GPSData = {
+      id: `gps-${uuidv4().substring(0, 8)}`,
+      truckId,
+      latitude: newLat,
+      longitude: newLng,
+      speed,
+      timestamp: new Date(),
+      fuelLevel: Math.floor(Math.random() * 20) + 80,
+      location: `Simulated location at ${newLat.toFixed(4)}, ${newLng.toFixed(4)}`
+    };
+    
+    setGPSData(prev => [newGPSData, ...prev]);
+    
+    setTrucks(prev => 
+      prev.map(t => 
+        t.id === truckId 
+          ? { 
+              ...t, 
+              lastLatitude: newLat, 
+              lastLongitude: newLng,
+              lastSpeed: speed,
+              lastUpdate: new Date()
+            } 
+          : t
+      )
+    );
+    
+    setPurchaseOrders(prev => 
+      prev.map(order => {
+        if (order.deliveryDetails && order.deliveryDetails.truckId === truckId) {
+          const driverId = order.deliveryDetails.driverId;
+          const driver = driverId ? getDriverById(driverId) : null;
+          
+          return {
+            ...order,
+            deliveryDetails: {
+              ...order.deliveryDetails,
+            }
+          };
+        }
+        return order;
+      })
+    );
   };
 
   return {
@@ -336,6 +357,7 @@ export const useDriverTruckActions = (
     getNonGPSTrucks,
     tagTruckWithGPS,
     untagTruckGPS,
-    updateGPSData
+    updateGPSData,
+    simulateGPSMovement
   };
 };

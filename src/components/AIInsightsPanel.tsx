@@ -114,7 +114,7 @@ const InsightItem: React.FC<{
     }
   };
   
-  const getIcon = (type: 'discrepancy_pattern' | 'driver_analysis' | 'efficiency_recommendation') => {
+  const getIcon = (type: 'discrepancy_pattern' | 'driver_analysis' | 'efficiency_recommendation' | string) => {
     switch (type) {
       case 'discrepancy_pattern':
         return <AlertTriangle className="h-5 w-5 text-red-500" />;
@@ -135,9 +135,9 @@ const InsightItem: React.FC<{
     )}>
       <div>
         <div className="flex items-center gap-2">
-          {getIcon(insight.type)}
+          {getIcon(insight.type || '')}
           <AlertTitle className="capitalize">
-            {insight.type.replace('_', ' ')}
+            {(insight.type || 'insight').replace('_', ' ')}
           </AlertTitle>
           <Badge variant={
             insight.severity === 'high' ? "destructive" : 
@@ -151,7 +151,7 @@ const InsightItem: React.FC<{
           {insight.description}
         </AlertDescription>
         <div className="mt-2 text-xs text-muted-foreground">
-          Generated: {format(new Date(insight.generatedAt), 'MMM dd, yyyy HH:mm')}
+          Generated: {format(new Date(insight.generatedAt || insight.timestamp), 'MMM dd, yyyy HH:mm')}
         </div>
       </div>
       

@@ -214,7 +214,9 @@ class GPSSimulator {
       longitude: newLongitude,
       speed,
       heading,
-      timestamp: new Date()
+      timestamp: new Date(),
+      fuelLevel: Math.floor(Math.random() * 20) + 80, // Random between 80-100%
+      location: `Generated location at ${newLatitude.toFixed(4)}, ${newLongitude.toFixed(4)}`
     };
     
     // Notify callbacks
@@ -293,3 +295,17 @@ class GPSSimulator {
 }
 
 export default GPSSimulator;
+
+export const generateGPSData = (truckId: string, latitude: number, longitude: number, speed: number, heading: number = 0): GPSData => {
+  return {
+    id: `gps-${Date.now()}`,
+    truckId,
+    timestamp: new Date(),
+    latitude,
+    longitude,
+    speed,
+    heading,
+    fuelLevel: Math.floor(Math.random() * 20) + 80, // Random between 80-100%
+    location: `Generated location at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+  };
+};

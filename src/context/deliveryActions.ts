@@ -210,81 +210,66 @@ export const useDeliveryActions = (
   };
 
   const updateGPSData = (truckId: string, latitude: number, longitude: number, speed: number) => {
-    const newGPSData: GPSData = {
-      id: uuidv4(),
-      truckId,
-      latitude,
-      longitude,
-      speed,
-      timestamp: new Date()
-    };
-    
-    setGpsData((prevData) => {
-      const filteredPrevData = prevData.filter(d => d.truckId !== truckId || 
-        prevData.filter(pd => pd.truckId === truckId).indexOf(d) >= 
-        prevData.filter(pd => pd.truckId === truckId).length - 99);
+    try {
+      const truck = getTruckById(truckId);
+      if (!truck) {
+        console.error(`No truck found with ID: ${truckId}`);
+        return;
+      }
       
-      const newData = [...filteredPrevData, newGPSData];
+      const recentGPSData = gpsData.filter(d => d.truckId === truckId);
       
-      saveToLocalStorage(STORAGE_KEYS.GPS_DATA, newData);
+      const newGPSData: GPSData = {
+        id: `gps-${uuidv4().substring(0, 8)}`,
+        truckId,
+        latitude,
+        longitude,
+        speed,
+        timestamp: new Date(),
+        fuelLevel: 75,
+        location: getLocationDescription(latitude, longitude)
+      };
       
-      return newData;
-    });
-    
-    setTrucks((prevTrucks) => {
-      const newTrucks = prevTrucks.map((truck) => {
-        if (truck.id === truckId) {
-          return {
-            ...truck,
-            lastLatitude: latitude,
-            lastLongitude: longitude,
-            lastSpeed: speed,
-            lastUpdate: new Date()
-          };
-        }
-        return truck;
-      });
+      setGPSData(prevData => [newGPSData, ...prevData]);
       
-      saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
-      
-      return newTrucks;
-    });
-    
-    setPurchaseOrders((prevOrders) => {
-      const ordersToUpdate = prevOrders.filter(
-        po => po.deliveryDetails?.truckId === truckId && 
-             po.deliveryDetails?.status === 'in_transit'
+      setTrucks(prev => 
+        prev.map(t => 
+          t.id === truckId 
+            ? { 
+                ...t, 
+                lastLatitude: latitude, 
+                lastLongitude: longitude,
+                lastSpeed: speed,
+                lastUpdate: new Date()
+              } 
+            : t
+        )
       );
-      
-      if (ordersToUpdate.length === 0) return prevOrders;
-      
-      const newOrders = prevOrders.map((order) => {
-        if (
-          order.deliveryDetails?.truckId === truckId && 
-          order.deliveryDetails?.status === 'in_transit'
-        ) {
-          const gpsService = GPSTrackingService.getInstance();
-          const trackingInfo = gpsService.getTrackingInfo(truckId);
-          
-          if (trackingInfo) {
-            const updatedDeliveryDetails = {
-              ...order.deliveryDetails,
-              distanceCovered: trackingInfo.distanceCovered || 0
-            };
+
+      setPurchaseOrders(prev => 
+        prev.map(order => {
+          if (order.deliveryDetails?.truckId === truckId && order.deliveryDetails?.status === 'in_transit') {
+            const updatedDetails = { ...order.deliveryDetails };
+            
+            if (updatedDetails.depotDepartureTime && updatedDetails.totalDistance) {
+              const timeElapsed = (new Date().getTime() - new Date(updatedDetails.depotDepartureTime).getTime()) / 3600000;
+              const estimatedDistanceCovered = Math.min(speed * timeElapsed, updatedDetails.totalDistance);
+              
+              updatedDetails.distanceCovered = estimatedDistanceCovered;
+            }
             
             return {
               ...order,
-              deliveryDetails: updatedDeliveryDetails
+              deliveryDetails: updatedDetails
             };
           }
-        }
-        return order;
-      });
+          return order;
+        })
+      );
       
-      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      
-      return newOrders;
-    });
+    } catch (error) {
+      console.error("Error updating GPS data:", error);
+    }
   };
 
   const recordOffloadingDetails = (
@@ -496,7 +481,11 @@ export const useDeliveryActions = (
     
     return updatedOrder;
   };
-  
+
+  const getLocationDescription = (latitude: number, longitude: number): string => {
+    return `Location at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+  };
+
   return {
     assignDriverToOrder,
     updateDeliveryStatus,

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -85,9 +84,9 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
         
         // Get tanks that match the product type
         const allTanks = getAllTanks();
-        const productType = order.items[0].product;
+        const productType = order.items[0].product || order.items[0].productName;
         const filteredTanks = allTanks.filter(tank => 
-          tank.productType === productType && 
+          String(tank.productType) === String(productType) && 
           tank.status === 'operational'
         );
         setAvailableTanks(filteredTanks);

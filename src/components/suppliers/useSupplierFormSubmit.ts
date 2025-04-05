@@ -33,13 +33,18 @@ export const useSupplierFormSubmit = (onClose: () => void) => {
         ? formData.supplierType as 'Major' | 'Independent' | 'Government'
         : 'Independent'; // Default value
         
-      // Create new supplier object with only essential fields
+      // Create new supplier object with all required fields
       const newSupplier = {
         id: uuidv4(),
         name: formData.name.trim(),
-        contact: formData.contact.trim(),
+        contactName: formData.contactPerson || 'Contact Person',
+        contactEmail: formData.email.trim(),
+        contactPhone: formData.contact.trim(),
         address: formData.address.trim(),
         email: formData.email.trim(),
+        contact: formData.contact.trim(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
         supplierType: validatedSupplierType,
         depotName: formData.depotName.trim(),
         taxId: formData.regNumber.trim(),

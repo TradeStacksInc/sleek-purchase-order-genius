@@ -1,12 +1,12 @@
 
 import { v4 as uuidv4 } from 'uuid';
-import { PurchaseOrder, AIInsight, Driver, Truck } from '../types';
+import { PurchaseOrder, AIInsights, Driver, Truck } from '../types';
 import { useToast } from '@/hooks/use-toast';
 
 export const useAIActions = (
   purchaseOrders: PurchaseOrder[],
-  aiInsights: AIInsight[],
-  setAIInsights: React.Dispatch<React.SetStateAction<AIInsight[]>>,
+  aiInsights: AIInsights[],
+  setAIInsights: React.Dispatch<React.SetStateAction<AIInsights[]>>,
   getDriverById: (id: string) => Driver | undefined,
   getTruckById: (id: string) => Truck | undefined
 ) => {
@@ -36,14 +36,18 @@ export const useAIActions = (
       }
     });
     
-    const newInsights: AIInsight[] = [];
+    const newInsights: AIInsights[] = [];
     
     driversWithDiscrepancies.forEach((count, driverId) => {
       if (count >= 2) {
         const driver = getDriverById(driverId);
         if (driver) {
+          const insightId = `insight-${uuidv4().substring(0, 8)}`;
           newInsights.push({
-            id: `insight-${uuidv4().substring(0, 8)}`,
+            id: insightId,
+            truckId: driverId, // Using driverId as a reference
+            timestamp: new Date(),
+            anomalyType: 'driver_discrepancy',
             type: 'discrepancy_pattern',
             description: `Driver ${driver.name} has been involved in ${count} flagged deliveries with volume discrepancies. Consider additional monitoring or training.`,
             severity: count >= 3 ? 'high' : 'medium',
@@ -59,8 +63,12 @@ export const useAIActions = (
       if (count >= 2) {
         const truck = getTruckById(truckId);
         if (truck) {
+          const insightId = `insight-${uuidv4().substring(0, 8)}`;
           newInsights.push({
-            id: `insight-${uuidv4().substring(0, 8)}`,
+            id: insightId,
+            truckId: truckId,
+            timestamp: new Date(),
+            anomalyType: 'truck_discrepancy',
             type: 'discrepancy_pattern',
             description: `Truck ${truck.plateNumber} has been involved in ${count} flagged deliveries with volume discrepancies. Consider mechanical inspection.`,
             severity: count >= 3 ? 'high' : 'medium',
@@ -86,6 +94,9 @@ export const useAIActions = (
       if (discrepancyRate > 15) {
         newInsights.push({
           id: `insight-${uuidv4().substring(0, 8)}`,
+          truckId: 'system',
+          timestamp: new Date(),
+          anomalyType: 'high_discrepancy_rate',
           type: 'efficiency_recommendation',
           description: `High volume discrepancy rate (${discrepancyRate.toFixed(1)}%) detected across deliveries. Consider implementing stricter volume verification at loading points and driver training programs.`,
           severity: 'high',
@@ -96,6 +107,9 @@ export const useAIActions = (
       } else if (discrepancyRate > 5) {
         newInsights.push({
           id: `insight-${uuidv4().substring(0, 8)}`,
+          truckId: 'system',
+          timestamp: new Date(),
+          anomalyType: 'moderate_discrepancy_rate',
           type: 'efficiency_recommendation',
           description: `Moderate volume discrepancy rate (${discrepancyRate.toFixed(1)}%) detected. Consider reviewing loading procedures and implementing spot checks.`,
           severity: 'medium',

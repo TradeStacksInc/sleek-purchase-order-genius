@@ -1,24 +1,25 @@
 
 import { v4 as uuidv4 } from 'uuid';
-import { PriceRecord, ActivityLog } from '../types';
+import { Price, ActivityLog } from '../types';
 import { PaginationParams, PaginatedResult } from '../utils/localStorage/types';
 import { getPaginatedData } from '../utils/localStorage/appState';
 import { useToast } from '@/hooks/use-toast';
 
 export const usePriceActions = (
-  prices: PriceRecord[],
-  setPrices: React.Dispatch<React.SetStateAction<PriceRecord[]>>,
+  prices: Price[],
+  setPrices: React.Dispatch<React.SetStateAction<Price[]>>,
   setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>
 ) => {
   const { toast } = useToast();
 
-  const setPriceRecord = (priceData: Omit<PriceRecord, 'id' | 'effectiveDate'>): PriceRecord => {
+  const setPriceRecord = (priceData: Omit<Price, 'id' | 'effectiveDate'>): Price => {
     try {
       console.log("Setting price record:", priceData);
       
       // Deactivate existing active price records for this product
       const updatedPrices = prices.map(price => {
-        if (price.productType === priceData.productType && price.isActive) {
+        // Compare product types as strings
+        if (String(price.productType) === String(priceData.productType) && price.isActive) {
           return {
             ...price,
             isActive: false,
@@ -29,7 +30,7 @@ export const usePriceActions = (
       });
       
       // Create the new price record
-      const newPrice: PriceRecord = {
+      const newPrice: Price = {
         ...priceData,
         id: `price-${uuidv4().substring(0, 8)}`,
         effectiveDate: new Date(),
@@ -45,7 +46,7 @@ export const usePriceActions = (
         entityType: 'price',
         entityId: newPrice.id,
         action: 'create',
-        details: `Set new price for ${newPrice.productType}: Purchase ₦${newPrice.purchasePrice}, Selling ₦${newPrice.sellingPrice}`,
+        details: `Set new price for ${String(newPrice.productType)}: ${newPrice.price.toFixed(2)}`,
         user: 'Current User',
         timestamp: new Date()
       };
@@ -54,7 +55,7 @@ export const usePriceActions = (
       
       toast({
         title: "Price Updated",
-        description: `${newPrice.productType} price has been updated successfully.`,
+        description: `${String(newPrice.productType)} price has been updated successfully.`,
       });
       
       return newPrice;
@@ -69,13 +70,15 @@ export const usePriceActions = (
     }
   };
 
-  const getCurrentPrice = (productType: string): PriceRecord | undefined => {
-    return prices.find(price => price.productType === productType && price.isActive);
+  const getCurrentPrice = (productType: string): Price | undefined => {
+    return prices.find(price => 
+      String(price.productType) === String(productType) && price.isActive
+    );
   };
 
-  const getPriceHistory = (productType: string, params?: PaginationParams): PaginatedResult<PriceRecord> => {
+  const getPriceHistory = (productType: string, params?: PaginationParams): PaginatedResult<Price> => {
     const filteredPrices = prices
-      .filter(price => price.productType === productType)
+      .filter(price => String(price.productType) === String(productType))
       .sort((a, b) => b.effectiveDate.getTime() - a.effectiveDate.getTime());
       
     return getPaginatedData(filteredPrices, params || { page: 1, limit: 10 });
