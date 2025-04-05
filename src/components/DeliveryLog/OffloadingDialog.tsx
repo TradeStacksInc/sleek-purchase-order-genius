@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useApp } from '@/context/AppContext';
 import { Database, AlertCircle, User, Truck } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -32,7 +32,6 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
   const [open, setOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string>(propOrderId || "");
   
-  // Form state
   const [loadedVolume, setLoadedVolume] = useState<number>(0);
   const [deliveredVolume, setDeliveredVolume] = useState<number>(0);
   const [initialTankVolume, setInitialTankVolume] = useState<number>(0);
@@ -45,26 +44,21 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
   const [discrepancyPercent, setDiscrepancyPercent] = useState<number>(0);
   const [driverRating, setDriverRating] = useState<number>(5);
   
-  // Available data
   const [availableTanks, setAvailableTanks] = useState<any[]>([]);
   const [deliveredOrders, setDeliveredOrders] = useState<PurchaseOrder[]>([]);
   
-  // Get the selected order details
   const selectedOrder = selectedOrderId ? getOrderById(selectedOrderId) : null;
   const productType = selectedOrder?.items?.[0]?.product || 'PMS';
   const driverDetails = selectedOrder?.deliveryDetails?.driverId 
     ? getDriverById(selectedOrder.deliveryDetails.driverId)
     : null;
   
-  // Load delivered orders when dialog opens
   useEffect(() => {
     if (open) {
       const orders = getOrdersWithDeliveryStatus('delivered');
-      // Filter out orders that already have offloading details
       const pendingOffloadOrders = orders.filter(order => !order.offloadingDetails);
       setDeliveredOrders(pendingOffloadOrders);
       
-      // If there's a prop orderId or just one order, select it automatically
       if (propOrderId) {
         setSelectedOrderId(propOrderId);
       } else if (pendingOffloadOrders.length === 1) {
@@ -73,32 +67,28 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
     }
   }, [open, getOrdersWithDeliveryStatus, propOrderId]);
 
-  // When an order is selected, update the form data
   useEffect(() => {
     if (selectedOrderId) {
       const order = getOrderById(selectedOrderId);
       if (order && order.items && order.items.length > 0) {
         const totalVolume = order.items.reduce((sum, item) => sum + item.quantity, 0);
         setLoadedVolume(totalVolume);
-        setDeliveredVolume(totalVolume); // Default to same as loaded
+        setDeliveredVolume(totalVolume);
         
-        // Get tanks that match the product type
         const allTanks = getAllTanks();
-        const productType = order.items[0].product || order.items[0].productName;
+        const productTypeValue = order.items[0].productId || order.items[0].product;
         const filteredTanks = allTanks.filter(tank => 
-          String(tank.productType) === String(productType) && 
+          String(tank.productType) === String(productTypeValue) && 
           tank.status === 'operational'
         );
         setAvailableTanks(filteredTanks);
         
-        // Reset other form fields
         setTankId("");
         setInitialTankVolume(0);
         setFinalTankVolume(0);
         setNotes("");
       }
     } else {
-      // Reset the form if no order is selected
       setLoadedVolume(0);
       setDeliveredVolume(0);
       setTankId("");
@@ -108,7 +98,6 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
     }
   }, [selectedOrderId, getOrderById, getAllTanks]);
   
-  // Calculate discrepancy whenever volumes change
   useEffect(() => {
     if (loadedVolume > 0 && deliveredVolume > 0) {
       const diff = Math.abs(deliveredVolume - loadedVolume);
@@ -116,17 +105,16 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
       setDiscrepancyPercent(percent);
       setDiscrepancyWarning(percent > 2);
       
-      // Set driver rating based on discrepancy
       if (percent < 1) {
-        setDriverRating(5); // Excellent, almost no discrepancy
+        setDriverRating(5);
       } else if (percent < 2) {
-        setDriverRating(4); // Good, small discrepancy
+        setDriverRating(4);
       } else if (percent < 3) {
-        setDriverRating(3); // Average, noticeable discrepancy
+        setDriverRating(3);
       } else if (percent < 5) {
-        setDriverRating(2); // Poor, significant discrepancy
+        setDriverRating(2);
       } else {
-        setDriverRating(1); // Very poor, major discrepancy
+        setDriverRating(1);
       }
     } else {
       setDiscrepancyWarning(false);
@@ -134,7 +122,6 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
     }
   }, [loadedVolume, deliveredVolume]);
   
-  // Update final volume when tank and delivered volume change
   useEffect(() => {
     if (tankId && deliveredVolume) {
       const selectedTank = availableTanks.find(tank => tank.id === tankId);
@@ -192,11 +179,9 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
     }
     
     try {
-      // Add driver rating to the notes
       const ratingNote = `Driver Rating: ${driverRating}/5 stars`;
       const fullNotes = notes ? `${notes}\n\n${ratingNote}` : ratingNote;
       
-      // First, record the offloading details
       recordOffloadingDetails(selectedOrderId, {
         initialTankVolume,
         finalTankVolume,
@@ -209,7 +194,6 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
         productType,
       });
       
-      // Then, update the tank with the offloaded volume
       const updatedTank = recordOffloadingToTank(tankId, deliveredVolume, productType);
       
       if (!updatedTank) {
@@ -223,7 +207,6 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
       
       setOpen(false);
       
-      // Reset form
       setSelectedOrderId("");
       setLoadedVolume(0);
       setDeliveredVolume(0);
@@ -267,7 +250,6 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
         </DialogHeader>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-          {/* Left Column */}
           <div className="space-y-4">
             <h3 className="text-md font-semibold">Purchase Order Details</h3>
             
@@ -401,7 +383,6 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
             )}
           </div>
           
-          {/* Right Column */}
           <div className="space-y-4">
             <h3 className="text-md font-semibold">Tank Information</h3>
             

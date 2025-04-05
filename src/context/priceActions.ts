@@ -18,7 +18,7 @@ export const usePriceActions = (
       
       // Deactivate existing active price records for this product
       const updatedPrices = prices.map(price => {
-        // Compare product types as strings
+        // Compare product types as strings to avoid type issues
         if (String(price.productType) === String(priceData.productType) && price.isActive) {
           return {
             ...price,

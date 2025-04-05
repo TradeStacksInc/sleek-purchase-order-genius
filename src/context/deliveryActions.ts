@@ -1,498 +1,497 @@
 import { v4 as uuidv4 } from 'uuid';
-import { useState } from 'react';
-import { 
-  PurchaseOrder, 
-  DeliveryDetails, 
-  LogEntry, 
-  GPSData,
-  OffloadingDetails, 
-  Incident,
-  ActivityLog
-} from '../types';
+import { PurchaseOrder, Driver, Truck, GPSData, ActivityLog } from '../types';
 import { useToast } from '@/hooks/use-toast';
-import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
-import GPSTrackingService from '@/services/GPSTrackingService';
 
 export const useDeliveryActions = (
   purchaseOrders: PurchaseOrder[],
   setPurchaseOrders: React.Dispatch<React.SetStateAction<PurchaseOrder[]>>,
-  drivers: any[],
-  setDrivers: React.Dispatch<React.SetStateAction<any[]>>,
-  trucks: any[],
-  setTrucks: React.Dispatch<React.SetStateAction<any[]>>,
-  setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>,
+  drivers: Driver[],
+  setDrivers: React.Dispatch<React.SetStateAction<Driver[]>>,
+  trucks: Truck[],
+  setTrucks: React.Dispatch<React.SetStateAction<Truck[]>>,
+  setLogs: React.Dispatch<React.SetStateAction<any[]>>,
   gpsData: GPSData[],
-  setGpsData: React.Dispatch<React.SetStateAction<GPSData[]>>,
+  setGPSData: React.Dispatch<React.SetStateAction<GPSData[]>>,
   setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>
 ) => {
   const { toast } = useToast();
 
-  const logActivity = (
-    entityType: string, 
-    entityId: string,
-    action: string,
-    details: string,
-    metadata?: Record<string, any>
-  ) => {
-    const newActivityLog: ActivityLog = {
-      id: `log-${uuidv4()}`,
-      entityType: entityType as any,
-      entityId,
-      action: action as any,
-      details,
-      user: 'Current User',
-      timestamp: new Date(),
-      ...(metadata ? { metadata } : {})
-    };
-    
-    setActivityLogs(prev => [newActivityLog, ...prev]);
-    saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, prev => [newActivityLog, ...prev]);
-  };
-  
-  const assignDriverToOrder = (orderId: string, driverId: string, truckId: string) => {
-    setPurchaseOrders((prevOrders) => {
-      const newOrders = prevOrders.map((order) => {
-        if (order.id === orderId) {
-          const deliveryId = uuidv4();
-          const deliveryDetails: DeliveryDetails = {
-            id: deliveryId,
-            poId: orderId,
-            driverId,
-            truckId,
-            status: 'pending',
-            isGPSTagged: trucks.find(t => t.id === truckId)?.isGPSTagged || false,
-            gpsDeviceId: trucks.find(t => t.id === truckId)?.gpsDeviceId
-          };
-          
-          return {
-            ...order,
-            deliveryDetails,
-            updatedAt: new Date()
-          };
-        }
-        return order;
-      });
-      
-      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      
-      return newOrders;
-    });
-    
-    const order = purchaseOrders.find((po) => po.id === orderId);
-    if (!order) return;
-    
-    const newLog: LogEntry = {
-      id: `log-${Date.now()}`,
-      poId: orderId,
-      action: `Driver and truck assigned to Purchase Order ${order.poNumber}`,
-      user: 'Current User',
-      timestamp: new Date(),
-    };
-    
-    setLogs((prevLogs) => {
-      const newLogs = [newLog, ...prevLogs];
-      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-      return newLogs;
-    });
-    
-    logActivity(
-      'purchase_order',
-      orderId,
-      'update',
-      `Driver and truck assigned to Purchase Order ${order.poNumber}`,
-      {
-        driverId,
-        truckId,
-        assignment: 'delivery'
-      }
-    );
-    
-    toast({
-      title: "Driver Assigned",
-      description: `Driver has been assigned to PO #${order.poNumber}.`,
-    });
+  const getDriverById = (id: string): Driver | undefined => {
+    return drivers.find(driver => driver.id === id);
   };
 
-  const updateDeliveryStatus = (
-    orderId: string, 
-    updates: Partial<DeliveryDetails>
-  ) => {
-    let updatedOrder: PurchaseOrder | undefined;
-    
-    setPurchaseOrders((prevOrders) => {
-      const newOrders = prevOrders.map((order) => {
-        if (order.id === orderId && order.deliveryDetails) {
-          const updatedDeliveryDetails = {
-            ...order.deliveryDetails,
-            ...updates
-          };
-          
-          if (
-            updates.status === 'in_transit' && 
-            order.deliveryDetails.status !== 'in_transit' &&
-            order.deliveryDetails.truckId
-          ) {
-            const truck = trucks.find(t => t.id === order.deliveryDetails?.truckId);
-            if (truck && truck.isGPSTagged) {
-              const gpsService = GPSTrackingService.getInstance();
-              gpsService.startTracking(
-                truck.id,
-                truck.lastLatitude || 6.5244,
-                truck.lastLongitude || 3.3792,
-                updates.totalDistance || 100
-              );
-            }
-          }
-          
-          if (
-            updates.status === 'delivered' && 
-            order.deliveryDetails.status !== 'delivered' &&
-            order.deliveryDetails.truckId
-          ) {
-            const gpsService = GPSTrackingService.getInstance();
-            gpsService.stopTracking(order.deliveryDetails.truckId);
-          }
-          
-          updatedOrder = {
-            ...order,
-            deliveryDetails: updatedDeliveryDetails,
-            updatedAt: new Date()
-          };
-          return updatedOrder;
-        }
-        return order;
-      });
-      
-      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      
-      return newOrders;
-    });
-    
-    const order = purchaseOrders.find((po) => po.id === orderId);
-    if (!order) return;
-    
-    const statusText = 
-      updates.status === 'in_transit' ? 'In Transit' :
-      updates.status === 'delivered' ? 'Delivered' :
-      updates.status;
-    
-    const newLog: LogEntry = {
-      id: `log-${Date.now()}`,
-      poId: orderId,
-      action: `Delivery status updated to ${statusText} for Purchase Order ${order.poNumber}`,
-      user: 'Current User',
-      timestamp: new Date(),
-    };
-      
-    logActivity(
-      'purchase_order',
-      orderId,
-      'update',
-      `Delivery status updated to ${statusText} for Purchase Order ${order.poNumber}`,
-      {
-        status: updates.status,
-        updateType: 'delivery_status'
-      }
-    );
-    
-    setLogs((prevLogs) => {
-      const newLogs = [newLog, ...prevLogs];
-      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-      return newLogs;
-    });
-    
-    toast({
-      title: "Delivery Status Updated",
-      description: `PO #${order.poNumber} delivery is now ${statusText}.`,
-    });
-    
-    return updatedOrder;
+  const getTruckById = (id: string): Truck | undefined => {
+    return trucks.find(truck => truck.id === id);
   };
 
-  const updateGPSData = (truckId: string, latitude: number, longitude: number, speed: number) => {
+  const updateDeliveryStatus = (orderId: string, status: 'pending' | 'in_transit' | 'delivered') => {
     try {
-      const truck = getTruckById(truckId);
-      if (!truck) {
-        console.error(`No truck found with ID: ${truckId}`);
-        return;
-      }
-      
-      const recentGPSData = gpsData.filter(d => d.truckId === truckId);
-      
-      const newGPSData: GPSData = {
-        id: `gps-${uuidv4().substring(0, 8)}`,
-        truckId,
-        latitude,
-        longitude,
-        speed,
-        timestamp: new Date(),
-        fuelLevel: 75,
-        location: getLocationDescription(latitude, longitude)
-      };
-      
-      setGPSData(prevData => [newGPSData, ...prevData]);
-      
-      setTrucks(prev => 
-        prev.map(t => 
-          t.id === truckId 
-            ? { 
-                ...t, 
-                lastLatitude: latitude, 
-                lastLongitude: longitude,
-                lastSpeed: speed,
-                lastUpdate: new Date()
-              } 
-            : t
-        )
-      );
-
-      setPurchaseOrders(prev => 
+      let updatedOrder: PurchaseOrder | undefined;
+      setPurchaseOrders(prev =>
         prev.map(order => {
-          if (order.deliveryDetails?.truckId === truckId && order.deliveryDetails?.status === 'in_transit') {
-            const updatedDetails = { ...order.deliveryDetails };
-            
-            if (updatedDetails.depotDepartureTime && updatedDetails.totalDistance) {
-              const timeElapsed = (new Date().getTime() - new Date(updatedDetails.depotDepartureTime).getTime()) / 3600000;
-              const estimatedDistanceCovered = Math.min(speed * timeElapsed, updatedDetails.totalDistance);
-              
-              updatedDetails.distanceCovered = estimatedDistanceCovered;
-            }
-            
-            return {
+          if (order.id === orderId) {
+            updatedOrder = {
               ...order,
-              deliveryDetails: updatedDetails
+              deliveryDetails: {
+                ...order.deliveryDetails,
+                status: status
+              }
             };
+            return updatedOrder;
           }
           return order;
         })
       );
-      
+
+      if (!updatedOrder) {
+        toast({
+          title: "Error",
+          description: "Failed to update delivery status. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Log the action
+      const newActivityLog: ActivityLog = {
+        id: `log-${uuidv4()}`,
+        entityType: 'delivery',
+        entityId: orderId,
+        action: 'update',
+        details: `Delivery status updated to ${status}`,
+        user: 'System',
+        timestamp: new Date()
+      };
+
+      setActivityLogs(prev => [newActivityLog, ...prev]);
+
+      toast({
+        title: "Delivery Status Updated",
+        description: `Delivery status updated to ${status} successfully.`,
+      });
+
+      return true;
     } catch (error) {
-      console.error("Error updating GPS data:", error);
+      console.error("Error updating delivery status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update delivery status. Please try again.",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
-  const recordOffloadingDetails = (
-    orderId: string, 
-    offloadingData: Omit<OffloadingDetails, 'id' | 'deliveryId' | 'timestamp' | 'discrepancyPercentage' | 'isDiscrepancyFlagged' | 'status'>
-  ) => {
-    setPurchaseOrders((prevOrders) => {
-      const newOrders = prevOrders.map((order) => {
-        if (order.id === orderId && order.deliveryDetails) {
-          const deliveryId = order.deliveryDetails.id;
-          
-          const loadedVolume = offloadingData.loadedVolume;
-          const deliveredVolume = offloadingData.deliveredVolume;
-          const discrepancyPercentage = Math.abs(((deliveredVolume - loadedVolume) / loadedVolume) * 100);
-          const isDiscrepancyFlagged = discrepancyPercentage > 2;
-          
-          const offloadingDetails: OffloadingDetails = {
-            ...offloadingData,
-            id: `offload-${uuidv4().substring(0, 8)}`,
-            deliveryId,
-            timestamp: new Date(),
-            discrepancyPercentage,
-            isDiscrepancyFlagged,
-            status: isDiscrepancyFlagged ? 'under_investigation' : 'approved'
-          };
-          
-          return {
-            ...order,
-            offloadingDetails,
-            updatedAt: new Date()
-          };
-        }
-        return order;
+  const assignDriverToDelivery = (orderId: string, driverId: string) => {
+    try {
+      const driver = getDriverById(driverId);
+      if (!driver) {
+        toast({
+          title: "Error",
+          description: "Driver not found.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      let updatedOrder: PurchaseOrder | undefined;
+      setPurchaseOrders(prev =>
+        prev.map(order => {
+          if (order.id === orderId) {
+            updatedOrder = {
+              ...order,
+              deliveryDetails: {
+                ...order.deliveryDetails,
+                driverId: driverId
+              }
+            };
+            return updatedOrder;
+          }
+          return order;
+        })
+      );
+
+      if (!updatedOrder) {
+        toast({
+          title: "Error",
+          description: "Failed to assign driver to delivery. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Log the action
+      const newActivityLog: ActivityLog = {
+        id: `log-${uuidv4()}`,
+        entityType: 'delivery',
+        entityId: orderId,
+        action: 'update',
+        details: `Driver ${driver.name} assigned to delivery`,
+        user: 'System',
+        timestamp: new Date()
+      };
+
+      setActivityLogs(prev => [newActivityLog, ...prev]);
+
+      toast({
+        title: "Driver Assigned",
+        description: `Driver ${driver.name} assigned to delivery successfully.`,
       });
-      
-      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      
-      return newOrders;
-    });
+
+      return true;
+    } catch (error) {
+      console.error("Error assigning driver to delivery:", error);
+      toast({
+        title: "Error",
+        description: "Failed to assign driver to delivery. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const assignTruckToDelivery = (orderId: string, truckId: string) => {
+    try {
+      const truck = getTruckById(truckId);
+      if (!truck) {
+        toast({
+          title: "Error",
+          description: "Truck not found.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      let updatedOrder: PurchaseOrder | undefined;
+      setPurchaseOrders(prev =>
+        prev.map(order => {
+          if (order.id === orderId) {
+            updatedOrder = {
+              ...order,
+              deliveryDetails: {
+                ...order.deliveryDetails,
+                truckId: truckId
+              }
+            };
+            return updatedOrder;
+          }
+          return order;
+        })
+      );
+
+      if (!updatedOrder) {
+        toast({
+          title: "Error",
+          description: "Failed to assign truck to delivery. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Log the action
+      const newActivityLog: ActivityLog = {
+        id: `log-${uuidv4()}`,
+        entityType: 'delivery',
+        entityId: orderId,
+        action: 'update',
+        details: `Truck ${truck.plateNumber} assigned to delivery`,
+        user: 'System',
+        timestamp: new Date()
+      };
+
+      setActivityLogs(prev => [newActivityLog, ...prev]);
+
+      toast({
+        title: "Truck Assigned",
+        description: `Truck ${truck.plateNumber} assigned to delivery successfully.`,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Error assigning truck to delivery:", error);
+      toast({
+        title: "Error",
+        description: "Failed to assign truck to delivery. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const recordDepotDeparture = (orderId: string, departureTime: Date) => {
+    try {
+      let updatedOrder: PurchaseOrder | undefined;
+      setPurchaseOrders(prev =>
+        prev.map(order => {
+          if (order.id === orderId) {
+            updatedOrder = {
+              ...order,
+              deliveryDetails: {
+                ...order.deliveryDetails,
+                depotDepartureTime: departureTime
+              }
+            };
+            return updatedOrder;
+          }
+          return order;
+        })
+      );
+
+      if (!updatedOrder) {
+        toast({
+          title: "Error",
+          description: "Failed to record depot departure. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Log the action
+      const newActivityLog: ActivityLog = {
+        id: `log-${uuidv4()}`,
+        entityType: 'delivery',
+        entityId: orderId,
+        action: 'update',
+        details: `Depot departure recorded at ${departureTime.toLocaleTimeString()}`,
+        user: 'System',
+        timestamp: new Date()
+      };
+
+      setActivityLogs(prev => [newActivityLog, ...prev]);
+
+      toast({
+        title: "Depot Departure Recorded",
+        description: `Depot departure recorded successfully.`,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Error recording depot departure:", error);
+      toast({
+        title: "Error",
+        description: "Failed to record depot departure. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const recordExpectedArrival = (orderId: string, arrivalTime: Date) => {
+    try {
+      let updatedOrder: PurchaseOrder | undefined;
+      setPurchaseOrders(prev =>
+        prev.map(order => {
+          if (order.id === orderId) {
+            updatedOrder = {
+              ...order,
+              deliveryDetails: {
+                ...order.deliveryDetails,
+                expectedArrivalTime: arrivalTime
+              }
+            };
+            return updatedOrder;
+          }
+          return order;
+        })
+      );
+
+      if (!updatedOrder) {
+        toast({
+          title: "Error",
+          description: "Failed to record expected arrival. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Log the action
+      const newActivityLog: ActivityLog = {
+        id: `log-${uuidv4()}`,
+        entityType: 'delivery',
+        entityId: orderId,
+        action: 'update',
+        details: `Expected arrival recorded at ${arrivalTime.toLocaleTimeString()}`,
+        user: 'System',
+        timestamp: new Date()
+      };
+
+      setActivityLogs(prev => [newActivityLog, ...prev]);
+
+      toast({
+        title: "Expected Arrival Recorded",
+        description: `Expected arrival recorded successfully.`,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Error recording expected arrival:", error);
+      toast({
+        title: "Error",
+        description: "Failed to record expected arrival. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const recordDestinationArrival = (orderId: string, arrivalTime: Date) => {
+    try {
+      let updatedOrder: PurchaseOrder | undefined;
+      setPurchaseOrders(prev =>
+        prev.map(order => {
+          if (order.id === orderId) {
+            updatedOrder = {
+              ...order,
+              deliveryDetails: {
+                ...order.deliveryDetails,
+                destinationArrivalTime: arrivalTime
+              }
+            };
+            return updatedOrder;
+          }
+          return order;
+        })
+      );
+
+      if (!updatedOrder) {
+        toast({
+          title: "Error",
+          description: "Failed to record destination arrival. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Log the action
+      const newActivityLog: ActivityLog = {
+        id: `log-${uuidv4()}`,
+        entityType: 'delivery',
+        entityId: orderId,
+        action: 'update',
+        details: `Destination arrival recorded at ${arrivalTime.toLocaleTimeString()}`,
+        user: 'System',
+        timestamp: new Date()
+      };
+
+      setActivityLogs(prev => [newActivityLog, ...prev]);
+
+      toast({
+        title: "Destination Arrival Recorded",
+        description: `Destination arrival recorded successfully.`,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Error recording destination arrival:", error);
+      toast({
+        title: "Error",
+        description: "Failed to record destination arrival. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const updateTruckLocation = (truckId: string, latitude: number, longitude: number, speed: number) => {
+    const truck = getTruckById(truckId);
+    if (!truck) return null;
     
-    const order = purchaseOrders.find((po) => po.id === orderId);
-    if (!order) return;
-    
-    const newLog: LogEntry = {
-      id: `log-${Date.now()}`,
-      poId: orderId,
-      action: `Offloading details recorded for Purchase Order ${order.poNumber}`,
-      user: 'Current User',
+    // Create a complete GPSData object with all required fields
+    const newGPSData = {
+      id: `gps-${uuidv4().substring(0, 8)}`,
+      truckId: truckId,
+      latitude: latitude,
+      longitude: longitude,
+      speed: speed,
       timestamp: new Date(),
+      fuelLevel: 80, // Default value
+      location: 'In transit' // Default value
     };
     
-    setLogs((prevLogs) => {
-      const newLogs = [newLog, ...prevLogs];
-      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-      return newLogs;
-    });
+    setGPSData(prev => [newGPSData, ...prev]);
     
-    logActivity(
-      'purchase_order',
-      orderId,
-      'update',
-      `Product offloaded for PO #${order.poNumber}: ${offloadingData.deliveredVolume.toLocaleString()} liters to tank ${offloadingData.tankId}`,
-      {
-        loadedVolume: offloadingData.loadedVolume,
-        deliveredVolume: offloadingData.deliveredVolume,
-        tankId: offloadingData.tankId,
-        productType: offloadingData.productType,
-        discrepancyPercentage: Math.abs(((offloadingData.deliveredVolume - offloadingData.loadedVolume) / offloadingData.loadedVolume) * 100),
-        measuredBy: offloadingData.measuredBy,
-        measuredByRole: offloadingData.measuredByRole
-      }
-    );
-    
-    toast({
-      title: "Offloading Recorded",
-      description: `Fuel offloading details for PO #${order.poNumber} have been recorded.`,
-    });
-  };
-
-  const addIncident = (
-    orderId: string, 
-    incident: Omit<Incident, 'id' | 'deliveryId' | 'timestamp'>
-  ) => {
-    let updatedOrder: PurchaseOrder | undefined;
-    
-    setPurchaseOrders((prevOrders) => {
-      const newOrders = prevOrders.map((order) => {
-        if (order.id === orderId && order.deliveryDetails) {
-          const deliveryId = order.deliveryDetails.id;
-          
-          const newIncident: Incident = {
-            ...incident,
-            id: `incident-${uuidv4().substring(0, 8)}`,
-            deliveryId,
-            timestamp: new Date()
-          };
-          
-          const incidents = order.incidents ? [...order.incidents, newIncident] : [newIncident];
-          
-          updatedOrder = {
-            ...order,
-            incidents,
-            updatedAt: new Date()
-          };
-          
-          return updatedOrder;
-        }
-        return order;
-      });
-      
-      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      
-      return newOrders;
-    });
-    
-    const order = purchaseOrders.find((po) => po.id === orderId);
-    if (!order) return;
-    
-    const newLog: LogEntry = {
-      id: `log-${Date.now()}`,
-      poId: orderId,
-      action: `New ${incident.type} incident reported for Purchase Order ${order.poNumber}`,
-      user: 'Current User',
-      timestamp: new Date(),
+    // Update truck with latest position data
+    const updatedTruck = {
+      ...truck,
+      lastLatitude: latitude,
+      lastLongitude: longitude,
+      lastSpeed: speed
     };
     
-    setLogs((prevLogs) => {
-      const newLogs = [newLog, ...prevLogs];
-      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-      return newLogs;
-    });
-    
-    const incidentId = `incident-${uuidv4().substring(0, 8)}`;
-    
-    logActivity(
-      'incident',
-      incidentId,
-      'create',
-      `New ${incident.type} incident reported for Purchase Order ${order.poNumber}: ${incident.description.substring(0, 50)}${incident.description.length > 50 ? '...' : ''}`,
-      {
-        incidentType: incident.type,
-        severity: incident.severity,
-        impact: incident.impact,
-        poId: orderId
-      }
+    setTrucks(prev => 
+      prev.map(t => t.id === truckId ? updatedTruck : t)
     );
     
-    toast({
-      title: "Incident Reported",
-      description: `A new incident has been reported for PO #${order.poNumber}.`,
-    });
-    
-    return updatedOrder;
+    return newGPSData;
   };
 
-  const startDelivery = (orderId: string) => {
-    const totalDistance = Math.floor(Math.random() * 50) + 70;
-    
-    const updatedOrder = updateDeliveryStatus(orderId, {
-      status: 'in_transit',
-      depotDepartureTime: new Date(),
-      distanceCovered: 0,
-      totalDistance,
-    });
-    
-    const order = purchaseOrders.find(po => po.id === orderId);
-    if (order) {
-      logActivity(
-        'purchase_order',
-        orderId,
-        'update',
-        `Delivery started for PO #${order.poNumber} - estimated distance: ${totalDistance} km`,
-        {
-          status: 'in_transit',
-          totalDistance,
-          departure: new Date()
-        }
+  const recordDeliveryDistance = (orderId: string, totalDistance: number, distanceCovered: number) => {
+    try {
+      let updatedOrder: PurchaseOrder | undefined;
+      setPurchaseOrders(prev =>
+        prev.map(order => {
+          if (order.id === orderId) {
+            updatedOrder = {
+              ...order,
+              deliveryDetails: {
+                ...order.deliveryDetails,
+                totalDistance: totalDistance,
+                distanceCovered: distanceCovered
+              }
+            };
+            return updatedOrder;
+          }
+          return order;
+        })
       );
-    }
-    
-    return updatedOrder;
-  };
 
-  const completeDelivery = (orderId: string) => {
-    const order = purchaseOrders.find(po => po.id === orderId);
-    if (!order || !order.deliveryDetails) return;
-    
-    const totalDistance = order.deliveryDetails.totalDistance || 100;
-    
-    const updatedOrder = updateDeliveryStatus(orderId, {
-      status: 'delivered',
-      destinationArrivalTime: new Date(),
-      distanceCovered: totalDistance
-    });
-    
-    if (order) {
-      logActivity(
-        'purchase_order',
-        orderId,
-        'update',
-        `Delivery completed for PO #${order.poNumber} - arrived at destination after covering ${totalDistance} km`,
-        {
-          status: 'delivered',
-          totalDistance,
-          arrival: new Date()
-        }
-      );
-    }
-    
-    return updatedOrder;
-  };
+      if (!updatedOrder) {
+        toast({
+          title: "Error",
+          description: "Failed to record delivery distance. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
 
-  const getLocationDescription = (latitude: number, longitude: number): string => {
-    return `Location at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+      // Log the action
+      const newActivityLog: ActivityLog = {
+        id: `log-${uuidv4()}`,
+        entityType: 'delivery',
+        entityId: orderId,
+        action: 'update',
+        details: `Delivery distance recorded: Total ${totalDistance} km, Covered ${distanceCovered} km`,
+        user: 'System',
+        timestamp: new Date()
+      };
+
+      setActivityLogs(prev => [newActivityLog, ...prev]);
+
+      toast({
+        title: "Delivery Distance Recorded",
+        description: `Delivery distance recorded successfully.`,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Error recording delivery distance:", error);
+      toast({
+        title: "Error",
+        description: "Failed to record delivery distance. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
   };
 
   return {
-    assignDriverToOrder,
     updateDeliveryStatus,
-    updateGPSData,
-    recordOffloadingDetails,
-    addIncident,
-    startDelivery,
-    completeDelivery
+    assignDriverToDelivery,
+    assignTruckToDelivery,
+    recordDepotDeparture,
+    recordExpectedArrival,
+    recordDestinationArrival,
+    updateTruckLocation,
+    recordDeliveryDistance
   };
 };

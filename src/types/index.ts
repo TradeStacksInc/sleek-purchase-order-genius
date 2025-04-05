@@ -1,326 +1,40 @@
-export interface Product {
-  id: string;
-  name: string;
-  description?: string;
-  unit: string;
-  unitPrice: number;
-  supplierId: string;
-  supplierName: string;
-  category: 'fuel' | 'lubricant' | 'other';
-  createdAt: Date;
-  updatedAt: Date;
-}
 
-export type ProductType = 'PMS' | 'AGO' | 'DPK' | string;
+// Product types
+export type Product = 'PMS' | 'AGO' | 'DPK' | 'LPG' | 'KERO';
+export type ProductType = Product | string; // Allow string comparison for Product types
 
-export interface Supplier {
-  id: string;
-  name: string;
-  contactName: string;
-  contactEmail: string;
-  contactPhone: string;
-  address: string;
-  email?: string; 
-  contact?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  // Extra properties used in the app
-  supplierType?: 'Major' | 'Independent' | 'Government';
-  depotName?: string;
-  taxId?: string;
-  accountNumber?: string;
-  bankName?: string;
-  products?: string[];
-}
-
-export interface Truck {
-  id: string;
-  plateNumber: string;
-  model: string;
-  capacity: number;
-  driverId: string;
-  driverName: string;
-  createdAt: Date;
-  updatedAt: Date;
-  // Additional properties used in the app
-  hasGPS?: boolean;
-  isGPSTagged?: boolean;
-  isAvailable?: boolean;
-  gpsDeviceId?: string;
-  lastLatitude?: number;
-  lastLongitude?: number;
-  lastSpeed?: number;
-  lastUpdate?: Date;
-  year?: number;
-}
-
-export interface Driver {
-  id: string;
-  name: string;
-  contactPhone: string;
-  licenseNumber: string;
-  address: string;
-  createdAt: Date;
-  updatedAt: Date;
-  // Additional properties used in the app
-  contact?: string;
-  isAvailable?: boolean;
-}
-
-export interface GPSData {
-  id: string;
-  truckId: string;
-  timestamp: Date;
-  latitude: number;
-  longitude: number;
-  speed: number;
-  fuelLevel: number;
-  location: string;
-  heading?: number;
-}
-
+// AIInsights
 export interface AIInsights {
   id: string;
-  truckId: string;
-  timestamp: Date;
-  anomalyType: string;
+  type: string;
   description: string;
   severity: 'low' | 'medium' | 'high';
-  // Additional properties
-  type?: 'discrepancy_pattern' | 'driver_analysis' | 'efficiency_recommendation' | string;
-  relatedEntityIds?: string[];
-  generatedAt?: Date;
-  isRead?: boolean;
+  relatedEntityIds: string[];
+  generatedAt: Date;
+  isRead: boolean;
+  truckId?: string;
+  timestamp?: Date;
+  anomalyType?: string;
 }
 
-export type AIInsight = AIInsights; // Alias for compatibility
+// Use AIInsight as an alias for AIInsights for backward compatibility
+export type AIInsight = AIInsights;
 
-export interface PurchaseOrder {
-  id: string;
-  supplierId: string;
-  supplierName: string;
-  orderDate: Date;
-  deliveryDate: Date;
-  items: PurchaseOrderItem[];
-  totalAmount: number;
-  status: OrderStatus;
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  // Additional properties used in the app
-  poNumber?: string;
-  supplier?: {
-    name: string;
-    id?: string;
-    contact?: string;
-    email?: string;
-    address?: string;
-  };
-  grandTotal?: number;
-  company?: {
-    name: string;
-    address: string;
-    contact: string;
-    email: string;
-    taxId?: string;
-  };
-  deliveryDetails?: DeliveryDetails;
-  offloadingDetails?: OffloadingDetails;
-  incidents?: Incident[];
-  statusHistory?: StatusHistoryEntry[];
-  paymentTerm?: string | PaymentTerm;
-}
-
-export interface PurchaseOrderItem {
-  productId: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  totalAmount: number;
-  // Additional properties used in the app
-  id?: string;
-  product?: string;
-  totalPrice?: number;
-}
-
-export interface Staff {
-  id: string;
-  name: string;
-  role: 'admin' | 'manager' | 'operator';
-  contactPhone: string;
-  address: string;
-  email: string;
-  password?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Dispenser {
-  id: string;
-  number: number;
-  productType: ProductType;
-  status: 'operational' | 'maintenance' | 'offline';
-  lastCalibrationDate?: Date;
-  nextCalibrationDate?: Date;
-  totalVolumeSold: number;
-  connectedTankId?: string;
-  isActive?: boolean;
-  currentShiftVolume?: number;
-  currentShiftSales?: number;
-  totalSales?: number;
-  totalVolume?: number;
-  salesAmount?: number;
-  shift?: 'morning' | 'afternoon';
-  lastActivity?: Date;
-  lastShiftReset?: Date;
-  unitPrice?: number;
-}
-
-export interface Shift {
-  id: string;
-  name: string;
-  startTime: Date;
-  endTime: Date;
-  staffMembers: string[];
-  // Additional properties used in the app
-  staffId?: string;
-  status?: 'active' | 'completed';
-  salesVolume?: number;
-  salesAmount?: number;
-}
-
-export interface Sale {
-  id: string;
-  dispenserId: string;
-  dispenserNumber?: number;
-  staffId: string;
-  productType: ProductType;
-  volume: number;
-  unitPrice: number;
-  totalAmount: number;
-  amount?: number;
-  timestamp: Date;
-  paymentMethod: 'cash' | 'card' | 'transfer' | 'credit';
-  receiptNumber?: string;
-  customerId?: string;
-  shiftId?: string;
-  shift?: 'morning' | 'afternoon';
-  isManualEntry?: boolean;
-}
-
+// Price Record
 export interface Price {
   id: string;
   productType: ProductType;
   price: number;
   effectiveDate: Date;
-  isActive?: boolean;
   endDate?: Date;
+  isActive?: boolean;
   purchasePrice?: number;
   sellingPrice?: number;
 }
 
-export type PriceRecord = Price; // Alias for compatibility
+export type PriceRecord = Price;
 
-export interface Incident {
-  id: string;
-  type: 'theft' | 'spillage' | 'equipment_failure' | 'other' | 'delay' | 'mechanical' | 'accident' | 'feedback';
-  description: string;
-  location: string;
-  timestamp: Date;
-  staffInvolved: string[];
-  truckInvolved?: string;
-  amountLost?: number;
-  status: 'open' | 'closed';
-  // Additional properties used in the app
-  severity?: 'low' | 'medium' | 'high';
-  impact?: 'positive' | 'negative' | 'neutral';
-  reportedBy?: string;
-  deliveryId?: string;
-}
-
-export interface ActivityLog {
-  id: string;
-  entityType: 'supplier' | 'truck' | 'driver' | 'purchase_order' | 'staff' | 'dispenser' | 'shift' | 'sale' | 'price' | 'incident' | 'tank';
-  entityId: string;
-  action: 'create' | 'update' | 'delete' | 'view' | 'approve' | 'reject' | 'other' | 'sale';
-  details: string;
-  user: string;
-  timestamp: Date;
-  ipAddress?: string;
-  metadata?: Record<string, any>;
-}
-
-export interface Tank {
-  id: string;
-  name: string;
-  capacity: number;
-  currentLevel: number;
-  productType: ProductType;
-  lastRefillDate: Date;
-  nextInspectionDate: Date;
-  // Additional properties used in the app
-  currentVolume?: number;
-  minVolume?: number;
-  status?: 'operational' | 'maintenance' | 'offline';
-  isActive?: boolean;
-  connectedDispensers?: string[];
-}
-
-// Additional interfaces used in the application
-export interface DeliveryDetails {
-  id: string;
-  poId: string;
-  driverId?: string;
-  driverName?: string; // Added for MapView component
-  truckId?: string;
-  vehicleDetails?: string; // Added for MapView component
-  status: 'pending' | 'in_transit' | 'delivered' | 'completed';
-  depotDepartureTime?: Date;
-  destinationArrivalTime?: Date;
-  distanceCovered?: number;
-  totalDistance?: number;
-  expectedArrivalTime?: Date;
-  isGPSTagged?: boolean;
-  gpsDeviceId?: string;
-}
-
-export interface OffloadingDetails {
-  id: string;
-  deliveryId: string;
-  timestamp: Date;
-  loadedVolume: number;
-  deliveredVolume: number;
-  initialTankVolume: number;
-  finalTankVolume: number;
-  discrepancyPercentage: number;
-  isDiscrepancyFlagged: boolean;
-  tankId: string;
-  productType: string;
-  measuredBy: string;
-  measuredByRole: string;
-  notes?: string;
-  status?: 'approved' | 'under_investigation';
-}
-
-export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled';
-
-export interface StatusHistoryEntry {
-  status: OrderStatus;
-  timestamp: Date;
-  user: string;
-  note?: string;
-  id?: string; // Added to fix purchase order history errors
-}
-
-export interface LogEntry {
-  id: string;
-  poId: string;
-  action: string;
-  user: string;
-  timestamp: Date;
-  details?: string;
-}
-
+// Company
 export interface Company {
   id: string;
   name: string;
@@ -331,15 +45,26 @@ export interface Company {
   zipCode: string;
   phone: string;
   email: string;
-  contact?: string; // Added for compatibility
+  contact?: string;
   website?: string;
   logo?: string;
   taxId?: string;
   registrationNumber?: string;
 }
 
+// Order Status
+export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled';
+export type PaymentTerm = 'net_7' | 'net_15' | 'net_30' | 'net_60' | 'cod';
+
+export interface StatusHistoryEntry {
+  status: OrderStatus;
+  timestamp: Date;
+  user: string;
+  note: string;
+}
+
+// Order Item
 export interface OrderItem {
-  id: string;
   productId: string;
   productName: string;
   quantity: number;
@@ -347,9 +72,236 @@ export interface OrderItem {
   totalPrice: number;
 }
 
-export interface PaymentTerm {
+export interface PurchaseOrderItem extends OrderItem {
+  totalAmount: number;
+}
+
+// Delivery Details
+export interface DeliveryDetails {
+  status: 'pending' | 'in_transit' | 'delivered';
+  driverId?: string;
+  truckId?: string;
+  depotDepartureTime?: Date;
+  expectedArrivalTime?: Date;
+  actualArrivalTime?: Date;
+  destinationArrivalTime?: Date;
+  totalDistance?: number;
+  distanceCovered?: number;
+  driverName?: string;
+  vehicleDetails?: string;
+}
+
+// Offloading Details
+export interface OffloadingDetails {
+  tankId: string;
+  initialTankVolume: number;
+  finalTankVolume: number;
+  loadedVolume: number;
+  deliveredVolume: number;
+  measuredBy: string;
+  measuredByRole: string;
+  notes?: string;
+  isDiscrepancyFlagged?: boolean;
+  productType?: string;
+  timestamp?: Date;
+}
+
+// Purchase Order
+export interface PurchaseOrder {
+  id: string;
+  supplierId: string;
+  items: PurchaseOrderItem[];
+  status: OrderStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  notes?: string;
+  paymentStatus?: 'pending' | 'paid' | 'partial';
+  company?: Company;
+  supplier?: { name: string; id: string };
+  poNumber?: string;
+  grandTotal?: number;
+  paymentTerm?: string;
+  statusHistory?: StatusHistoryEntry[];
+  deliveryDetails?: DeliveryDetails;
+  offloadingDetails?: OffloadingDetails;
+  incidents?: Incident[];
+}
+
+// Supplier
+export interface Supplier {
   id: string;
   name: string;
-  days: number;
-  description?: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  email: string;
+  contact?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  supplierType: 'Major' | 'Independent' | 'Government';
+  depotName?: string;
+  taxId?: string;
+  accountNumber?: string;
+  bankName?: string;
+  products?: string[];
+}
+
+// Driver
+export interface Driver {
+  id: string;
+  name: string;
+  licenseNumber: string;
+  contactPhone: string;
+  address: string;
+  createdAt: Date;
+  updatedAt: Date;
+  drivingHistory?: any[];
+  currentTruckId?: string;
+  contact?: string;
+  isAvailable?: boolean;
+}
+
+// Truck
+export interface Truck {
+  id: string;
+  plateNumber: string;
+  model: string;
+  capacity: number;
+  createdAt: Date;
+  updatedAt: Date;
+  driverId?: string;
+  driverName?: string;
+  isAvailable?: boolean;
+  hasGPS?: boolean;
+  isGPSTagged?: boolean;
+  gpsDeviceId?: string;
+  lastSpeed?: number;
+  lastLatitude?: number;
+  lastLongitude?: number;
+  year?: number;
+}
+
+// GPS Data
+export interface GPSData {
+  id: string;
+  truckId: string;
+  latitude: number;
+  longitude: number;
+  speed: number;
+  timestamp: Date;
+  fuelLevel: number;
+  location: string;
+  heading?: number;
+}
+
+// Log Entry
+export type LogAction = 'create' | 'update' | 'delete' | 'view' | 'approve' | 'reject' | 'other' | 'sale';
+export interface LogEntry {
+  timestamp: Date;
+  action: LogAction;
+  userId?: string;
+  entityId?: string;
+  entityType: string;
+  details?: string;
+}
+
+// Staff
+export interface Staff {
+  id: string;
+  name: string;
+  role: 'admin' | 'manager' | 'operator';
+  email: string;
+  phone?: string;
+  address?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isActive?: boolean;
+}
+
+// Dispenser
+export interface Dispenser {
+  id: string;
+  name: string;
+  model?: string;
+  serialNumber?: string;
+  tankId?: string;
+  productType?: ProductType;
+  flow?: number;
+  unitPrice?: number;
+  createdAt: Date;
+  updatedAt: Date;
+  isActive?: boolean;
+  currentShiftSales?: number;
+  totalSales?: number;
+  totalVolume?: number;
+}
+
+// Shift
+export interface Shift {
+  id: string;
+  name?: string;
+  startTime: Date;
+  endTime?: Date;
+  staffMembers?: string[];
+  staffId?: string;
+  status?: 'active' | 'completed';
+  salesVolume?: number;
+  salesAmount?: number;
+}
+
+// Sale
+export interface Sale {
+  id: string;
+  dispenserId: string;
+  shiftId?: string;
+  staffId?: string;
+  timestamp: Date;
+  volume: number;
+  amount: number;
+  productType?: ProductType;
+  paymentMethod?: 'cash' | 'card' | 'transfer' | 'credit';
+}
+
+// Tank
+export interface Tank {
+  id: string;
+  name: string;
+  capacity: number;
+  productType: Product;
+  currentLevel?: number;
+  lastRefillDate?: Date;
+  nextInspectionDate?: Date;
+  currentVolume?: number;
+  minVolume?: number;
+  status?: 'operational' | 'maintenance' | 'offline';
+  isActive?: boolean;
+  connectedDispensers?: string[];
+}
+
+// Incident
+export interface Incident {
+  id: string;
+  type: 'delay' | 'mechanical' | 'accident' | 'feedback' | 'other';
+  description: string;
+  timestamp?: Date;
+  reportedBy?: string;
+  severity?: 'low' | 'medium' | 'high';
+  status: 'open' | 'closed' | 'in_progress';
+  resolution?: string;
+  location: string;
+  staffInvolved: string[];
+  deliveryId?: string;
+  impact?: 'positive' | 'negative' | 'neutral';
+}
+
+// Activity Log
+export interface ActivityLog {
+  id: string;
+  entityType: string;
+  entityId: string;
+  action: LogAction;
+  details: string;
+  user: string;
+  timestamp: Date;
 }

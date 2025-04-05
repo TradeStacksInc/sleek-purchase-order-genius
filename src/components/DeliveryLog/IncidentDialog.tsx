@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -71,9 +72,9 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId, children }) =>
         description: values.description,
         impact: values.impact,
         reportedBy: values.reportedBy,
-        location: "Station",
-        staffInvolved: [values.reportedBy],
-        status: 'open' as const
+        status: 'open' as const,
+        location: "Station", // Required field
+        staffInvolved: [values.reportedBy], // Required field
       };
       
       console.log("Submitting incident:", incidentData, "for order:", orderId);

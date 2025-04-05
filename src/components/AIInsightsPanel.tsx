@@ -1,171 +1,163 @@
 
-import React from 'react';
-import { useApp } from '@/context/AppContext';
-import { 
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger
-} from '@/components/ui/collapsible';
-import { 
-  Alert,
-  AlertTitle,
-  AlertDescription 
-} from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Brain,
-  Lightbulb,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
-  Check
-} from 'lucide-react';
-import { format } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Sparkles, BarChart3, TrendingUp, AlertCircle, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { useApp } from '@/context/AppContext';
 import { AIInsight } from '@/types';
 
 export const AIInsightsPanel: React.FC = () => {
-  const { aiInsights, generateDiscrepancyInsights, markInsightAsRead } = useApp();
-  const [isOpen, setIsOpen] = React.useState(false);
-  
-  const unreadInsightsCount = aiInsights.filter(insight => !insight.isRead).length;
-  
-  const handleGenerateInsights = () => {
-    generateDiscrepancyInsights();
-    if (!isOpen) setIsOpen(true);
+  const { aiInsights, getInsightsByType, generateAIInsights } = useApp();
+  const [expanded, setExpanded] = useState(false);
+  const [currentInsight, setCurrentInsight] = useState<AIInsight | null>(null);
+  const [insightType, setInsightType] = useState<'efficiency_recommendation' | 'discrepancy_pattern' | 'driver_analysis'>('efficiency_recommendation');
+
+  // Generate insights on initial load
+  useEffect(() => {
+    if (aiInsights.length === 0) {
+      generateAIInsights();
+    }
+  }, [aiInsights.length, generateAIInsights]);
+
+  // Update current insight when insights change
+  useEffect(() => {
+    const insights = getInsightsByType(insightType);
+    if (insights && insights.length > 0) {
+      setCurrentInsight(insights[0]);
+    } else {
+      setCurrentInsight(null);
+    }
+  }, [insightType, getInsightsByType, aiInsights]);
+
+  const getInsightIcon = (type: string) => {
+    switch (type) {
+      case 'efficiency_recommendation':
+        return <TrendingUp className="h-5 w-5 text-emerald-500" />;
+      case 'discrepancy_pattern':
+        return <AlertCircle className="h-5 w-5 text-amber-500" />;
+      case 'driver_analysis':
+        return <User className="h-5 w-5 text-blue-500" />;
+      default:
+        return <Sparkles className="h-5 w-5 text-purple-500" />;
+    }
   };
-  
-  const handleMarkAsRead = (id: string) => {
-    markInsightAsRead(id);
+
+  const getInsightColor = (type: string) => {
+    switch (type) {
+      case 'efficiency_recommendation':
+        return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+      case 'discrepancy_pattern':
+        return 'border-amber-200 bg-amber-50 text-amber-800';
+      case 'driver_analysis':
+        return 'border-blue-200 bg-blue-50 text-blue-800';
+      default:
+        return 'border-purple-200 bg-purple-50 text-purple-800';
+    }
+  };
+
+  const handleChangeInsightType = (type: 'efficiency_recommendation' | 'discrepancy_pattern' | 'driver_analysis') => {
+    setInsightType(type);
   };
 
   return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className="w-full border rounded-lg p-2"
-    >
-      <div className="flex items-center justify-between space-x-4 px-4">
-        <div className="flex items-center space-x-2">
-          <Brain className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">AI Insights & Recommendations</h2>
-          {unreadInsightsCount > 0 && (
-            <Badge className="bg-primary">{unreadInsightsCount} new</Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleGenerateInsights}
-            className="flex items-center gap-1"
-          >
-            <Lightbulb className="h-4 w-4" />
-            <span>Generate Insights</span>
-          </Button>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm">
-              {isOpen ? (
+    <Card className={cn(
+      "overflow-hidden transition-all duration-300 ease-in-out border-t-4",
+      currentInsight ? "border-t-blue-500" : "border-t-gray-200",
+      expanded ? "h-auto" : "h-[120px]"
+    )}>
+      <CardContent className="p-0">
+        <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 p-3 border-b">
+          <div className="flex items-center">
+            <Sparkles className="h-5 w-5 text-blue-500 mr-2" />
+            <h3 className="font-medium text-blue-700">AI Insights & Recommendations</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setExpanded(!expanded)}
+              className="h-7 w-7 p-0 rounded-full"
+            >
+              {expanded ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
-              <span className="sr-only">Toggle AI Insights</span>
+              <span className="sr-only">
+                {expanded ? "Collapse" : "Expand"}
+              </span>
             </Button>
-          </CollapsibleTrigger>
+          </div>
         </div>
-      </div>
-      
-      <CollapsibleContent className="mt-4 space-y-3">
-        {aiInsights.length === 0 ? (
-          <div className="p-6 text-center text-muted-foreground">
-            <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No insights generated yet. Click "Generate Insights" to analyze delivery data.</p>
+        
+        {currentInsight ? (
+          <div className="p-3">
+            <div className={cn(
+              "p-3 rounded-lg border mb-3",
+              getInsightColor(currentInsight.type)
+            )}>
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5">
+                  {getInsightIcon(currentInsight.type)}
+                </div>
+                <div>
+                  <p className="text-sm">{currentInsight.description}</p>
+                  <p className="text-xs mt-1 opacity-70">
+                    Generated {new Date(currentInsight.generatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {expanded && (
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleChangeInsightType('efficiency_recommendation')}
+                  className={cn(
+                    "h-8 text-xs justify-start",
+                    insightType === 'efficiency_recommendation' ? "bg-blue-50 border-blue-200" : ""
+                  )}
+                >
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  Efficiency
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleChangeInsightType('discrepancy_pattern')}
+                  className={cn(
+                    "h-8 text-xs justify-start",
+                    insightType === 'discrepancy_pattern' ? "bg-blue-50 border-blue-200" : ""
+                  )}
+                >
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Discrepancies
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleChangeInsightType('driver_analysis')}
+                  className={cn(
+                    "h-8 text-xs justify-start",
+                    insightType === 'driver_analysis' ? "bg-blue-50 border-blue-200" : ""
+                  )}
+                >
+                  <User className="h-3 w-3 mr-1" />
+                  Driver Analysis
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
-          aiInsights.map((insight) => (
-            <InsightItem 
-              key={insight.id} 
-              insight={insight}
-              onMarkAsRead={handleMarkAsRead}
-            />
-          ))
+          <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+            <BarChart3 className="h-8 w-8 text-gray-300 mb-2" />
+            <p className="text-sm text-gray-500">No AI insights available yet. Add more delivery data to generate insights.</p>
+          </div>
         )}
-      </CollapsibleContent>
-    </Collapsible>
-  );
-};
-
-const InsightItem: React.FC<{ 
-  insight: AIInsight;
-  onMarkAsRead: (id: string) => void;
-}> = ({ insight, onMarkAsRead }) => {
-  const getSeverityStyles = (severity: string) => {
-    switch (severity) {
-      case 'high':
-        return "border-red-200 bg-red-50";
-      case 'medium':
-        return "border-yellow-200 bg-yellow-50";
-      case 'low':
-        return "border-blue-200 bg-blue-50";
-      default:
-        return "";
-    }
-  };
-  
-  const getIcon = (type: 'discrepancy_pattern' | 'driver_analysis' | 'efficiency_recommendation' | string) => {
-    switch (type) {
-      case 'discrepancy_pattern':
-        return <AlertTriangle className="h-5 w-5 text-red-500" />;
-      case 'efficiency_recommendation':
-        return <Lightbulb className="h-5 w-5 text-yellow-600" />;
-      case 'driver_analysis':
-        return <Brain className="h-5 w-5 text-blue-500" />;
-      default:
-        return <Lightbulb className="h-5 w-5 text-primary" />;
-    }
-  };
-  
-  return (
-    <Alert className={cn(
-      "flex justify-between items-start border",
-      getSeverityStyles(insight.severity),
-      insight.isRead ? "opacity-70" : ""
-    )}>
-      <div>
-        <div className="flex items-center gap-2">
-          {getIcon(insight.type || '')}
-          <AlertTitle className="capitalize">
-            {(insight.type || 'insight').replace('_', ' ')}
-          </AlertTitle>
-          <Badge variant={
-            insight.severity === 'high' ? "destructive" : 
-            insight.severity === 'medium' ? "outline" : 
-            "secondary"
-          } className="capitalize">
-            {insight.severity}
-          </Badge>
-        </div>
-        <AlertDescription className="mt-2">
-          {insight.description}
-        </AlertDescription>
-        <div className="mt-2 text-xs text-muted-foreground">
-          Generated: {format(new Date(insight.generatedAt || insight.timestamp), 'MMM dd, yyyy HH:mm')}
-        </div>
-      </div>
-      
-      {!insight.isRead && (
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => onMarkAsRead(insight.id)}
-          className="shrink-0"
-        >
-          <Check className="h-4 w-4 mr-1" />
-          Mark as read
-        </Button>
-      )}
-    </Alert>
+      </CardContent>
+    </Card>
   );
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ArrowLeft, MapPin, Truck, Navigation, Clock, User, AlertTriangle, Route } from 'lucide-react';
@@ -222,12 +223,8 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
                     const truck = delivery.deliveryDetails?.truckId ? 
                       getTruckById(delivery.deliveryDetails.truckId) : null;
                     
-                    let deliveryDetailsWithUI = delivery.deliveryDetails ? { ...delivery.deliveryDetails } : undefined;
-                    
-                    if (deliveryDetailsWithUI) {
-                      deliveryDetailsWithUI.driverName = driver?.name || 'Unassigned';
-                      deliveryDetailsWithUI.vehicleDetails = truck?.plateNumber || 'Unassigned';
-                    }
+                    const driverName = driver?.name || 'Unassigned';
+                    const vehicleDetails = truck?.plateNumber || 'Unassigned';
                     
                     const progress = calculateProgress(delivery);
                     
@@ -257,11 +254,11 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
                         <div className="text-sm text-gray-500 space-y-1">
                           <div className="flex items-center">
                             <User className="h-3 w-3 mr-2" />
-                            <span>{deliveryDetailsWithUI?.driverName || 'Unassigned'}</span>
+                            <span>{driverName}</span>
                           </div>
                           <div className="flex items-center">
                             <Truck className="h-3 w-3 mr-2" />
-                            <span>{deliveryDetailsWithUI?.vehicleDetails || 'Unassigned'}</span>
+                            <span>{vehicleDetails}</span>
                           </div>
                           <div className="flex items-center">
                             <Clock className="h-3 w-3 mr-2" />
@@ -369,7 +366,7 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
                       </div>
                       <div>
                         <p className="font-medium">{driverInfo?.name || 'Unassigned'}</p>
-                        <p className="text-sm text-gray-500">{driverInfo?.contact || 'No contact'}</p>
+                        <p className="text-sm text-gray-500">{driverInfo?.contact || driverInfo?.contactPhone || 'No contact'}</p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-3">
@@ -390,37 +387,13 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div className="text-sm">
-                          <p className="text-gray-500">Last Update</p>
-                          <p className="font-medium">{format(new Date(latestPosition.timestamp), 'MMM dd, HH:mm')}</p>
+                          <p className="text-gra
+  
                         </div>
-                        <div className="text-sm">
-                          <p className="text-gray-500">Speed</p>
-                          <p className="font-medium">{latestPosition.speed} km/h</p>
-                        </div>
-                        <div className="text-sm">
-                          <p className="text-gray-500">Latitude</p>
-                          <p className="font-medium">{latestPosition.latitude.toFixed(4)}</p>
-                        </div>
-                        <div className="text-sm">
-                          <p className="text-gray-500">Longitude</p>
-                          <p className="font-medium">{latestPosition.longitude.toFixed(4)}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded">
-                        <h4 className="text-xs font-medium text-blue-700 mb-1">Path History</h4>
-                        <p className="text-xs text-blue-600">
-                          {pathHistory.length} GPS coordinates recorded for this journey
-                        </p>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-20 bg-gray-50 rounded-lg">
-                      <div className="flex items-center text-amber-500">
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        <span className="text-sm">No GPS data available</span>
-                      </div>
-                    </div>
+                    <p className="text-sm text-gray-500">No tracking data available</p>
                   )}
                 </div>
               </div>

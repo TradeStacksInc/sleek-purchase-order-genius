@@ -1,13 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Tank, ActivityLog, Dispenser } from '../types';
+import { Tank, ActivityLog, Dispenser, Product, ProductType } from '../types';
 import { useToast } from '@/hooks/use-toast';
 
 export const useTankActions = (
   tanks: Tank[],
   setTanks: React.Dispatch<React.SetStateAction<Tank[]>>,
   setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>,
-  dispensers?: Dispenser[],
-  setDispensers?: React.Dispatch<React.SetStateAction<Dispenser[]>>
+  dispensers: Dispenser[],
+  setDispensers: React.Dispatch<React.SetStateAction<Dispenser[]>>
 ) => {
   const { toast } = useToast();
 
@@ -178,70 +178,53 @@ export const useTankActions = (
     return tanks;
   };
 
-  const recordOffloadingToTank = (tankId: string, volume: number, productType: string): Tank | undefined => {
+  const recordOffloadingToTank = (tankId: string, volume: number, productType: ProductType): Tank | null => {
     try {
-      const tank = getTankById(tankId);
+      // Find the tank
+      const tank = tanks.find(t => t.id === tankId);
       if (!tank) {
-        toast({
-          title: "Error",
-          description: "Tank not found.",
-          variant: "destructive",
-        });
-        return undefined;
+        console.error(`Tank with ID ${tankId} not found`);
+        return null;
       }
       
-      // Fix the comparison by converting both to strings
+      // Make sure the product type matches
       if (String(tank.productType) !== String(productType)) {
-        toast({
-          title: "Error",
-          description: `This tank is designated for ${String(tank.productType)} and cannot accept ${productType}.`,
-          variant: "destructive",
-        });
-        return undefined;
+        console.error(`Product type mismatch: Tank is for ${tank.productType}, trying to offload ${productType}`);
+        return null;
       }
       
-      // Check if tank capacity will be exceeded
-      if ((tank.currentVolume || 0) + volume > tank.capacity) {
-        const availableSpace = tank.capacity - (tank.currentVolume || 0);
-        toast({
-          title: "Capacity Warning",
-          description: `This tank can only accept ${availableSpace.toLocaleString()} L more. The tank will be filled to capacity and the remaining ${(volume - availableSpace).toLocaleString()} L must be offloaded elsewhere.`,
-          variant: "destructive",
-        });
-        
-        // Return undefined to indicate failure
-        return undefined;
+      // Check if tank has capacity
+      if (tank.currentVolume !== undefined && (tank.currentVolume + volume) > tank.capacity) {
+        console.error(`Tank ${tank.name} does not have enough capacity. Current: ${tank.currentVolume}, Adding: ${volume}, Capacity: ${tank.capacity}`);
+        return null;
       }
       
-      // Update the tank with new volume
-      const updatedTank = updateTank(tankId, {
+      // Update the tank
+      const updatedTank = {
+        ...tank,
         currentVolume: (tank.currentVolume || 0) + volume,
         lastRefillDate: new Date()
-      });
+      };
       
-      // Log the action
+      setTanks(tanks.map(t => t.id === tankId ? updatedTank : t));
+      
+      // Log the activity
       const newActivityLog: ActivityLog = {
         id: `log-${uuidv4()}`,
         entityType: 'tank',
         entityId: tankId,
         action: 'update',
-        details: `Offloaded ${volume.toLocaleString()} L of ${productType} into tank ${tank.name}. New volume: ${((tank.currentVolume || 0) + volume).toLocaleString()} L / ${tank.capacity.toLocaleString()} L (${(((tank.currentVolume || 0) + volume) / tank.capacity * 100).toFixed(1)}%)`,
-        user: 'Current User',
+        details: `${volume.toLocaleString()} liters of ${String(productType)} offloaded to tank ${tank.name}. New volume: ${updatedTank.currentVolume?.toLocaleString()} / ${tank.capacity.toLocaleString()} liters.`,
+        user: 'System',
         timestamp: new Date()
       };
       
       setActivityLogs(prev => [newActivityLog, ...prev]);
       
       return updatedTank;
-      
     } catch (error) {
       console.error("Error recording offloading to tank:", error);
-      toast({
-        title: "Error",
-        description: "There was an error recording the offloading. Please try again.",
-        variant: "destructive",
-      });
-      return undefined;
+      return null;
     }
   };
 
@@ -504,6 +487,30 @@ export const useTankActions = (
     });
   };
 
+  const updateTankProductType = (tankId: string, productType: ProductType): boolean => {
+    try {
+      // Convert string product type to Product enum if needed
+      const validProductType = productType as Product;
+      
+      setTanks(prev => prev.map(tank => {
+        if (tank.id === tankId) {
+          return {
+            ...tank,
+            productType: validProductType,
+            // Reset volume when changing product type
+            currentVolume: 0
+          };
+        }
+        return tank;
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating tank product type:", error);
+      return false;
+    }
+  };
+
   return {
     addTank,
     updateTank,
@@ -515,6 +522,7 @@ export const useTankActions = (
     clearAllTanks,
     connectTankToDispenser,
     disconnectTankFromDispenser,
-    setTankActive
+    setTankActive,
+    updateTankProductType
   };
 };
