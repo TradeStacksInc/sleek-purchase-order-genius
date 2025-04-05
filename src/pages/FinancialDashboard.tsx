@@ -125,7 +125,7 @@ const FinancialDashboard: React.FC = () => {
         end: getDateRange.to 
       });
       
-      const productMatches = productFilter === 'all' || order.product === productFilter;
+      const productMatches = productFilter === 'all' || order.items.some(item => item.product === productFilter);
       
       return dateMatches && productMatches;
     });

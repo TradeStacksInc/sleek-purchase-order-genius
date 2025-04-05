@@ -1,644 +1,739 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Database, Droplet, AlertTriangle, PlusCircle, CheckCircle, XCircle, AlertOctagon } from 'lucide-react';
-import { Tank as TankType } from '@/types';
-import { useToast } from '@/hooks/use-toast';
+  PieChart, 
+  Pie, 
+  Cell, 
+  LineChart, 
+  Line, 
+  CartesianGrid, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Legend, 
+  BarChart, 
+  Bar 
+} from 'recharts';
+import { format } from 'date-fns';
+import { Tank } from '@/types';
 
+// Reset the tank management data to fulfill the requirements
 const TankManagement: React.FC = () => {
-  const { getAllTanks, addTank, updateTank } = useApp();
-  const { toast } = useToast();
+  const { tanks, addTank, updateTank, getAllTanks, recordOffloadingToTank } = useApp();
   
-  // Tank state
-  const [tanks, setTanks] = useState<TankType[]>([]);
-  const [isAddTankDialogOpen, setIsAddTankDialogOpen] = useState(false);
-  
-  // Form state for adding a new tank
+  // For new tank form
   const [newTankName, setNewTankName] = useState('');
-  const [newTankProduct, setNewTankProduct] = useState('PMS');
-  const [newTankCapacity, setNewTankCapacity] = useState('30000');
-  const [newTankCurrentVolume, setNewTankCurrentVolume] = useState('0');
+  const [newTankCapacity, setNewTankCapacity] = useState(0);
+  const [newTankProduct, setNewTankProduct] = useState<'PMS' | 'AGO' | 'DPK'>('PMS');
+  const [newTankMinVolume, setNewTankMinVolume] = useState(0);
   
-  // Load tanks from context
-  useEffect(() => {
-    const loadedTanks = getAllTanks();
-    
-    // Check if tanks need to be reset (for demo purposes)
-    if (loadedTanks.length === 0) {
-      // Add empty PMS tanks per requirements
-      addInitialTanks();
-    } else {
-      setTanks(loadedTanks);
-    }
-  }, [getAllTanks]);
+  // For offloading form
+  const [selectedTankId, setSelectedTankId] = useState('');
+  const [offloadVolume, setOffloadVolume] = useState(0);
+  const [isOffloadingModalOpen, setIsOffloadingModalOpen] = useState(false);
   
-  // Add initial empty tanks for testing
-  const addInitialTanks = () => {
-    // Add two empty PMS tanks
-    const pmsNewTank1 = addTank({
-      name: 'PMS Tank 1',
-      productType: 'PMS',
-      capacity: 30000,
-      currentVolume: 0,
-      location: 'Underground',
-      status: 'active',
-      lastRefillDate: new Date()
-    });
-    
-    const pmsNewTank2 = addTank({
-      name: 'PMS Tank 2',
-      productType: 'PMS',
-      capacity: 30000,
-      currentVolume: 0,
-      location: 'Underground',
-      status: 'active',
-      lastRefillDate: new Date()
-    });
-    
-    // Add AGO tank
-    const agoNewTank = addTank({
-      name: 'AGO Tank 1',
-      productType: 'AGO',
-      capacity: 20000,
-      currentVolume: 0,
-      location: 'Underground',
-      status: 'active',
-      lastRefillDate: new Date()
-    });
-    
-    toast({
-      title: "Tanks Created",
-      description: "Initial tanks have been created for testing",
-    });
-    
-    // Refresh tanks
-    setTanks(getAllTanks());
-  };
+  // For editing tank
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTank, setEditingTank] = useState<Tank | null>(null);
   
-  const handleAddTank = () => {
-    if (!newTankName || !newTankProduct || !newTankCapacity) {
-      toast({
-        title: "Validation Error",
-        description: "All fields are required",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const capacity = parseInt(newTankCapacity);
-    const currentVolume = parseInt(newTankCurrentVolume || '0');
-    
-    if (isNaN(capacity) || capacity <= 0) {
-      toast({
-        title: "Validation Error",
-        description: "Capacity must be a positive number",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (isNaN(currentVolume) || currentVolume < 0) {
-      toast({
-        title: "Validation Error",
-        description: "Current volume must be a non-negative number",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (currentVolume > capacity) {
-      toast({
-        title: "Validation Error",
-        description: "Current volume cannot exceed capacity",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newTank = addTank({
-      name: newTankName,
-      productType: newTankProduct as any,
-      capacity: capacity,
-      currentVolume: currentVolume,
-      location: 'Underground',
-      status: 'active',
-      lastRefillDate: new Date()
-    });
-    
-    // Reset form
-    setNewTankName('');
-    setNewTankProduct('PMS');
-    setNewTankCapacity('30000');
-    setNewTankCurrentVolume('0');
-    
-    // Close dialog
-    setIsAddTankDialogOpen(false);
-    
-    // Refresh tanks
-    setTanks(getAllTanks());
-  };
-  
-  // Filter tanks by product type
-  const pmsTanks = tanks.filter(tank => tank.productType === 'PMS');
-  const agoTanks = tanks.filter(tank => tank.productType === 'AGO');
-  const dpkTanks = tanks.filter(tank => tank.productType === 'DPK');
-  
-  // Calculate totals
-  const totalPMSCapacity = pmsTanks.reduce((sum, tank) => sum + tank.capacity, 0);
-  const totalPMSVolume = pmsTanks.reduce((sum, tank) => sum + tank.currentVolume, 0);
-  const totalAGOCapacity = agoTanks.reduce((sum, tank) => sum + tank.capacity, 0);
-  const totalAGOVolume = agoTanks.reduce((sum, tank) => sum + tank.currentVolume, 0);
-  const totalDPKCapacity = dpkTanks.reduce((sum, tank) => sum + tank.capacity, 0);
-  const totalDPKVolume = dpkTanks.reduce((sum, tank) => sum + tank.currentVolume, 0);
+  // For tabs
+  const [activeTab, setActiveTab] = useState('overview');
 
+  // Create two empty PMS tanks for testing
+  const createEmptyTanks = () => {
+    // First empty tank
+    addTank({
+      name: "PMS Tank 1",
+      capacity: 50000,
+      currentVolume: 0,
+      productType: "PMS",
+      minVolume: 5000,
+      status: "operational",
+      connectedDispensers: []
+    });
+
+    // Second empty tank
+    addTank({
+      name: "PMS Tank 2",
+      capacity: 50000,
+      currentVolume: 0,
+      productType: "PMS",
+      minVolume: 5000,
+      status: "operational",
+      connectedDispensers: []
+    });
+
+    // Also create an AGO tank that's 50% full
+    addTank({
+      name: "AGO Tank 1",
+      capacity: 30000,
+      currentVolume: 15000,
+      productType: "AGO",
+      minVolume: 3000,
+      status: "operational",
+      connectedDispensers: []
+    });
+
+    // And a DPK tank that's 25% full
+    addTank({
+      name: "DPK Tank 1",
+      capacity: 20000,
+      currentVolume: 5000,
+      productType: "DPK",
+      minVolume: 2000,
+      status: "operational",
+      connectedDispensers: []
+    });
+
+    // Add another PMS tank that's almost full
+    addTank({
+      name: "PMS Tank 3",
+      capacity: 40000,
+      currentVolume: 38000,
+      productType: "PMS",
+      minVolume: 4000,
+      status: "operational",
+      connectedDispensers: []
+    });
+  };
+  
+  // Handle form submission for adding a new tank
+  const handleAddTank = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newTank = {
+      name: newTankName,
+      capacity: newTankCapacity,
+      currentVolume: 0,
+      productType: newTankProduct,
+      minVolume: newTankMinVolume,
+      status: "operational" as const,
+      connectedDispensers: []
+    };
+    
+    addTank(newTank);
+    
+    // Reset form fields
+    setNewTankName('');
+    setNewTankCapacity(0);
+    setNewTankMinVolume(0);
+  };
+  
+  // Handle tank status update
+  const handleStatusUpdate = (tankId: string, newStatus: "operational" | "maintenance" | "offline") => {
+    updateTank(tankId, { status: newStatus });
+  };
+  
+  // Handle tank offloading
+  const handleOffload = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const selectedTank = tanks.find(tank => tank.id === selectedTankId);
+    if (selectedTank) {
+      recordOffloadingToTank(selectedTankId, offloadVolume, selectedTank.productType);
+      setIsOffloadingModalOpen(false);
+      setOffloadVolume(0);
+      setSelectedTankId('');
+    }
+  };
+  
+  // Handle editing a tank
+  const handleEditTank = (tankId: string) => {
+    const tank = tanks.find(t => t.id === tankId);
+    if (tank) {
+      setEditingTank(tank);
+      setIsEditModalOpen(true);
+    }
+  };
+  
+  // Handle saving edited tank
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (editingTank) {
+      updateTank(editingTank.id, {
+        name: editingTank.name,
+        capacity: editingTank.capacity,
+        minVolume: editingTank.minVolume,
+        status: editingTank.status
+      });
+      
+      setIsEditModalOpen(false);
+      setEditingTank(null);
+    }
+  };
+  
+  // Calculate tank statistics
+  const tankStats = {
+    totalCapacity: tanks.reduce((sum, tank) => sum + tank.capacity, 0),
+    totalCurrentVolume: tanks.reduce((sum, tank) => sum + tank.currentVolume, 0),
+    tankCount: tanks.length,
+    pmsCount: tanks.filter(tank => tank.productType === 'PMS').length,
+    agoCount: tanks.filter(tank => tank.productType === 'AGO').length,
+    dpkCount: tanks.filter(tank => tank.productType === 'DPK').length,
+    criticalLevelCount: tanks.filter(tank => tank.currentVolume <= tank.minVolume).length,
+    fullTanksCount: tanks.filter(tank => tank.currentVolume >= tank.capacity * 0.9).length,
+    emptyTanksCount: tanks.filter(tank => tank.currentVolume <= tank.capacity * 0.1).length
+  };
+  
+  // Calculate tank capacity utilization percentage
+  const capacityUtilization = tankStats.totalCapacity > 0 
+    ? (tankStats.totalCurrentVolume / tankStats.totalCapacity) * 100 
+    : 0;
+  
+  // Data for product distribution pie chart
+  const productDistributionData = [
+    { 
+      name: 'PMS', 
+      value: tanks
+        .filter(tank => tank.productType === 'PMS')
+        .reduce((sum, tank) => sum + tank.currentVolume, 0) 
+    },
+    { 
+      name: 'AGO', 
+      value: tanks
+        .filter(tank => tank.productType === 'AGO')
+        .reduce((sum, tank) => sum + tank.currentVolume, 0) 
+    },
+    { 
+      name: 'DPK', 
+      value: tanks
+        .filter(tank => tank.productType === 'DPK')
+        .reduce((sum, tank) => sum + tank.currentVolume, 0) 
+    }
+  ];
+  
+  // Chart colors
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
+  
+  // Group tanks by product type for bar chart
+  const tanksByProductData = [
+    { 
+      name: 'PMS', 
+      capacity: tanks
+        .filter(tank => tank.productType === 'PMS')
+        .reduce((sum, tank) => sum + tank.capacity, 0),
+      current: tanks
+        .filter(tank => tank.productType === 'PMS')
+        .reduce((sum, tank) => sum + tank.currentVolume, 0) 
+    },
+    { 
+      name: 'AGO', 
+      capacity: tanks
+        .filter(tank => tank.productType === 'AGO')
+        .reduce((sum, tank) => sum + tank.capacity, 0),
+      current: tanks
+        .filter(tank => tank.productType === 'AGO')
+        .reduce((sum, tank) => sum + tank.currentVolume, 0) 
+    },
+    { 
+      name: 'DPK', 
+      capacity: tanks
+        .filter(tank => tank.productType === 'DPK')
+        .reduce((sum, tank) => sum + tank.capacity, 0),
+      current: tanks
+        .filter(tank => tank.productType === 'DPK')
+        .reduce((sum, tank) => sum + tank.currentVolume, 0) 
+    }
+  ];
+  
   return (
-    <div className="space-y-6 animate-fade-in">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Tank Management</CardTitle>
-            <CardDescription>
-              Monitor and manage underground storage tanks
-            </CardDescription>
-          </div>
-          <Dialog open={isAddTankDialogOpen} onOpenChange={setIsAddTankDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Tank
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Tank</DialogTitle>
-                <DialogDescription>
-                  Create a new underground storage tank to track fuel inventory.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="tankName">Tank Name</Label>
-                  <Input
-                    id="tankName"
-                    value={newTankName}
-                    onChange={(e) => setNewTankName(e.target.value)}
-                    placeholder="e.g., PMS Tank 3"
-                  />
+    <div className="container mx-auto p-4 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Tank Management</h1>
+        
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setActiveTab('add')}
+            variant="outline"
+          >
+            Add New Tank
+          </Button>
+          
+          <Button 
+            onClick={createEmptyTanks}
+            variant="default"
+          >
+            Create Test Tanks
+          </Button>
+        </div>
+      </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="tanks">Tanks</TabsTrigger>
+          <TabsTrigger value="add">Add New Tank</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Total Capacity</CardTitle>
+                <CardDescription>All tanks</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{tankStats.totalCapacity.toLocaleString()} L</div>
+                <p className="text-sm text-muted-foreground">{tankStats.tankCount} tanks</p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Current Volume</CardTitle>
+                <CardDescription>Total fuel stored</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{tankStats.totalCurrentVolume.toLocaleString()} L</div>
+                <div className="mt-2">
+                  <Progress value={capacityUtilization} />
+                  <p className="text-xs text-muted-foreground mt-1">{capacityUtilization.toFixed(1)}% utilization</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Tank Status</CardTitle>
+                <CardDescription>Monitoring</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Badge className="bg-green-100 hover:bg-green-100 text-green-800 border-green-200">
+                    {tankStats.tankCount - tankStats.criticalLevelCount} Normal
+                  </Badge>
+                  <span>{((tankStats.tankCount - tankStats.criticalLevelCount) / Math.max(tankStats.tankCount, 1) * 100).toFixed(0)}%</span>
                 </div>
                 
-                <div className="grid gap-2">
-                  <Label htmlFor="productType">Product Type</Label>
-                  <select 
-                    id="productType"
-                    value={newTankProduct}
-                    onChange={(e) => setNewTankProduct(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                <div className="flex justify-between items-center">
+                  <Badge className="bg-amber-100 hover:bg-amber-100 text-amber-800 border-amber-200">
+                    {tankStats.criticalLevelCount} Critical
+                  </Badge>
+                  <span>{(tankStats.criticalLevelCount / Math.max(tankStats.tankCount, 1) * 100).toFixed(0)}%</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-800 border-blue-200">
+                    {tankStats.fullTanksCount} Full
+                  </Badge>
+                  <span>{(tankStats.fullTanksCount / Math.max(tankStats.tankCount, 1) * 100).toFixed(0)}%</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <Badge className="bg-red-100 hover:bg-red-100 text-red-800 border-red-200">
+                    {tankStats.emptyTanksCount} Near Empty
+                  </Badge>
+                  <span>{(tankStats.emptyTanksCount / Math.max(tankStats.tankCount, 1) * 100).toFixed(0)}%</span>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Product Distribution</CardTitle>
+                <CardDescription>By fuel type</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-800 border-blue-200">
+                    PMS: {tankStats.pmsCount} tanks
+                  </Badge>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <Badge className="bg-green-100 hover:bg-green-100 text-green-800 border-green-200">
+                    AGO: {tankStats.agoCount} tanks
+                  </Badge>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <Badge className="bg-amber-100 hover:bg-amber-100 text-amber-800 border-amber-200">
+                    DPK: {tankStats.dpkCount} tanks
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Product Distribution</CardTitle>
+                <CardDescription>Volume by product type</CardDescription>
+              </CardHeader>
+              <CardContent className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={productDistributionData.filter(item => item.value > 0)}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      dataKey="value"
+                    >
+                      {productDistributionData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [`${value.toLocaleString()} L`, 'Volume']} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Capacity vs. Current Volume</CardTitle>
+                <CardDescription>By product type</CardDescription>
+              </CardHeader>
+              <CardContent className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={tanksByProductData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
-                    <option value="PMS">PMS (Petrol)</option>
-                    <option value="AGO">AGO (Diesel)</option>
-                    <option value="DPK">DPK (Kerosene)</option>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`${value.toLocaleString()} L`, 'Volume']} />
+                    <Legend />
+                    <Bar dataKey="capacity" name="Total Capacity" fill="#8884d8" />
+                    <Bar dataKey="current" name="Current Volume" fill="#82ca9d" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="tanks" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {tanks.map(tank => {
+              const fillPercentage = (tank.currentVolume / tank.capacity) * 100;
+              const isCritical = tank.currentVolume <= tank.minVolume;
+              const isFull = tank.currentVolume >= tank.capacity * 0.9;
+              const isEmpty = tank.currentVolume <= tank.capacity * 0.1;
+              
+              return (
+                <Card key={tank.id} className={`
+                  ${isCritical ? 'border-red-300' : ''}
+                  ${isFull ? 'border-green-300' : ''}
+                  ${isEmpty ? 'border-amber-300' : ''}
+                `}>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-base">{tank.name}</CardTitle>
+                        <CardDescription>{tank.productType} - {tank.capacity.toLocaleString()} L</CardDescription>
+                      </div>
+                      <Badge variant={tank.status === "operational" ? "outline" : "secondary"}>
+                        {tank.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Current Volume: {tank.currentVolume.toLocaleString()} L</span>
+                        <span>{fillPercentage.toFixed(1)}%</span>
+                      </div>
+                      <Progress 
+                        value={fillPercentage} 
+                        className={`h-2 ${
+                          isCritical ? 'bg-red-200' : 
+                          isFull ? 'bg-green-200' : 
+                          isEmpty ? 'bg-amber-200' : 'bg-gray-200'
+                        }`}
+                      />
+                    </div>
+                    
+                    <div className="flex flex-col space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Minimum Level:</span>
+                        <span>{tank.minVolume.toLocaleString()} L</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Available Space:</span>
+                        <span>{(tank.capacity - tank.currentVolume).toLocaleString()} L</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Connected Dispensers:</span>
+                        <span>{tank.connectedDispensers.length}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => handleEditTank(tank.id)}
+                      >
+                        Edit
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedTankId(tank.id);
+                          setIsOffloadingModalOpen(true);
+                        }}
+                      >
+                        Offload
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          
+          {tanks.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No tanks registered yet. Add a new tank to get started.</p>
+              <Button 
+                className="mt-4"
+                onClick={() => setActiveTab('add')}
+              >
+                Add New Tank
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="add">
+          <Card>
+            <CardHeader>
+              <CardTitle>Add New Tank</CardTitle>
+              <CardDescription>Register a new storage tank</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAddTank} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tank-name">Tank Name</Label>
+                    <Input 
+                      id="tank-name" 
+                      placeholder="e.g., PMS Tank 1"
+                      value={newTankName}
+                      onChange={(e) => setNewTankName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="tank-product">Product Type</Label>
+                    <select 
+                      id="tank-product"
+                      className="w-full border border-gray-300 rounded-md h-10 px-3"
+                      value={newTankProduct}
+                      onChange={(e) => setNewTankProduct(e.target.value as any)}
+                      required
+                    >
+                      <option value="PMS">PMS</option>
+                      <option value="AGO">AGO</option>
+                      <option value="DPK">DPK</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="tank-capacity">Tank Capacity (liters)</Label>
+                    <Input 
+                      id="tank-capacity" 
+                      type="number"
+                      placeholder="e.g., 50000"
+                      value={newTankCapacity || ''}
+                      onChange={(e) => setNewTankCapacity(Number(e.target.value))}
+                      min="1"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="tank-min-volume">Minimum Volume (liters)</Label>
+                    <Input 
+                      id="tank-min-volume" 
+                      type="number"
+                      placeholder="e.g., 5000"
+                      value={newTankMinVolume || ''}
+                      onChange={(e) => setNewTankMinVolume(Number(e.target.value))}
+                      min="0"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <Button type="submit" className="mt-4">Add Tank</Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      {/* Offloading Modal */}
+      {isOffloadingModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Offload to Tank</CardTitle>
+              <CardDescription>
+                Add fuel volume to selected tank
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleOffload} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tank-select">Select Tank</Label>
+                  <select
+                    id="tank-select"
+                    className="w-full border border-gray-300 rounded-md h-10 px-3"
+                    value={selectedTankId}
+                    onChange={(e) => setSelectedTankId(e.target.value)}
+                    required
+                  >
+                    <option value="">Select a tank</option>
+                    {tanks.map(tank => (
+                      <option key={tank.id} value={tank.id}>
+                        {tank.name} ({tank.productType})
+                      </option>
+                    ))}
                   </select>
                 </div>
                 
-                <div className="grid gap-2">
-                  <Label htmlFor="capacity">Capacity (liters)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="offload-volume">Volume to Offload (liters)</Label>
                   <Input
-                    id="capacity"
+                    id="offload-volume"
                     type="number"
-                    value={newTankCapacity}
-                    onChange={(e) => setNewTankCapacity(e.target.value)}
-                    placeholder="e.g., 30000"
+                    placeholder="e.g., 5000"
+                    value={offloadVolume || ''}
+                    onChange={(e) => setOffloadVolume(Number(e.target.value))}
+                    min="1"
+                    required
                   />
                 </div>
                 
-                <div className="grid gap-2">
-                  <Label htmlFor="currentVolume">Current Volume (liters)</Label>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => {
+                      setIsOffloadingModalOpen(false);
+                      setSelectedTankId('');
+                      setOffloadVolume(0);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit">Offload</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
+      {/* Edit Tank Modal */}
+      {isEditModalOpen && editingTank && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Edit Tank</CardTitle>
+              <CardDescription>
+                Update tank information
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveEdit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-tank-name">Tank Name</Label>
                   <Input
-                    id="currentVolume"
-                    type="number"
-                    value={newTankCurrentVolume}
-                    onChange={(e) => setNewTankCurrentVolume(e.target.value)}
-                    placeholder="e.g., 0"
+                    id="edit-tank-name"
+                    value={editingTank.name}
+                    onChange={(e) => setEditingTank({...editingTank, name: e.target.value})}
+                    required
                   />
                 </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddTankDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddTank}>
-                  Add Tank
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="overview">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="pms-tanks">PMS Tanks</TabsTrigger>
-              <TabsTrigger value="ago-tanks">AGO Tanks</TabsTrigger>
-              <TabsTrigger value="dpk-tanks">DPK Tanks</TabsTrigger>
-              <TabsTrigger value="list">All Tanks</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="overview" className="space-y-6">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xl flex items-center">
-                      <Droplet className="mr-2 h-5 w-5 text-red-500" />
-                      PMS Storage
-                    </CardTitle>
-                    <CardDescription>
-                      Total capacity: {totalPMSCapacity.toLocaleString()} liters
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Current volume:</span>
-                        <span className="font-bold">{totalPMSVolume.toLocaleString()} liters</span>
-                      </div>
-                      <Progress 
-                        value={totalPMSCapacity > 0 ? (totalPMSVolume / totalPMSCapacity) * 100 : 0} 
-                        className="h-3" 
-                      />
-                      <div className="flex items-center justify-between text-sm">
-                        <span>{totalPMSCapacity > 0 ? Math.round((totalPMSVolume / totalPMSCapacity) * 100) : 0}% full</span>
-                        <span>{(totalPMSCapacity - totalPMSVolume).toLocaleString()} liters free</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
                 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xl flex items-center">
-                      <Droplet className="mr-2 h-5 w-5 text-amber-500" />
-                      AGO Storage
-                    </CardTitle>
-                    <CardDescription>
-                      Total capacity: {totalAGOCapacity.toLocaleString()} liters
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Current volume:</span>
-                        <span className="font-bold">{totalAGOVolume.toLocaleString()} liters</span>
-                      </div>
-                      <Progress 
-                        value={totalAGOCapacity > 0 ? (totalAGOVolume / totalAGOCapacity) * 100 : 0} 
-                        className="h-3" 
-                      />
-                      <div className="flex items-center justify-between text-sm">
-                        <span>{totalAGOCapacity > 0 ? Math.round((totalAGOVolume / totalAGOCapacity) * 100) : 0}% full</span>
-                        <span>{(totalAGOCapacity - totalAGOVolume).toLocaleString()} liters free</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-tank-capacity">Tank Capacity (liters)</Label>
+                  <Input
+                    id="edit-tank-capacity"
+                    type="number"
+                    value={editingTank.capacity || ''}
+                    onChange={(e) => setEditingTank({...editingTank, capacity: Number(e.target.value)})}
+                    min="1"
+                    required
+                  />
+                </div>
                 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xl flex items-center">
-                      <Droplet className="mr-2 h-5 w-5 text-blue-500" />
-                      DPK Storage
-                    </CardTitle>
-                    <CardDescription>
-                      Total capacity: {totalDPKCapacity.toLocaleString()} liters
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Current volume:</span>
-                        <span className="font-bold">{totalDPKVolume.toLocaleString()} liters</span>
-                      </div>
-                      <Progress 
-                        value={totalDPKCapacity > 0 ? (totalDPKVolume / totalDPKCapacity) * 100 : 0} 
-                        className="h-3" 
-                      />
-                      <div className="flex items-center justify-between text-sm">
-                        <span>{totalDPKCapacity > 0 ? Math.round((totalDPKVolume / totalDPKCapacity) * 100) : 0}% full</span>
-                        <span>{(totalDPKCapacity - totalDPKVolume).toLocaleString()} liters free</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              {/* Tank Alerts */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tank Alerts</CardTitle>
-                  <CardDescription>
-                    Notifications and warnings for all tanks
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {tanks.some(tank => isLowVolume(tank) || isHighVolume(tank)) ? (
-                    <div className="space-y-4">
-                      {tanks.filter(tank => isLowVolume(tank)).map(tank => (
-                        <div key={`low-${tank.id}`} className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                          <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <h4 className="font-medium">{tank.name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Low volume alert - below 20% capacity ({Math.round((tank.currentVolume / tank.capacity) * 100)}%)
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {tanks.filter(tank => isHighVolume(tank)).map(tank => (
-                        <div key={`high-${tank.id}`} className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                          <AlertOctagon className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <h4 className="font-medium">{tank.name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              High volume alert - above 90% capacity ({Math.round((tank.currentVolume / tank.capacity) * 100)}%)
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
-                      <Database className="h-10 w-10 mb-3 opacity-20" />
-                      <p>No alerts or warnings</p>
-                      <p className="text-sm">All tanks are operating normally</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="pms-tanks" className="mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {pmsTanks.length === 0 ? (
-                  <div className="col-span-3 text-center py-8 text-muted-foreground">
-                    <Database className="h-10 w-10 opacity-20 mx-auto mb-2" />
-                    <p>No PMS tanks found</p>
-                    <p className="text-sm">Add some tanks to get started</p>
-                  </div>
-                ) : (
-                  pmsTanks.map(tank => (
-                    <TankCard key={tank.id} tank={tank} />
-                  ))
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="ago-tanks" className="mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {agoTanks.length === 0 ? (
-                  <div className="col-span-3 text-center py-8 text-muted-foreground">
-                    <Database className="h-10 w-10 opacity-20 mx-auto mb-2" />
-                    <p>No AGO tanks found</p>
-                    <p className="text-sm">Add some tanks to get started</p>
-                  </div>
-                ) : (
-                  agoTanks.map(tank => (
-                    <TankCard key={tank.id} tank={tank} />
-                  ))
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="dpk-tanks" className="mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {dpkTanks.length === 0 ? (
-                  <div className="col-span-3 text-center py-8 text-muted-foreground">
-                    <Database className="h-10 w-10 opacity-20 mx-auto mb-2" />
-                    <p>No DPK tanks found</p>
-                    <p className="text-sm">Add some tanks to get started</p>
-                  </div>
-                ) : (
-                  dpkTanks.map(tank => (
-                    <TankCard key={tank.id} tank={tank} />
-                  ))
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="list" className="mt-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tank Name</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Capacity</TableHead>
-                    <TableHead>Current Volume</TableHead>
-                    <TableHead>Fill %</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Refill</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tanks.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                        No tanks found. Add some tanks to get started.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    tanks.map(tank => {
-                      const percentFull = (tank.currentVolume / tank.capacity) * 100;
-                      
-                      return (
-                        <TableRow key={tank.id}>
-                          <TableCell className="font-medium">{tank.name}</TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              tank.productType === 'PMS' ? 'destructive' : 
-                              tank.productType === 'AGO' ? 'default' : 'secondary'
-                            }>
-                              {tank.productType}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{tank.capacity.toLocaleString()} L</TableCell>
-                          <TableCell>{tank.currentVolume.toLocaleString()} L</TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <Progress value={percentFull} className="h-2 w-20 mr-2" />
-                              <span className="text-xs">{Math.round(percentFull)}%</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={isReadyForOffload(tank) ? 'success' : 'warning'}>
-                              {isReadyForOffload(tank) ? 'Ready for Offload' : 'Not Ready'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {tank.lastRefillDate ? format(tank.lastRefillDate, 'MMM dd, yyyy') : 'Never'}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-tank-min-volume">Minimum Volume (liters)</Label>
+                  <Input
+                    id="edit-tank-min-volume"
+                    type="number"
+                    value={editingTank.minVolume || ''}
+                    onChange={(e) => setEditingTank({...editingTank, minVolume: Number(e.target.value)})}
+                    min="0"
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-tank-status">Tank Status</Label>
+                  <select
+                    id="edit-tank-status"
+                    className="w-full border border-gray-300 rounded-md h-10 px-3"
+                    value={editingTank.status}
+                    onChange={(e) => setEditingTank({...editingTank, status: e.target.value as "operational" | "maintenance" | "offline"})}
+                    required
+                  >
+                    <option value="operational">Operational</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="offline">Offline</option>
+                  </select>
+                </div>
+                
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => {
+                      setIsEditModalOpen(false);
+                      setEditingTank(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit">Save Changes</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
-  );
-};
-
-// Helper functions
-const isLowVolume = (tank: TankType) => {
-  return (tank.currentVolume / tank.capacity) < 0.2;
-};
-
-const isHighVolume = (tank: TankType) => {
-  return (tank.currentVolume / tank.capacity) > 0.9;
-};
-
-const isReadyForOffload = (tank: TankType) => {
-  const percentFull = (tank.currentVolume / tank.capacity) * 100;
-  return percentFull < 90; // Tank is ready for offload if it's less than 90% full
-};
-
-// Import format function
-const format = (date: Date, formatStr: string): string => {
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = new Intl.DateTimeFormat('en', { month: 'short' }).format(date);
-  const year = date.getFullYear();
-  
-  return `${month} ${day}, ${year}`;
-};
-
-interface TankCardProps {
-  tank: TankType;
-}
-
-const TankCard: React.FC<TankCardProps> = ({ tank }) => {
-  const percentFull = (tank.currentVolume / tank.capacity) * 100;
-  
-  // Determine status color based on fill level
-  let statusColor = "bg-green-500";
-  if (percentFull < 20) {
-    statusColor = "bg-red-500";
-  } else if (percentFull > 90) {
-    statusColor = "bg-amber-500";
-  }
-  
-  const isReady = isReadyForOffload(tank);
-  
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle>{tank.name}</CardTitle>
-            <CardDescription>
-              {tank.capacity.toLocaleString()} liter capacity
-            </CardDescription>
-          </div>
-          <Badge variant={
-            tank.productType === 'PMS' ? 'destructive' : 
-            tank.productType === 'AGO' ? 'default' : 'secondary'
-          }>
-            {tank.productType}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Current volume:</span>
-            <span className="font-bold">{tank.currentVolume.toLocaleString()} liters</span>
-          </div>
-          
-          <div className="w-full bg-gray-200 rounded-full h-4">
-            <div 
-              className={`${statusColor} h-4 rounded-full transition-all duration-500`} 
-              style={{ width: `${percentFull}%` }}
-            />
-          </div>
-          
-          <div className="flex items-center justify-between text-sm">
-            <span>{Math.round(percentFull)}% full</span>
-            <span>{(tank.capacity - tank.currentVolume).toLocaleString()} liters free</span>
-          </div>
-          
-          <div className="flex items-center space-x-2 pt-2">
-            <Badge variant={isReady ? 'success' : 'warning'} className="flex items-center">
-              {isReady ? (
-                <>
-                  <CheckCircle className="mr-1 h-3 w-3" />
-                  Ready for Offload
-                </>
-              ) : (
-                <>
-                  <XCircle className="mr-1 h-3 w-3" />
-                  Not Ready
-                </>
-              )}
-            </Badge>
-          </div>
-          
-          <div className="pt-2 text-xs text-muted-foreground">
-            Last updated: {tank.lastRefillDate ? format(tank.lastRefillDate, 'MMM dd, yyyy') : 'Never'}
-          </div>
-          
-          {isLowVolume(tank) && (
-            <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded text-sm">
-              <div className="font-medium flex items-center text-amber-700">
-                <AlertTriangle className="h-4 w-4 mr-1" />
-                Low Volume Warning
-              </div>
-              <p className="text-xs mt-1">
-                This tank is below 20% capacity and may need refilling soon.
-              </p>
-            </div>
-          )}
-          
-          {isHighVolume(tank) && (
-            <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-              <div className="font-medium flex items-center text-blue-700">
-                <AlertOctagon className="h-4 w-4 mr-1" />
-                High Volume Warning
-              </div>
-              <p className="text-xs mt-1">
-                This tank is above 90% capacity and may have limited space for offloading.
-              </p>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
   );
 };
 
