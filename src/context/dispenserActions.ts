@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { Dispenser, ActivityLog, Sale } from '../types';
 import { useToast } from '@/hooks/use-toast';
@@ -9,6 +10,27 @@ export const useDispenserActions = (
   setSales?: React.Dispatch<React.SetStateAction<Sale[]>>
 ) => {
   const { toast } = useToast();
+
+  const updateDispenser = (id: string, data: Partial<Dispenser>): Dispenser | undefined => {
+    let updatedDispenser: Dispenser | undefined;
+    
+    setDispensers(prev => {
+      const updated = prev.map(dispenser => {
+        if (dispenser.id === id) {
+          updatedDispenser = {
+            ...dispenser,
+            ...data
+          };
+          return updatedDispenser;
+        }
+        return dispenser;
+      });
+      
+      return updated;
+    });
+    
+    return updatedDispenser;
+  };
 
   const resetDispenserShiftStats = (id: string): Dispenser | undefined => {
     try {
@@ -168,17 +190,7 @@ export const useDispenserActions = (
 
   return {
     resetDispenserShiftStats,
-    recordManualSale
+    recordManualSale,
+    updateDispenser
   };
 };
-
-import {  } from '../types';
-import {  } from '@/hooks/use-toast';
-
-export const useDispenserActions = (
-  dispensers: Dispenser[],
-  setDispensers: React.Dispatch<React.SetStateAction<Dispenser[]>>,
-  setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>,
-  setSales?: React.Dispatch<React.SetStateAction<Sale[]>>
-) => {
-  const { toast } = useToast();
