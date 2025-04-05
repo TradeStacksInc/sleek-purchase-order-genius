@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,7 +20,7 @@ import { PieChart, Pie, Cell, LineChart, Line, CartesianGrid, XAxis, YAxis, Tool
 import { format } from 'date-fns';
 import { Tank, Dispenser } from '@/types';
 import IconWithBackground from '@/components/IconWithBackground';
-import { Fuel, Tank as TankIcon, Trash, Link, LinkOff, Power, PowerOff, AlertCircle } from 'lucide-react';
+import { Fuel, Database as TankIcon, Trash, Link, Link2Off, Power, PowerOff, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
@@ -183,7 +182,6 @@ const TankManagement: React.FC = () => {
     setTankActive(tankId, isActive);
   };
   
-  // Filter dispensers based on product type
   const getAvailableDispensers = (productType: string) => {
     return dispensers.filter(d => 
       d.productType === productType && 
@@ -191,7 +189,6 @@ const TankManagement: React.FC = () => {
     );
   };
   
-  // Get connected dispensers for a tank
   const getConnectedDispensers = (tankId: string) => {
     return dispensers.filter(d => d.connectedTankId === tankId);
   };
@@ -509,7 +506,7 @@ const TankManagement: React.FC = () => {
                                 className="ml-1 text-gray-500 hover:text-red-500"
                                 onClick={() => handleDisconnectTankFromDispenser(tank.id, dispenser.id)}
                               >
-                                <LinkOff className="h-3 w-3" />
+                                <Link2Off className="h-3 w-3" />
                               </button>
                             </Badge>
                           ))}
@@ -651,7 +648,6 @@ const TankManagement: React.FC = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Edit Tank Dialog */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -729,7 +725,6 @@ const TankManagement: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Connect Tank to Dispenser Dialog */}
       <Dialog open={isConnectModalOpen} onOpenChange={setIsConnectModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -794,7 +789,6 @@ const TankManagement: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Tank Dialog */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
         <DialogContent>
           <DialogHeader>

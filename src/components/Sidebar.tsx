@@ -23,7 +23,7 @@ import {
   LineChart,
   ChevronDown,
   ChevronUp,
-  Tank
+  Database as TankIcon // Using Database as a replacement for Tank
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -105,7 +105,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               isOpen={openSections.inventory}
               onToggle={() => toggleSection('inventory')}
             >
-              <NavItem to="/tank-management" icon={<Tank className="h-5 w-5" />} text="Tank Management" />
+              <NavItem to="/tank-management" icon={<TankIcon className="h-5 w-5" />} text="Tank Management" />
               <NavItem to="/dispenser-management" icon={<Fuel className="h-5 w-5" />} text="Dispensers" />
               <NavItem to="/price-management" icon={<Tag className="h-5 w-5" />} text="Price Management" />
             </CollapsibleSection>

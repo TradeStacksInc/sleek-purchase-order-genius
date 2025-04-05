@@ -156,7 +156,8 @@ export const useTankActions = (
       toast({
         title: "Tank Deleted",
         description: `${tankToDelete.name} has been removed from the system.`,
-        variant: "success",
+        // Changed from "success" to "default"
+        variant: "default",
       });
       
       return true;
@@ -320,7 +321,8 @@ export const useTankActions = (
       toast({
         title: "Connection Successful",
         description: `Tank ${tank.name} has been connected to dispenser #${dispenser.number}.`,
-        variant: "success",
+        // Changed from "success" to "default"
+        variant: "default",
       });
       
       return true;
@@ -395,7 +397,8 @@ export const useTankActions = (
       toast({
         title: "Disconnection Successful",
         description: `Tank ${tank.name} has been disconnected from dispenser #${dispenser.number}.`,
-        variant: "success",
+        // Changed from "success" to "default"
+        variant: "default",
       });
       
       return true;
