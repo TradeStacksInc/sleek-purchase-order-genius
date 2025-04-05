@@ -1,7 +1,6 @@
 
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-
 import { cn } from "@/lib/utils"
 
 const alertVariants = cva(
@@ -13,7 +12,7 @@ const alertVariants = cva(
         destructive:
           "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
         warning:
-          "border-orange-500/50 bg-orange-50 text-orange-700 dark:border-orange-400 [&>svg]:text-orange-500",
+          "border-orange-200 text-orange-800 dark:border-orange-400 [&>svg]:text-orange-500"
       },
     },
     defaultVariants: {

@@ -5,25 +5,33 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/context/AppContext';
-import { Database, AlertCircle } from 'lucide-react';
+import { Database, AlertCircle, User, Truck } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { PurchaseOrder, Product, Tank } from '@/types';
-import IconWithBackground from '@/components/IconWithBackground';
 import { cn } from '@/lib/utils';
+import { PurchaseOrder } from '@/types';
+import IconWithBackground from '@/components/IconWithBackground';
 
 interface OffloadingDialogProps {
-  orderId: string;
+  orderId?: string;
   children: React.ReactNode;
 }
 
-const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }) => {
+const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderId, children }) => {
   const { toast } = useToast();
-  const { recordOffloadingDetails, getOrderById, getAllTanks, recordOffloadingToTank } = useApp();
+  const { 
+    recordOffloadingDetails, 
+    getOrderById, 
+    getAllTanks, 
+    recordOffloadingToTank, 
+    getOrdersWithDeliveryStatus,
+    getDriverById
+  } = useApp();
+  
   const [open, setOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string>(propOrderId || "");
   
   // Form state
   const [loadedVolume, setLoadedVolume] = useState<number>(0);
@@ -36,32 +44,70 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
   const [tankId, setTankId] = useState<string>("");
   const [discrepancyWarning, setDiscrepancyWarning] = useState<boolean>(false);
   const [discrepancyPercent, setDiscrepancyPercent] = useState<number>(0);
+  const [driverRating, setDriverRating] = useState<number>(5);
   
-  // Available tanks
-  const [availableTanks, setAvailableTanks] = useState<Tank[]>([]);
+  // Available data
+  const [availableTanks, setAvailableTanks] = useState<any[]>([]);
+  const [deliveredOrders, setDeliveredOrders] = useState<PurchaseOrder[]>([]);
   
-  // Order details
-  const order = getOrderById(orderId);
-  const productType = order?.items?.[0]?.product || 'PMS';
+  // Get the selected order details
+  const selectedOrder = selectedOrderId ? getOrderById(selectedOrderId) : null;
+  const productType = selectedOrder?.items?.[0]?.product || 'PMS';
+  const driverDetails = selectedOrder?.deliveryDetails?.driverId 
+    ? getDriverById(selectedOrder.deliveryDetails.driverId)
+    : null;
   
+  // Load delivered orders when dialog opens
   useEffect(() => {
     if (open) {
-      const allTanks = getAllTanks();
-      // Filter tanks by product type and operational status
-      const filteredTanks = allTanks.filter(tank => 
-        tank.productType === productType && 
-        tank.status === 'operational'
-      );
-      setAvailableTanks(filteredTanks);
+      const orders = getOrdersWithDeliveryStatus('delivered');
+      // Filter out orders that already have offloading details
+      const pendingOffloadOrders = orders.filter(order => !order.offloadingDetails);
+      setDeliveredOrders(pendingOffloadOrders);
       
-      // If we have order details, pre-fill the loaded volume
+      // If there's a prop orderId or just one order, select it automatically
+      if (propOrderId) {
+        setSelectedOrderId(propOrderId);
+      } else if (pendingOffloadOrders.length === 1) {
+        setSelectedOrderId(pendingOffloadOrders[0].id);
+      }
+    }
+  }, [open, getOrdersWithDeliveryStatus, propOrderId]);
+
+  // When an order is selected, update the form data
+  useEffect(() => {
+    if (selectedOrderId) {
+      const order = getOrderById(selectedOrderId);
       if (order && order.items && order.items.length > 0) {
         const totalVolume = order.items.reduce((sum, item) => sum + item.quantity, 0);
         setLoadedVolume(totalVolume);
         setDeliveredVolume(totalVolume); // Default to same as loaded
+        
+        // Get tanks that match the product type
+        const allTanks = getAllTanks();
+        const productType = order.items[0].product;
+        const filteredTanks = allTanks.filter(tank => 
+          tank.productType === productType && 
+          tank.status === 'operational'
+        );
+        setAvailableTanks(filteredTanks);
+        
+        // Reset other form fields
+        setTankId("");
+        setInitialTankVolume(0);
+        setFinalTankVolume(0);
+        setNotes("");
       }
+    } else {
+      // Reset the form if no order is selected
+      setLoadedVolume(0);
+      setDeliveredVolume(0);
+      setTankId("");
+      setInitialTankVolume(0);
+      setFinalTankVolume(0);
+      setAvailableTanks([]);
     }
-  }, [open, productType, order, getAllTanks]);
+  }, [selectedOrderId, getOrderById, getAllTanks]);
   
   // Calculate discrepancy whenever volumes change
   useEffect(() => {
@@ -70,8 +116,22 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
       const percent = (diff / loadedVolume) * 100;
       setDiscrepancyPercent(percent);
       setDiscrepancyWarning(percent > 2);
+      
+      // Set driver rating based on discrepancy
+      if (percent < 1) {
+        setDriverRating(5); // Excellent, almost no discrepancy
+      } else if (percent < 2) {
+        setDriverRating(4); // Good, small discrepancy
+      } else if (percent < 3) {
+        setDriverRating(3); // Average, noticeable discrepancy
+      } else if (percent < 5) {
+        setDriverRating(2); // Poor, significant discrepancy
+      } else {
+        setDriverRating(1); // Very poor, major discrepancy
+      }
     } else {
       setDiscrepancyWarning(false);
+      setDriverRating(5);
     }
   }, [loadedVolume, deliveredVolume]);
   
@@ -87,6 +147,15 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
   }, [tankId, deliveredVolume, availableTanks]);
 
   const handleSubmit = async () => {
+    if (!selectedOrderId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a purchase order.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (!measuredBy) {
       toast({
         title: "Validation Error",
@@ -124,15 +193,19 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
     }
     
     try {
+      // Add driver rating to the notes
+      const ratingNote = `Driver Rating: ${driverRating}/5 stars`;
+      const fullNotes = notes ? `${notes}\n\n${ratingNote}` : ratingNote;
+      
       // First, record the offloading details
-      recordOffloadingDetails(orderId, {
+      recordOffloadingDetails(selectedOrderId, {
         initialTankVolume,
         finalTankVolume,
         loadedVolume,
         deliveredVolume,
         measuredBy,
         measuredByRole,
-        notes,
+        notes: fullNotes,
         tankId,
         productType,
       });
@@ -152,6 +225,7 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
       setOpen(false);
       
       // Reset form
+      setSelectedOrderId("");
       setLoadedVolume(0);
       setDeliveredVolume(0);
       setInitialTankVolume(0);
@@ -163,7 +237,9 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
       
       toast({
         title: "Offloading Recorded",
-        description: "The offloading details have been recorded successfully.",
+        description: discrepancyWarning 
+          ? "Offloading completed with volume discrepancy. The issue has been flagged."
+          : "Offloading completed successfully with no significant discrepancies.",
       });
     } catch (error) {
       console.error("Error recording offloading:", error);
@@ -194,139 +270,224 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
           {/* Left Column */}
           <div className="space-y-4">
-            <h3 className="text-md font-semibold">Load Information</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="loadedVolume">Volume Loaded (L)</Label>
-                <Input
-                  id="loadedVolume"
-                  type="number"
-                  value={loadedVolume}
-                  onChange={(e) => setLoadedVolume(Number(e.target.value))}
-                  placeholder="Enter volume loaded at depot"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="deliveredVolume">Volume Delivered (L)</Label>
-                <Input
-                  id="deliveredVolume"
-                  type="number"
-                  value={deliveredVolume}
-                  onChange={(e) => setDeliveredVolume(Number(e.target.value))}
-                  placeholder="Enter volume measured on arrival"
-                  className={cn(discrepancyWarning ? "border-orange-500" : "")}
-                />
-              </div>
-            </div>
-
-            {discrepancyWarning && (
-              <Alert variant="destructive" className="bg-orange-50 text-orange-800 border-orange-200">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Volume Discrepancy Detected</AlertTitle>
-                <AlertDescription>
-                  There is a {discrepancyPercent.toFixed(2)}% difference between loaded and delivered volumes. 
-                  Please double-check your measurements, but you may proceed with the offload.
-                </AlertDescription>
-              </Alert>
-            )}
+            <h3 className="text-md font-semibold">Purchase Order Details</h3>
             
             <div className="space-y-2">
-              <Label htmlFor="measuredBy">Measured By</Label>
-              <Input
-                id="measuredBy"
-                value={measuredBy}
-                onChange={(e) => setMeasuredBy(e.target.value)}
-                placeholder="Name of person who measured"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="measuredByRole">Role</Label>
-              <Select value={measuredByRole} onValueChange={setMeasuredByRole}>
+              <Label htmlFor="orderId">Select Purchase Order</Label>
+              <Select value={selectedOrderId} onValueChange={setSelectedOrderId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
+                  <SelectValue placeholder="Select a delivered order to offload" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Station Manager">Station Manager</SelectItem>
-                  <SelectItem value="Supervisor">Supervisor</SelectItem>
-                  <SelectItem value="Attendant">Attendant</SelectItem>
-                  <SelectItem value="Driver">Driver</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                  {deliveredOrders.length > 0 ? (
+                    deliveredOrders.map((order) => (
+                      <SelectItem key={order.id} value={order.id}>
+                        {order.poNumber} - {order.items[0]?.product || 'Unknown'} ({order.items[0]?.quantity.toLocaleString()} L)
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>No delivered orders pending offload</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
+
+            {selectedOrder && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="loadedVolume">Volume Loaded (L)</Label>
+                    <Input
+                      id="loadedVolume"
+                      type="number"
+                      value={loadedVolume}
+                      onChange={(e) => setLoadedVolume(Number(e.target.value))}
+                      placeholder="Enter volume loaded at depot"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="deliveredVolume">Volume Delivered (L)</Label>
+                    <Input
+                      id="deliveredVolume"
+                      type="number"
+                      value={deliveredVolume}
+                      onChange={(e) => setDeliveredVolume(Number(e.target.value))}
+                      placeholder="Enter volume measured on arrival"
+                      className={cn(discrepancyWarning ? "border-orange-500" : "")}
+                    />
+                  </div>
+                </div>
+
+                {driverDetails && (
+                  <div className="bg-slate-50 p-3 rounded-md border">
+                    <h4 className="text-sm font-medium flex items-center mb-2">
+                      <User className="h-4 w-4 mr-1" /> 
+                      Driver Information
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex flex-col">
+                        <span className="text-muted-foreground">Name:</span>
+                        <span>{driverDetails.name}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-muted-foreground">License:</span>
+                        <span>{driverDetails.licenseNumber}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-muted-foreground">Contact:</span>
+                        <span>{driverDetails.contact}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-muted-foreground">Driver Rating:</span>
+                        <div className="flex items-center">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <span key={i} className={`h-4 w-4 ${i < driverRating ? 'text-yellow-500' : 'text-gray-300'}`}>★</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedOrder.deliveryDetails?.truckId && (
+                  <div className="bg-slate-50 p-3 rounded-md border">
+                    <h4 className="text-sm font-medium flex items-center mb-2">
+                      <Truck className="h-4 w-4 mr-1" /> 
+                      Truck Information
+                    </h4>
+                    <div className="text-sm">
+                      <p>Order being offloaded from truck assigned to PO #{selectedOrder.poNumber}</p>
+                    </div>
+                  </div>
+                )}
+
+                {discrepancyWarning && (
+                  <Alert variant="warning" className="bg-orange-50 text-orange-800 border-orange-200">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Volume Discrepancy Detected</AlertTitle>
+                    <AlertDescription>
+                      There is a {discrepancyPercent.toFixed(2)}% difference between loaded and delivered volumes. 
+                      Please double-check your measurements, but you may proceed with the offload.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                <div className="space-y-2">
+                  <Label htmlFor="measuredBy">Measured By</Label>
+                  <Input
+                    id="measuredBy"
+                    value={measuredBy}
+                    onChange={(e) => setMeasuredBy(e.target.value)}
+                    placeholder="Name of person who measured"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="measuredByRole">Role</Label>
+                  <Select value={measuredByRole} onValueChange={setMeasuredByRole}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Station Manager">Station Manager</SelectItem>
+                      <SelectItem value="Supervisor">Supervisor</SelectItem>
+                      <SelectItem value="Attendant">Attendant</SelectItem>
+                      <SelectItem value="Driver">Driver</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
           </div>
           
           {/* Right Column */}
           <div className="space-y-4">
             <h3 className="text-md font-semibold">Tank Information</h3>
             
-            <div className="space-y-2">
-              <Label htmlFor="tankId">Select Tank</Label>
-              <Select value={tankId} onValueChange={setTankId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select tank to offload to" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableTanks.length > 0 ? (
-                    availableTanks.map(tank => (
-                      <SelectItem key={tank.id} value={tank.id}>
-                        {tank.name} - {tank.currentVolume}/{tank.capacity}L ({((tank.currentVolume / tank.capacity) * 100).toFixed(1)}% full)
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>No compatible tanks available</SelectItem>
+            {selectedOrder && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="tankId">Select Tank</Label>
+                  <Select value={tankId} onValueChange={setTankId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select tank to offload to" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTanks.length > 0 ? (
+                        availableTanks.map(tank => (
+                          <SelectItem key={tank.id} value={tank.id}>
+                            {tank.name} - {tank.currentVolume}/{tank.capacity}L ({((tank.currentVolume / tank.capacity) * 100).toFixed(1)}% full)
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>No compatible tanks available</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="initialVolume">Initial Tank Volume (L)</Label>
+                    <Input
+                      id="initialVolume"
+                      type="number"
+                      value={initialTankVolume}
+                      readOnly
+                      className="bg-gray-50"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="finalVolume">Final Tank Volume (L)</Label>
+                    <Input
+                      id="finalVolume"
+                      type="number"
+                      value={finalTankVolume}
+                      readOnly
+                      className="bg-gray-50"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="productType">Product Type</Label>
+                  <Input
+                    id="productType"
+                    value={productType}
+                    readOnly
+                    className="bg-gray-50"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Add any notes about this offloading (optional)"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="bg-blue-50 p-3 rounded-md border border-blue-100 mt-4">
+                  <h4 className="text-sm font-medium mb-2 text-blue-700">Offloading Summary</h4>
+                  {tankId && (
+                    <ul className="text-sm space-y-1 text-blue-600">
+                      <li>• Purchase Order: {selectedOrder.poNumber}</li>
+                      <li>• Product: {productType}</li>
+                      <li>• Volume Expected: {loadedVolume.toLocaleString()} L</li>
+                      <li>• Volume Delivered: {deliveredVolume.toLocaleString()} L</li>
+                      <li>• Discrepancy: {discrepancyPercent.toFixed(2)}%</li>
+                      <li>• Status: {discrepancyWarning ? 'Flagged' : 'Normal'}</li>
+                    </ul>
                   )}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="initialVolume">Initial Tank Volume (L)</Label>
-                <Input
-                  id="initialVolume"
-                  type="number"
-                  value={initialTankVolume}
-                  readOnly
-                  className="bg-gray-50"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="finalVolume">Final Tank Volume (L)</Label>
-                <Input
-                  id="finalVolume"
-                  type="number"
-                  value={finalTankVolume}
-                  readOnly
-                  className="bg-gray-50"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="productType">Product Type</Label>
-              <Input
-                id="productType"
-                value={productType}
-                readOnly
-                className="bg-gray-50"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Add any notes about this offloading (optional)"
-                rows={3}
-              />
-            </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
         
@@ -338,7 +499,7 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit}>
+            <Button onClick={handleSubmit} disabled={!selectedOrderId}>
               Record Offloading
             </Button>
           </div>
