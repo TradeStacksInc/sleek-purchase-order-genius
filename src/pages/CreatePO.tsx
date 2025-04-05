@@ -191,12 +191,12 @@ const CreatePO: React.FC = () => {
         .filter(([_, value]) => value)
         .map(([key]) => key as Product);
 
+      // Fix 1: Make sure we only use properties that exist in the Supplier type
       const newSupplier = addSupplier({
         id: uuidv4(),
         name: supplierData.name,
         contact: supplierData.contact,
-        address: supplierData.address,
-        regNumber: supplierData.regNumber,
+        address: supplierData.address, // Fix 2: Ensure address is included
         email: supplierData.email,
         supplierType: supplierData.supplierType,
         contactPerson: supplierData.contactPerson,
@@ -229,7 +229,8 @@ const CreatePO: React.FC = () => {
         supplier: {
           id: newSupplier.id,
           name: newSupplier.name,
-          contact: newSupplier.contact
+          contact: newSupplier.contact,
+          address: newSupplier.address // Fix 3: Include address in the supplier reference
         },
         company: {
           ...company
@@ -530,7 +531,8 @@ const CreatePO: React.FC = () => {
               <Label>Payment Terms</Label>
               <Select 
                 value={paymentTerm}
-                onValueChange={setPaymentTerm}
+                // Fix 4: Cast the setPaymentTerm function to handle string type
+                onValueChange={(value: any) => setPaymentTerm(value as PaymentTerm)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment terms" />
