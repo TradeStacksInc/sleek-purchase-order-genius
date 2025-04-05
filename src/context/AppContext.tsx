@@ -255,8 +255,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     purchaseOrders, persistentSetPurchaseOrders,
     drivers, persistentSetDrivers,
     trucks, persistentSetTrucks, 
-    persistentSetLogs,
-    gpsData, persistentSetGPSData
+    setLogs,
+    gpsData, setGpsData,
+    setActivityLogs
   );
   
   const aiActions = useAIActions(
@@ -294,30 +295,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     persistentSetActivityLogs
   );
 
-  const tankActions = useTankActions(
-    tanks, persistentSetTanks,
-    persistentSetActivityLogs
-  );
-
-  const handleResetDatabase = (includeSeedData = false) => {
-    resetDatabase(includeSeedData);
-    
-    window.location.reload();
-  };
-
-  const handleExportDatabase = () => {
-    return exportDatabase();
-  };
-
-  const handleImportDatabase = (jsonData: string) => {
-    const success = importDatabase(jsonData);
-    
-    if (success) {
-      window.location.reload();
-    }
-    
-    return success;
-  };
+  const tankActionsMethods = useTankActions(tanks, setTanks, setActivityLogs);
 
   const contextValue: AppContextType = {
     purchaseOrders,
@@ -346,10 +324,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ...shiftActions,
     ...saleActions,
     ...priceActions,
-    ...tankActions,
-    resetDatabase: handleResetDatabase,
-    exportDatabase: handleExportDatabase,
-    importDatabase: handleImportDatabase
+    ...tankActionsMethods
   };
 
   return (

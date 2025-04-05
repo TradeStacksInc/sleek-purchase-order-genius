@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +43,7 @@ interface RouteLocation {
 }
 
 const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
-  const { getDriverById, getTruckById } = useApp();
+  const { getDriverById, getTruckById, completeDelivery } = useApp();
   const { toast } = useToast();
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
@@ -161,23 +160,16 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
   };
 
   const getSafetyRating = (order: PurchaseOrder): number => {
-    // Calculate based on:
-    // 1. Presence of incidents (negative impact)
-    // 2. Discrepancy percentage (negative impact)
-    // 3. On-time delivery (positive impact)
     let rating = 4.5; // Default good rating
     
     if (order.incidents && order.incidents.length > 0) {
-      // Each incident reduces rating
       rating -= order.incidents.length * 0.5;
     }
     
     if (order.offloadingDetails?.discrepancyPercentage) {
-      // Discrepancy reduces rating
       rating -= order.offloadingDetails.discrepancyPercentage > 3 ? 1 : 0.5;
     }
     
-    // Ensure rating is between 1 and 5
     return Math.max(1, Math.min(5, rating));
   };
 
@@ -217,6 +209,14 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
 
   const handleViewDetails = (order: PurchaseOrder) => {
     setExpandedCardId(expandedCardId === order.id ? null : order.id);
+  };
+
+  const handleCompleteDelivery = (orderId: string) => {
+    completeDelivery(orderId);
+    toast({
+      title: "Delivery Completed",
+      description: "The delivery has been marked as complete. You can now offload the product to tanks.",
+    });
   };
   
   if (deliveries.length === 0) {
@@ -294,7 +294,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
             key={order.id} 
             className={`overflow-hidden transition-all duration-200 hover:shadow-md ${cardColorClass}`}
           >
-            {/* Order Overview Section */}
             <CardHeader className="p-5 bg-gradient-to-r from-gray-50 to-white">
               <div className="flex flex-col md:flex-row md:items-center gap-4">
                 <div className="flex items-center gap-3">
@@ -366,10 +365,8 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
               </div>
             </CardHeader>
             
-            {/* Main Content Area */}
             <CardContent className="p-0">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-5 bg-white">
-                {/* Vehicle & Load Information Card */}
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center">
@@ -432,7 +429,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   </CardContent>
                 </Card>
                 
-                {/* Timing & Progress Card */}
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center">
@@ -519,7 +515,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   </CardContent>
                 </Card>
                 
-                {/* Incidents and Actions Card */}
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center">
@@ -529,8 +524,19 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-3">
-                      {/* Action Buttons */}
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {delivery.status === 'in_transit' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full gap-1 border-green-200 hover:bg-green-50 text-green-600"
+                            onClick={() => handleCompleteDelivery(order.id)}
+                          >
+                            <Truck className="h-4 w-4" />
+                            <span>Complete Delivery</span>
+                          </Button>
+                        )}
+                        
                         {delivery.status === 'delivered' && !offloading && (
                           <OffloadingDialog orderId={order.id}>
                             <Button 
@@ -568,7 +574,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                         )}
                       </div>
                       
-                      {/* Incidents Section */}
                       <div>
                         <h4 className="text-xs text-muted-foreground uppercase mb-2">Incidents</h4>
                         {order.incidents && order.incidents.length > 0 ? (
@@ -603,7 +608,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                 </Card>
               </div>
               
-              {/* Route Tracking Map - Expandable */}
               {isExpanded && (
                 <div className="p-5 bg-gray-50 border-t">
                   <div className="mb-3 flex justify-between items-center">
@@ -613,10 +617,8 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                     </h3>
                   </div>
                   
-                  {/* Route Progress Visualization */}
                   <div className="bg-white p-5 rounded-lg shadow-sm">
                     <div className="relative mb-8">
-                      {/* Progress Bar with Truck Position */}
                       <div className="relative pt-1 mb-8">
                         <Progress 
                           value={progressPercentage} 
@@ -633,7 +635,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                         </div>
                       </div>
                       
-                      {/* Waypoints with Weather and Traffic */}
                       <div className="flex justify-between mt-8">
                         {waypoints.map((waypoint, index) => (
                           <div key={index} className="flex flex-col items-center max-w-[100px]">
@@ -652,7 +653,6 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                       </div>
                     </div>
                     
-                    {/* Distance and Time Stats */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center mt-8">
                       <div className="bg-gray-50 rounded-md p-3">
                         <div className="text-sm font-medium text-muted-foreground">Total Distance</div>

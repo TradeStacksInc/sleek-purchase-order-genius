@@ -50,9 +50,40 @@ export const useLogActions = (
     return getPaginatedData(activityLogs, params || { page: 1, limit: 10 });
   };
 
+  const recordSystemActivity = (
+    entityType: string,
+    entityId: string,
+    action: string,
+    details: string,
+    metadata?: Record<string, any>
+  ): ActivityLog => {
+    const newActivityLog: ActivityLog = {
+      id: `activity-${uuidv4()}`,
+      entityType: entityType as any,
+      entityId,
+      action: action as any,
+      details,
+      user: 'Current User', // In a real app, get from auth
+      timestamp: new Date(),
+      ...(metadata ? { metadata } : {})
+    };
+    
+    const updatedActivityLogs = [newActivityLog, ...activityLogs];
+    setActivityLogs(updatedActivityLogs);
+    saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, updatedActivityLogs);
+    
+    return newActivityLog;
+  };
+
+  const recordUserAction = (action: string, details: string): ActivityLog => {
+    return recordSystemActivity('staff', 'current-user', action, details);
+  };
+
   return {
     getLogsByOrderId,
     logAIInteraction,
-    getActivityLogs
+    getActivityLogs,
+    recordSystemActivity,
+    recordUserAction
   };
 };

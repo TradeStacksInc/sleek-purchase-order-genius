@@ -142,22 +142,29 @@ export const useTankActions = (
       });
       
       if (updatedTank) {
-        // Log the action
+        // Log the action with more detailed information
         const newActivityLog: ActivityLog = {
           id: `log-${uuidv4()}`,
           entityType: 'tank' as 'tank',
           entityId: updatedTank.id,
           action: 'update',
-          details: `Offloaded ${volume} liters of ${productType} to tank: ${updatedTank.name}`,
+          details: `Offloaded ${volume.toLocaleString()} liters of ${productType} to tank: ${updatedTank.name}. New volume: ${updatedTank.currentVolume.toLocaleString()}/${updatedTank.capacity.toLocaleString()} liters (${((updatedTank.currentVolume / updatedTank.capacity) * 100).toFixed(1)}% full)`,
           user: 'Current User',
-          timestamp: new Date()
+          timestamp: new Date(),
+          metadata: {
+            previousVolume: updatedTank.currentVolume - volume,
+            addedVolume: volume,
+            newVolume: updatedTank.currentVolume,
+            productType,
+            operationType: 'offloading'
+          }
         };
         
         setActivityLogs(prev => [newActivityLog, ...prev]);
         
         toast({
           title: "Tank Refilled",
-          description: `${updatedTank.name} has been refilled with ${volume} liters of ${productType}.`,
+          description: `${updatedTank.name} has been refilled with ${volume.toLocaleString()} liters of ${productType}.`,
         });
       }
       
@@ -173,11 +180,49 @@ export const useTankActions = (
     }
   };
 
+  const createEmptyTank = (name: string, capacity: number, productType: 'PMS' | 'AGO' | 'DPK'): Tank => {
+    const tankData: Omit<Tank, 'id'> = {
+      name,
+      capacity,
+      currentVolume: 0,
+      productType,
+      minVolume: capacity * 0.1, // 10% of capacity
+      status: 'operational',
+      connectedDispensers: []
+    };
+    
+    return addTank(tankData);
+  };
+
+  const clearAllTanks = (): void => {
+    setTanks([]);
+    
+    // Log the action
+    const newActivityLog: ActivityLog = {
+      id: `log-${uuidv4()}`,
+      entityType: 'tank',
+      entityId: 'all',
+      action: 'delete',
+      details: `Cleared all tanks from the system`,
+      user: 'Current User',
+      timestamp: new Date()
+    };
+    
+    setActivityLogs(prev => [newActivityLog, ...prev]);
+    
+    toast({
+      title: "Tanks Cleared",
+      description: "All tanks have been removed from the system.",
+    });
+  };
+
   return {
     addTank,
     updateTank,
     getTankById,
     getAllTanks,
-    recordOffloadingToTank
+    recordOffloadingToTank,
+    createEmptyTank,
+    clearAllTanks
   };
 };

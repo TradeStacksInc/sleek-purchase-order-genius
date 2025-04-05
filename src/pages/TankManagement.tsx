@@ -1,6 +1,7 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useEmptyTankInitializer } from '@/hooks/useEmptyTankInitializer';
 import { 
   Card, 
   CardContent, 
@@ -14,50 +15,30 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  LineChart, 
-  Line, 
-  CartesianGrid, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
-  Legend, 
-  BarChart, 
-  Bar 
-} from 'recharts';
+import { PieChart, Pie, Cell, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { format } from 'date-fns';
 import { Tank } from '@/types';
 
-// Reset the tank management data to fulfill the requirements
 const TankManagement: React.FC = () => {
   const { tanks, addTank, updateTank, getAllTanks, recordOffloadingToTank } = useApp();
   
-  // For new tank form
   const [newTankName, setNewTankName] = useState('');
   const [newTankCapacity, setNewTankCapacity] = useState(0);
   const [newTankProduct, setNewTankProduct] = useState<'PMS' | 'AGO' | 'DPK'>('PMS');
   const [newTankMinVolume, setNewTankMinVolume] = useState(0);
   
-  // For offloading form
   const [selectedTankId, setSelectedTankId] = useState('');
   const [offloadVolume, setOffloadVolume] = useState(0);
   const [isOffloadingModalOpen, setIsOffloadingModalOpen] = useState(false);
   
-  // For editing tank
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTank, setEditingTank] = useState<Tank | null>(null);
   
-  // For tabs
   const [activeTab, setActiveTab] = useState('overview');
-
-  // Create two empty PMS tanks for testing
+  
+  const { initialized } = useEmptyTankInitializer();
+  
   const createEmptyTanks = () => {
-    // First empty tank
     addTank({
       name: "PMS Tank 1",
       capacity: 50000,
@@ -68,7 +49,6 @@ const TankManagement: React.FC = () => {
       connectedDispensers: []
     });
 
-    // Second empty tank
     addTank({
       name: "PMS Tank 2",
       capacity: 50000,
@@ -79,7 +59,6 @@ const TankManagement: React.FC = () => {
       connectedDispensers: []
     });
 
-    // Also create an AGO tank that's 50% full
     addTank({
       name: "AGO Tank 1",
       capacity: 30000,
@@ -90,7 +69,6 @@ const TankManagement: React.FC = () => {
       connectedDispensers: []
     });
 
-    // And a DPK tank that's 25% full
     addTank({
       name: "DPK Tank 1",
       capacity: 20000,
@@ -101,7 +79,6 @@ const TankManagement: React.FC = () => {
       connectedDispensers: []
     });
 
-    // Add another PMS tank that's almost full
     addTank({
       name: "PMS Tank 3",
       capacity: 40000,
@@ -113,7 +90,6 @@ const TankManagement: React.FC = () => {
     });
   };
   
-  // Handle form submission for adding a new tank
   const handleAddTank = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -129,18 +105,15 @@ const TankManagement: React.FC = () => {
     
     addTank(newTank);
     
-    // Reset form fields
     setNewTankName('');
     setNewTankCapacity(0);
     setNewTankMinVolume(0);
   };
   
-  // Handle tank status update
   const handleStatusUpdate = (tankId: string, newStatus: "operational" | "maintenance" | "offline") => {
     updateTank(tankId, { status: newStatus });
   };
   
-  // Handle tank offloading
   const handleOffload = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -153,7 +126,6 @@ const TankManagement: React.FC = () => {
     }
   };
   
-  // Handle editing a tank
   const handleEditTank = (tankId: string) => {
     const tank = tanks.find(t => t.id === tankId);
     if (tank) {
@@ -162,7 +134,6 @@ const TankManagement: React.FC = () => {
     }
   };
   
-  // Handle saving edited tank
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -179,7 +150,6 @@ const TankManagement: React.FC = () => {
     }
   };
   
-  // Calculate tank statistics
   const tankStats = {
     totalCapacity: tanks.reduce((sum, tank) => sum + tank.capacity, 0),
     totalCurrentVolume: tanks.reduce((sum, tank) => sum + tank.currentVolume, 0),
@@ -192,12 +162,10 @@ const TankManagement: React.FC = () => {
     emptyTanksCount: tanks.filter(tank => tank.currentVolume <= tank.capacity * 0.1).length
   };
   
-  // Calculate tank capacity utilization percentage
   const capacityUtilization = tankStats.totalCapacity > 0 
     ? (tankStats.totalCurrentVolume / tankStats.totalCapacity) * 100 
     : 0;
   
-  // Data for product distribution pie chart
   const productDistributionData = [
     { 
       name: 'PMS', 
@@ -219,10 +187,8 @@ const TankManagement: React.FC = () => {
     }
   ];
   
-  // Chart colors
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
   
-  // Group tanks by product type for bar chart
   const tanksByProductData = [
     { 
       name: 'PMS', 
@@ -591,7 +557,6 @@ const TankManagement: React.FC = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Offloading Modal */}
       {isOffloadingModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <Card className="w-full max-w-md">
@@ -654,7 +619,6 @@ const TankManagement: React.FC = () => {
         </div>
       )}
       
-      {/* Edit Tank Modal */}
       {isEditModalOpen && editingTank && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <Card className="w-full max-w-md">

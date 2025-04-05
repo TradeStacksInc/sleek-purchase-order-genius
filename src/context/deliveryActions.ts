@@ -6,7 +6,8 @@ import {
   LogEntry, 
   GPSData,
   OffloadingDetails, 
-  Incident 
+  Incident,
+  ActivityLog
 } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
@@ -21,9 +22,32 @@ export const useDeliveryActions = (
   setTrucks: React.Dispatch<React.SetStateAction<any[]>>,
   setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>,
   gpsData: GPSData[],
-  setGpsData: React.Dispatch<React.SetStateAction<GPSData[]>>
+  setGpsData: React.Dispatch<React.SetStateAction<GPSData[]>>,
+  setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>
 ) => {
   const { toast } = useToast();
+
+  const logActivity = (
+    entityType: string, 
+    entityId: string,
+    action: string,
+    details: string,
+    metadata?: Record<string, any>
+  ) => {
+    const newActivityLog: ActivityLog = {
+      id: `log-${uuidv4()}`,
+      entityType: entityType as any,
+      entityId,
+      action: action as any,
+      details,
+      user: 'Current User',
+      timestamp: new Date(),
+      ...(metadata ? { metadata } : {})
+    };
+    
+    setActivityLogs(prev => [newActivityLog, ...prev]);
+    saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, prev => [newActivityLog, ...prev]);
+  };
   
   const assignDriverToOrder = (orderId: string, driverId: string, truckId: string) => {
     setPurchaseOrders((prevOrders) => {
@@ -70,6 +94,18 @@ export const useDeliveryActions = (
       saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
       return newLogs;
     });
+    
+    logActivity(
+      'purchase_order',
+      orderId,
+      'update',
+      `Driver and truck assigned to Purchase Order ${order.poNumber}`,
+      {
+        driverId,
+        truckId,
+        assignment: 'delivery'
+      }
+    );
     
     toast({
       title: "Driver Assigned",
@@ -140,13 +176,16 @@ export const useDeliveryActions = (
       updates.status === 'delivered' ? 'Delivered' :
       updates.status;
       
-    const newLog: LogEntry = {
-      id: `log-${Date.now()}`,
-      poId: orderId,
-      action: `Delivery status updated to ${statusText} for Purchase Order ${order.poNumber}`,
-      user: 'Current User',
-      timestamp: new Date(),
-    };
+    logActivity(
+      'purchase_order',
+      orderId,
+      'update',
+      `Delivery status updated to ${statusText} for Purchase Order ${order.poNumber}`,
+      {
+        status: updates.status,
+        updateType: 'delivery_status'
+      }
+    );
     
     setLogs((prevLogs) => {
       const newLogs = [newLog, ...prevLogs];
@@ -295,6 +334,22 @@ export const useDeliveryActions = (
       return newLogs;
     });
     
+    logActivity(
+      'purchase_order',
+      orderId,
+      'update',
+      `Product offloaded for PO #${order.poNumber}: ${offloadingData.deliveredVolume.toLocaleString()} liters to tank ${offloadingData.tankId}`,
+      {
+        loadedVolume: offloadingData.loadedVolume,
+        deliveredVolume: offloadingData.deliveredVolume,
+        tankId: offloadingData.tankId,
+        productType: offloadingData.productType,
+        discrepancyPercentage: Math.abs(((offloadingData.deliveredVolume - offloadingData.loadedVolume) / offloadingData.loadedVolume) * 100),
+        measuredBy: offloadingData.measuredBy,
+        measuredByRole: offloadingData.measuredByRole
+      }
+    );
+    
     toast({
       title: "Offloading Recorded",
       description: `Fuel offloading details for PO #${order.poNumber} have been recorded.`,
@@ -354,6 +409,19 @@ export const useDeliveryActions = (
       return newLogs;
     });
     
+    logActivity(
+      'incident',
+      incident.id,
+      'create',
+      `New ${incident.type} incident reported for Purchase Order ${order.poNumber}: ${incident.description.substring(0, 50)}${incident.description.length > 50 ? '...' : ''}`,
+      {
+        incidentType: incident.type,
+        severity: incident.severity,
+        impact: incident.impact,
+        poId: orderId
+      }
+    );
+    
     toast({
       title: "Incident Reported",
       description: `A new incident has been reported for PO #${order.poNumber}.`,
@@ -372,6 +440,21 @@ export const useDeliveryActions = (
       totalDistance,
     });
     
+    const order = purchaseOrders.find(po => po.id === orderId);
+    if (order) {
+      logActivity(
+        'purchase_order',
+        orderId,
+        'update',
+        `Delivery started for PO #${order.poNumber} - estimated distance: ${totalDistance} km`,
+        {
+          status: 'in_transit',
+          totalDistance,
+          departure: new Date()
+        }
+      );
+    }
+    
     return updatedOrder;
   };
 
@@ -386,6 +469,20 @@ export const useDeliveryActions = (
       destinationArrivalTime: new Date(),
       distanceCovered: totalDistance
     });
+    
+    if (order) {
+      logActivity(
+        'purchase_order',
+        orderId,
+        'update',
+        `Delivery completed for PO #${order.poNumber} - arrived at destination after covering ${totalDistance} km`,
+        {
+          status: 'delivered',
+          totalDistance,
+          arrival: new Date()
+        }
+      );
+    }
     
     return updatedOrder;
   };
