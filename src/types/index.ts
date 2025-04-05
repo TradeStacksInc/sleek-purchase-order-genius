@@ -44,6 +44,7 @@ export interface Driver {
   emergencyContact?: string;
   licenseCategoryType?: string;
   licenseExpiryDate?: Date;
+  rating?: number;
 }
 
 export interface Truck {
@@ -99,6 +100,7 @@ export interface DeliveryDetails {
   gpsDeviceId?: string;
   driverName?: string;
   vehicleDetails?: string;
+  isOffloaded?: boolean;
 }
 
 export interface StatusHistoryEntry {
@@ -125,6 +127,7 @@ export interface OffloadingDetails {
   timestamp: Date;
   tankId?: string;
   productType?: Product;
+  driverRating?: number;
 }
 
 export interface Incident {
@@ -180,8 +183,6 @@ export interface AIInsight {
   isRead: boolean;
 }
 
-// New types for expanded database structure
-
 export interface Staff {
   id: string;
   name: string;
@@ -194,6 +195,7 @@ export interface Staff {
   status: 'active' | 'inactive' | 'suspended';
   shifts?: Shift[];
   sales?: Sale[];
+  currentShift?: string;
 }
 
 export interface Dispenser {
@@ -205,6 +207,10 @@ export interface Dispenser {
   nextCalibrationDate?: Date;
   totalVolumeSold: number;
   connectedTankId?: string;
+  isActive?: boolean;
+  currentShiftVolume?: number;
+  salesAmount?: number;
+  shift?: 'morning' | 'afternoon';
 }
 
 export interface Shift {
@@ -216,6 +222,8 @@ export interface Shift {
   notes?: string;
   salesVolume?: number;
   salesAmount?: number;
+  type?: 'morning' | 'afternoon';
+  dispenserId?: string;
 }
 
 export interface Sale {
@@ -231,6 +239,7 @@ export interface Sale {
   receiptNumber?: string;
   customerId?: string;
   shiftId?: string;
+  shift?: 'morning' | 'afternoon';
 }
 
 export interface PriceRecord {
@@ -243,6 +252,7 @@ export interface PriceRecord {
   isActive: boolean;
   setBy: string;
   notes?: string;
+  purchaseOrderId?: string;
 }
 
 export interface ActivityLog {
@@ -267,4 +277,5 @@ export interface Tank {
   minVolume: number;
   status: 'operational' | 'maintenance' | 'offline';
   connectedDispensers: string[];
+  isActive?: boolean;
 }

@@ -1,4 +1,3 @@
-
 import { 
   LogEntry, 
   PurchaseOrder, 
@@ -95,8 +94,17 @@ export interface AppContextType {
   // Dispenser actions
   addDispenser: (dispenser: Omit<Dispenser, 'id'>) => Dispenser;
   updateDispenser: (id: string, data: Partial<Dispenser>) => Dispenser | undefined;
+  deleteDispenser: (id: string) => boolean;
   getDispenserById: (id: string) => Dispenser | undefined;
   getAllDispensers: (params?: PaginationParams) => PaginatedResult<Dispenser>;
+  setDispenserActive: (id: string, isActive: boolean) => Dispenser | undefined;
+  recordDispensing: (id: string, volume: number, staffId: string, shiftId: string) => boolean;
+  resetDispenserShiftStats: (id: string) => Dispenser | undefined;
+  getDispenserSalesStats: (id: string, dateRange?: { start: Date; end: Date }) => {
+    volume: number;
+    amount: number;
+    transactions: number;
+  };
   
   // Shift actions
   startShift: (staffId: string) => Shift;
@@ -123,7 +131,13 @@ export interface AppContextType {
   // Tank actions
   addTank: (tank: Omit<Tank, 'id'>) => Tank;
   updateTank: (id: string, data: Partial<Tank>) => Tank | undefined;
+  deleteTank: (id: string) => boolean;
   getTankById: (id: string) => Tank | undefined;
   getAllTanks: () => Tank[];
   recordOffloadingToTank: (tankId: string, volume: number, productType: string) => Tank | undefined;
+  createEmptyTank: (name: string, capacity: number, productType: 'PMS' | 'AGO' | 'DPK') => Tank;
+  clearAllTanks: () => void;
+  connectTankToDispenser: (tankId: string, dispenserId: string) => boolean;
+  disconnectTankFromDispenser: (tankId: string, dispenserId: string) => boolean;
+  setTankActive: (tankId: string, isActive: boolean) => Tank | undefined;
 }

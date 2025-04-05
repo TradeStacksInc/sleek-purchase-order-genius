@@ -79,7 +79,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
-  const persistentSetPurchaseOrders: typeof setPurchaseOrders = (value) => {
+  const persistentSetPurchaseOrders = (value) => {
     setPurchaseOrders((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newValue);
@@ -87,7 +87,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetLogs: typeof setLogs = (value) => {
+  const persistentSetLogs = (value) => {
     setLogs((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       saveToLocalStorage(STORAGE_KEYS.LOGS, newValue);
@@ -95,7 +95,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetSuppliers: typeof setSuppliers = (value) => {
+  const persistentSetSuppliers = (value) => {
     setSuppliers((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -105,7 +105,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetDrivers: typeof setDrivers = (value) => {
+  const persistentSetDrivers = (value) => {
     setDrivers((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -115,7 +115,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetTrucks: typeof setTrucks = (value) => {
+  const persistentSetTrucks = (value) => {
     setTrucks((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -125,7 +125,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetGPSData: typeof setGPSData = (value) => {
+  const persistentSetGPSData = (value) => {
     setGPSData((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -135,7 +135,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetAIInsights: typeof setAIInsights = (value) => {
+  const persistentSetAIInsights = (value) => {
     setAIInsights((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -145,7 +145,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetStaff: typeof setStaff = (value) => {
+  const persistentSetStaff = (value) => {
     setStaff((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -165,7 +165,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetShifts: typeof setShifts = (value) => {
+  const persistentSetShifts = (value) => {
     setShifts((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -175,7 +175,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetSales: typeof setSales = (value) => {
+  const persistentSetSales = (value) => {
     setSales((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -185,7 +185,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetPrices: typeof setPrices = (value) => {
+  const persistentSetPrices = (value) => {
     setPrices((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -195,7 +195,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetIncidents: typeof setIncidents = (value) => {
+  const persistentSetIncidents = (value) => {
     setIncidents((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -205,7 +205,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetActivityLogs: typeof setActivityLogs = (value) => {
+  const persistentSetActivityLogs = (value) => {
     setActivityLogs((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -215,7 +215,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const persistentSetTanks: typeof setTanks = (value) => {
+  const persistentSetTanks = (value) => {
     setTanks((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
@@ -272,9 +272,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     persistentSetActivityLogs
   );
 
+  const priceActions = usePriceActions(
+    prices, persistentSetPrices,
+    persistentSetActivityLogs
+  );
+
   const dispenserActions = useDispenserActions(
     dispensers, persistentSetDispensers,
-    persistentSetActivityLogs
+    persistentSetActivityLogs,
+    tanks, persistentSetTanks,
+    priceActions.getCurrentPrice,
+    shifts, sales
   );
 
   const shiftActions = useShiftActions(
@@ -290,12 +298,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     persistentSetActivityLogs
   );
 
-  const priceActions = usePriceActions(
-    prices, persistentSetPrices,
-    persistentSetActivityLogs
+  const tankActionsMethods = useTankActions(
+    tanks, persistentSetTanks, 
+    persistentSetActivityLogs,
+    dispensers, persistentSetDispensers
   );
-
-  const tankActionsMethods = useTankActions(tanks, persistentSetTanks, persistentSetActivityLogs);
 
   const contextValue: AppContextType = {
     purchaseOrders,

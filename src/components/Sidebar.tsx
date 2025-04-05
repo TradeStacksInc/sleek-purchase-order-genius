@@ -22,7 +22,8 @@ import {
   Tag,
   LineChart,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Tank
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -85,9 +86,9 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
           <nav className="px-2 space-y-1">
             <NavItem to="/" icon={<BarChart className="h-5 w-5" />} text="Dashboard" />
             
-            {/* Operations Section */}
+            {/* Purchase & Delivery Section */}
             <CollapsibleSection 
-              title="Operations" 
+              title="Purchase & Delivery" 
               isOpen={openSections.operations}
               onToggle={() => toggleSection('operations')}
             >
@@ -98,37 +99,28 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               <NavItem to="/offload-log" icon={<Droplet className="h-5 w-5" />} text="Offload Log" />
             </CollapsibleSection>
             
-            {/* Inventory Management Section */}
+            {/* Tank & Dispenser Management Section */}
             <CollapsibleSection 
-              title="Inventory Management" 
+              title="Storage & Dispensing" 
               isOpen={openSections.inventory}
               onToggle={() => toggleSection('inventory')}
             >
-              <NavItem to="/tank-management" icon={<Database className="h-5 w-5" />} text="Tank Management" />
-              <NavItem to="/dispenser-management" icon={<Fuel className="h-5 w-5" />} text="Dispenser Management" />
+              <NavItem to="/tank-management" icon={<Tank className="h-5 w-5" />} text="Tank Management" />
+              <NavItem to="/dispenser-management" icon={<Fuel className="h-5 w-5" />} text="Dispensers" />
+              <NavItem to="/price-management" icon={<Tag className="h-5 w-5" />} text="Price Management" />
             </CollapsibleSection>
             
-            {/* Analytics Section - New */}
+            {/* Sales & Shifts Section */}
             <CollapsibleSection 
-              title="Analytics" 
-              isOpen={openSections.analytics}
-              onToggle={() => toggleSection('analytics')}
-            >
-              <NavItem to="/delivery-analytics" icon={<LineChart className="h-5 w-5" />} text="Delivery Analytics" />
-            </CollapsibleSection>
-            
-            {/* Financial Section */}
-            <CollapsibleSection 
-              title="Financials" 
+              title="Sales & Shifts" 
               isOpen={openSections.financials}
               onToggle={() => toggleSection('financials')}
             >
-              <NavItem to="/financial-dashboard" icon={<BarChart2 className="h-5 w-5" />} text="Financial Dashboard" />
-              <NavItem to="/price-management" icon={<Tag className="h-5 w-5" />} text="Price Management" />
-              <NavItem to="/sales-recording" icon={<DollarSign className="h-5 w-5" />} text="Sales Recording" />
+              <NavItem to="/sales-recording" icon={<DollarSign className="h-5 w-5" />} text="Record Sales" />
+              <NavItem to="/financial-dashboard" icon={<BarChart2 className="h-5 w-5" />} text="Sales Reports" />
             </CollapsibleSection>
             
-            {/* Staff & Security Section */}
+            {/* Staff Management */}
             <CollapsibleSection 
               title="Staff & Security" 
               isOpen={openSections.staff}
@@ -139,14 +131,23 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               <NavItem to="/fraud-detection" icon={<Shield className="h-5 w-5" />} text="Fraud Detection" />
             </CollapsibleSection>
             
-            {/* Management Section */}
+            {/* Logistics Management */}
             <CollapsibleSection 
-              title="Management" 
+              title="Logistics" 
               isOpen={openSections.management}
               onToggle={() => toggleSection('management')}
             >
               <NavItem to="/manage-trucks" icon={<Truck className="h-5 w-5" />} text="Truck Management" />
               <NavItem to="/gps-tracking" icon={<Truck className="h-5 w-5" />} text="GPS Tracking" />
+            </CollapsibleSection>
+            
+            {/* Analytics Section */}
+            <CollapsibleSection 
+              title="Analytics" 
+              isOpen={openSections.analytics}
+              onToggle={() => toggleSection('analytics')}
+            >
+              <NavItem to="/delivery-analytics" icon={<LineChart className="h-5 w-5" />} text="Delivery Analytics" />
             </CollapsibleSection>
           </nav>
         </ScrollArea>
