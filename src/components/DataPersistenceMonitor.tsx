@@ -93,7 +93,8 @@ const DataPersistenceMonitor: React.FC = () => {
       toast({
         title: "Data Warning",
         description: "Local storage collections exist but appear to be empty.",
-        variant: "warning",
+        // Fix: Use "default" instead of "warning" since "warning" is not a valid variant
+        variant: "default",
         duration: 5000
       });
     }
