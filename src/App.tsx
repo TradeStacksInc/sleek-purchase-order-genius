@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProvider } from "./context/AppContext";
 import AIChatProvider from "./context/AIChatContext";
 import AppRoutes from "./components/AppRoutes";
+import AutoSave from "./components/AutoSave";
+import DataPersistenceMonitor from "./components/DataPersistenceMonitor";
 import { useEffect } from "react";
 import { setupStorageSync } from "./utils/storageSync";
 
@@ -20,9 +22,10 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
-  // Initialize storage sync on app load
+  // Initialize storage sync on app load, but with the fixed version that doesn't auto-refresh
   useEffect(() => {
     setupStorageSync();
+    console.info('Storage sync initialized without page refresh functionality');
   }, []);
   
   return (
@@ -33,6 +36,8 @@ const App = () => {
             <Toaster />
             <Sonner />
             <AppRoutes />
+            <AutoSave />
+            <DataPersistenceMonitor />
           </AIChatProvider>
         </TooltipProvider>
       </AppProvider>

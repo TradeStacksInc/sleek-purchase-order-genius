@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -36,6 +35,7 @@ interface SupplierData {
     AGO: boolean;
     DPK: boolean;
   };
+  paymentTerms?: PaymentTerm;
 }
 
 interface ValidationErrors {
@@ -56,7 +56,8 @@ const CreatePO: React.FC = () => {
   const [supplierData, setSupplierData] = useState<SupplierData>({
     name: '', contact: '', address: '', regNumber: '', depotLocation: '',
     supplierType: 'Independent', depotName: '', contactPerson: '', email: '',
-    products: { PMS: false, AGO: false, DPK: false }
+    products: { PMS: false, AGO: false, DPK: false },
+    paymentTerms: '50% Advance'
   });
 
   const [items, setItems] = useState<OrderItem[]>([
@@ -174,6 +175,8 @@ const CreatePO: React.FC = () => {
     return error ? <div className="text-sm text-red-500 mt-1">{error}</div> : null;
   };
 
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const { errors, isValid } = validateForm();
@@ -245,7 +248,9 @@ const CreatePO: React.FC = () => {
           title: "Success",
           description: `Purchase order ${newPO.poNumber} has been created`,
         });
-        navigate('/orders');
+        
+        setIsSubmitting(false);
+        setShowSuccessDialog(true);
       } else {
         throw new Error("Failed to create purchase order");
       }
@@ -256,13 +261,51 @@ const CreatePO: React.FC = () => {
         description: error instanceof Error ? error.message : "Failed to create purchase order",
         variant: "destructive"
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
     <div className="container mx-auto py-6 px-4">
+      {showSuccessDialog && (
+        <Card className="w-full max-w-5xl mx-auto mb-4 bg-green-50 border-green-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xl flex items-center gap-2">
+              <div className="bg-green-100 p-2 rounded-full">
+                <Receipt className="h-5 w-5 text-green-600" />
+              </div>
+              Purchase Order Created Successfully
+            </CardTitle>
+            <CardDescription>
+              Your purchase order has been created and saved
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="pt-2 flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowSuccessDialog(false);
+                setCompany({ name: '', address: '', contact: '', taxId: '' });
+                setSupplierData({
+                  name: '', contact: '', address: '', regNumber: '', depotLocation: '',
+                  supplierType: 'Independent', depotName: '', contactPerson: '', email: '',
+                  products: { PMS: false, AGO: false, DPK: false },
+                  paymentTerms: '50% Advance'
+                });
+                setItems([{ id: uuidv4(), product: 'PMS', quantity: 0, unitPrice: 0, totalPrice: 0 }]);
+                setPaymentTerm('50% Advance');
+                setDeliveryDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+              }}
+            >
+              Create Another
+            </Button>
+            <Button onClick={() => navigate('/orders')}>
+              View All Orders
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+      
       <Card className="w-full max-w-5xl mx-auto">
         <CardHeader className="border-b">
           <CardTitle className="text-2xl flex items-center gap-2">

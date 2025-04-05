@@ -42,10 +42,10 @@ export const saveToLocalStorage = <T>(key: string, data: T): boolean => {
       }
     }
     
-    // Broadcast the update to other tabs
+    // Broadcast the update to other tabs - without causing page reloads
     broadcastStorageUpdate(key);
     
-    console.info(`Successfully saved data to ${key} (${JSON.stringify(data).length} bytes)`);
+    console.info(`Successfully saved data to ${key} (${serializedData.length} bytes)`);
     return true;
   } catch (error) {
     // Handle storage quota exceeded error
@@ -59,7 +59,7 @@ export const saveToLocalStorage = <T>(key: string, data: T): boolean => {
   }
 };
 
-// Base retrieve function with error handling
+// Base retrieve function with error handling and improved logging
 export const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
   try {
     const serializedData = localStorage.getItem(key);
@@ -78,7 +78,7 @@ export const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
         return defaultValue;
       }
       
-      console.info(`Successfully loaded data from ${key} (${serializedData.length} bytes)`);
+      console.info(`Successfully loaded data from ${key} (${parsedData.length} items)`);
       return parsedData;
     } catch (parseError) {
       console.error(`Error parsing data from ${key}:`, parseError);

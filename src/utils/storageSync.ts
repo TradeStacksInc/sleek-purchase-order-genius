@@ -1,22 +1,22 @@
-
 import { StoredAppData } from './localStorage';
 
 /**
  * Utility for cross-tab synchronization of localStorage data
  */
 export const setupStorageSync = () => {
-  // Listen for storage events from other tabs
+  // Listen for storage events from other tabs, but don't reload the page
   window.addEventListener('storage', (event) => {
     if (event.key && event.key.startsWith('po_system_')) {
-      // Reload the page when storage changes in another tab
-      // This is a simple approach; a more sophisticated one would update only specific state
-      window.location.reload();
+      // Instead of reloading, we'll log the change
+      console.info('Storage updated in another tab:', event.key);
+      // In a production environment, we would dispatch an update event
+      // that components could listen to and refresh their state
     }
   });
 };
 
 /**
- * Broadcast a storage update to other tabs
+ * Broadcast a storage update to other tabs without causing page reloads
  * @param key The storage key that was updated
  */
 export const broadcastStorageUpdate = (key: string) => {
@@ -94,5 +94,4 @@ export const getStorageUsage = (): { used: number, total: number, percentage: nu
 export const optimizeStorage = () => {
   console.info('Optimizing localStorage...');
   // Implementation would depend on specific data structure and optimization needs
-  // This is a placeholder for future implementation
 };

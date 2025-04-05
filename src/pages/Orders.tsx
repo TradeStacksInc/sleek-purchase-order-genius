@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,30 +23,6 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { DateRange } from 'react-day-picker';
-import { DateRangePicker } from '@/components/DateRangePicker';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
-import StatusTracker from '@/components/PurchaseOrder/StatusTracker';
 
 type DateFilter = 'all' | 'today' | 'week' | 'month' | 'custom';
 
@@ -59,7 +34,6 @@ const Orders: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
   const itemsPerPage = 10;
 
-  // Filter orders based on selected date filter
   const filteredOrders = useMemo(() => {
     if (dateFilter === 'all') return purchaseOrders;
 
@@ -94,13 +68,11 @@ const Orders: React.FC = () => {
     });
   }, [purchaseOrders, dateFilter, dateRange]);
 
-  // Calculate pagination
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentOrders = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Handle page change
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
@@ -166,7 +138,6 @@ const Orders: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Order Status Preview - only shown when an order is selected */}
           {selectedOrder && (
             <div className="mb-6 border rounded-md p-4 bg-muted/30">
               <div className="flex justify-between items-center">
@@ -262,7 +233,10 @@ const Orders: React.FC = () => {
                     <PaginationItem key={page}>
                       <PaginationLink 
                         isActive={currentPage === page}
-                        onClick={() => handlePageChange(page)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePageChange(page);
+                        }}
                       >
                         {page}
                       </PaginationLink>
