@@ -175,6 +175,14 @@ export const useDeliveryActions = (
       updates.status === 'in_transit' ? 'In Transit' :
       updates.status === 'delivered' ? 'Delivered' :
       updates.status;
+    
+    const newLog: LogEntry = {
+      id: `log-${Date.now()}`,
+      poId: orderId,
+      action: `Delivery status updated to ${statusText} for Purchase Order ${order.poNumber}`,
+      user: 'Current User',
+      timestamp: new Date(),
+    };
       
     logActivity(
       'purchase_order',
@@ -409,9 +417,11 @@ export const useDeliveryActions = (
       return newLogs;
     });
     
+    const incidentId = `incident-${uuidv4().substring(0, 8)}`;
+    
     logActivity(
       'incident',
-      incident.id,
+      incidentId,
       'create',
       `New ${incident.type} incident reported for Purchase Order ${order.poNumber}: ${incident.description.substring(0, 50)}${incident.description.length > 50 ? '...' : ''}`,
       {

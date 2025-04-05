@@ -12,7 +12,7 @@ import { Database, AlertCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PurchaseOrder, Product, Tank } from '@/types';
-import IconWithBackground from '../IconWithBackground';
+import IconWithBackground from '@/components/IconWithBackground';
 import { cn } from '@/lib/utils';
 
 interface OffloadingDialogProps {
@@ -222,7 +222,7 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId, children }
             </div>
 
             {discrepancyWarning && (
-              <Alert variant="warning" className="bg-orange-50 text-orange-800 border-orange-200">
+              <Alert variant="destructive" className="bg-orange-50 text-orange-800 border-orange-200">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Volume Discrepancy Detected</AlertTitle>
                 <AlertDescription>

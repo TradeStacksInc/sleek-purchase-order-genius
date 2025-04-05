@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 
 export const useEmptyTankInitializer = () => {
-  const { getAllTanks, createEmptyTank, clearAllTanks } = useApp();
+  const { getAllTanks, addTank, updateTank } = useApp();
   const [initialized, setInitialized] = useState(false);
   
   useEffect(() => {
@@ -16,27 +16,67 @@ export const useEmptyTankInitializer = () => {
       );
       
       if (emptyPMSTanks.length < 2) {
-        // If we don't have enough empty PMS tanks, clear all tanks and create new ones
-        clearAllTanks();
+        // If we don't have enough empty PMS tanks, create new ones
         
         // Create 2 empty PMS tanks
-        createEmptyTank("PMS Tank 1", 20000, "PMS");
-        createEmptyTank("PMS Tank 2", 25000, "PMS");
+        const tank1 = addTank({
+          name: "PMS Tank 1",
+          capacity: 20000,
+          currentVolume: 0,
+          productType: 'PMS',
+          minVolume: 2000, // 10% of capacity
+          status: 'operational',
+          connectedDispensers: []
+        });
+        
+        const tank2 = addTank({
+          name: "PMS Tank 2",
+          capacity: 25000,
+          currentVolume: 0,
+          productType: 'PMS',
+          minVolume: 2500, // 10% of capacity
+          status: 'operational',
+          connectedDispensers: []
+        });
         
         // Create 1 partially filled PMS tank
-        const tank3 = createEmptyTank("PMS Tank 3", 30000, "PMS");
-        useApp().updateTank(tank3.id, { currentVolume: 15000 });
+        const tank3 = addTank({
+          name: "PMS Tank 3",
+          capacity: 30000,
+          currentVolume: 15000,
+          productType: 'PMS',
+          minVolume: 3000, // 10% of capacity
+          status: 'operational',
+          connectedDispensers: []
+        });
         
         // Create AGO and DPK tanks
-        createEmptyTank("AGO Tank 1", 15000, "AGO");
-        createEmptyTank("DPK Tank 1", 10000, "DPK");
+        addTank({
+          name: "AGO Tank 1",
+          capacity: 15000,
+          currentVolume: 0,
+          productType: 'AGO',
+          minVolume: 1500, // 10% of capacity
+          status: 'operational',
+          connectedDispensers: []
+        });
+        
+        addTank({
+          name: "DPK Tank 1",
+          capacity: 10000,
+          currentVolume: 0,
+          productType: 'DPK',
+          minVolume: 1000, // 10% of capacity
+          status: 'operational',
+          connectedDispensers: []
+        });
       }
       
       setInitialized(true);
     };
     
     checkAndInitializeTanks();
-  }, [getAllTanks, createEmptyTank, clearAllTanks]);
+  }, [getAllTanks, addTank, updateTank]);
   
   return { initialized };
 };
