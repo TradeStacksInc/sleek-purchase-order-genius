@@ -1,3 +1,308 @@
+
+import React, { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useApp } from '@/context/AppContext';
+import { v4 as uuidv4 } from 'uuid';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  CalendarIcon, Trash2, Plus, ClipboardList, Building2, Truck, Receipt, CreditCard,
+  XCircle, Phone, Mail, MapPin, User, Fuel, Hash as HashIcon, Warehouse as WarehouseIcon
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { OrderItem, PaymentTerm, Product, Company, Supplier, PurchaseOrder } from '@/types';
+import { useToast } from '@/hooks/use-toast';
+import debounce from 'lodash/debounce';
+
+interface SupplierData {
+  name: string;
+  contact: string;
+  address: string;
+  regNumber: string;
+  depotLocation: string;
+  supplierType: 'Major' | 'Independent' | 'Government';
+  depotName: string;
+  contactPerson: string;
+  email: string;
+  products: {
+    PMS: boolean;
+    AGO: boolean;
+    DPK: boolean;
+  };
+}
+
+interface ValidationErrors {
+  company: { [key: string]: string | undefined };
+  supplier: { [key: string]: string | undefined };
+  items: { [key: string]: string | undefined };
+}
+
+const CreatePO: React.FC = () => {
+  const navigate = useNavigate();
+  const { addPurchaseOrder, addSupplier } = useApp();
+  const { toast } = useToast();
+
+  const [company, setCompany] = useState<Company>({
+    name: '', address: '', contact: '', taxId: '',
+  });
+  
+  const [supplierData, setSupplierData] = useState<SupplierData>({
+    name: '', contact: '', address: '', regNumber: '', depotLocation: '',
+    supplierType: 'Independent', depotName: '', contactPerson: '', email: '',
+    products: { PMS: false, AGO: false, DPK: false }
+  });
+
+  const [items, setItems] = useState<OrderItem[]>([
+    { id: uuidv4(), product: 'PMS', quantity: 0, unitPrice: 0, totalPrice: 0 },
+  ]);
+  
+  const [paymentTerm, setPaymentTerm] = useState<PaymentTerm>('50% Advance');
+  const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({
+    company: {}, supplier: {}, items: {}
+  });
+
+  const grandTotal = useMemo(() => {
+    return items.reduce((sum, item) => sum + item.totalPrice, 0);
+  }, [items]);
+
+  const addItem = () => {
+    setItems(prev => [...prev, {
+      id: uuidv4(), product: 'PMS', quantity: 0, unitPrice: 0, totalPrice: 0
+    }]);
+  };
+
+  const removeItem = (id: string) => {
+    if (items.length > 1) {
+      setItems(prev => prev.filter(item => item.id !== id));
+    }
+  };
+
+  const debouncedUpdateItem = useCallback(
+    debounce((id: string, field: keyof OrderItem, value: any) => {
+      setItems(prev => prev.map(item => {
+        if (item.id !== id) return item;
+        const updatedItem = { ...item, [field]: value };
+        if (field === 'quantity' || field === 'unitPrice') {
+          updatedItem.totalPrice = updatedItem.quantity * updatedItem.unitPrice;
+        }
+        return updatedItem;
+      }));
+    }, 300),
+    []
+  );
+
+  const updateCompany = (field: keyof Company, value: string) => {
+    setCompany(prev => ({ ...prev, [field]: value }));
+    setValidationErrors(prev => ({
+      ...prev,
+      company: { ...prev.company, [field]: undefined }
+    }));
+  };
+
+  const updateSupplier = (field: keyof SupplierData, value: any) => {
+    if (field === 'products') {
+      setSupplierData(prev => ({
+        ...prev,
+        products: { ...prev.products, [value.product]: value.checked }
+      }));
+    } else {
+      setSupplierData(prev => ({ ...prev, [field]: value }));
+    }
+    setValidationErrors(prev => ({
+      ...prev,
+      supplier: { ...prev.supplier, [field]: undefined }
+    }));
+  };
+
+  const validateForm = () => {
+    const errors: ValidationErrors = { company: {}, supplier: {}, items: {} };
+    const phoneRegex = /^\+?[\d\s-]{10,}$/;
+    const emailRegex = /^\S+@\S+\.\S+$/;
+
+    // Company validation
+    if (!company.name) errors.company.name = "Company name is required";
+    if (!company.address) errors.company.address = "Company address is required";
+    if (!company.contact || !phoneRegex.test(company.contact)) {
+      errors.company.contact = "Valid phone number is required";
+    }
+    if (!company.taxId) errors.company.taxId = "Company tax ID is required";
+
+    // Supplier validation
+    if (!supplierData.name) errors.supplier.name = "Supplier name is required";
+    if (!supplierData.contact || !phoneRegex.test(supplierData.contact)) {
+      errors.supplier.contact = "Valid phone number is required";
+    }
+    if (!supplierData.address) errors.supplier.address = "Address is required";
+    if (supplierData.email && !emailRegex.test(supplierData.email)) {
+      errors.supplier.email = "Valid email address is required";
+    }
+
+    // Items validation
+    items.forEach((item, index) => {
+      if (!item.product) errors.items[`product_${index}`] = "Product is required";
+      if (item.quantity < 1000) {
+        errors.items[`quantity_${index}`] = "Minimum order is 1000 liters";
+      }
+      if (item.unitPrice <= 0) {
+        errors.items[`unitPrice_${index}`] = "Price must be greater than 0";
+      }
+    });
+
+    if (!deliveryDate) errors.items.deliveryDate = "Delivery date is required";
+
+    return {
+      errors,
+      isValid: Object.values(errors).every(section => 
+        Object.keys(section).length === 0
+      )
+    };
+  };
+
+  const getFieldError = (section: keyof ValidationErrors, field: string) => {
+    const error = validationErrors[section][field];
+    return error ? <div className="text-sm text-red-500 mt-1">{error}</div> : null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { errors, isValid } = validateForm();
+    setValidationErrors(errors);
+
+    if (!isValid) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors in the form",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const selectedProducts = Object.entries(supplierData.products)
+        .filter(([_, value]) => value)
+        .map(([key]) => key as Product);
+
+      // Create supplier object conforming to Supplier type
+      const newSupplier: Supplier = {
+        id: uuidv4(),
+        name: supplierData.name,
+        contact: supplierData.contact,
+        address: supplierData.address,
+        email: supplierData.email,
+        supplierType: supplierData.supplierType,
+        depotName: supplierData.depotName,
+        products: selectedProducts
+      };
+
+      // Add the supplier and get the result
+      const savedSupplier = addSupplier(newSupplier);
+      
+      if (!savedSupplier) {
+        throw new Error("Failed to create supplier");
+      }
+
+      // Create PO object
+      const newPO: PurchaseOrder = {
+        id: uuidv4(),
+        poNumber: `PO-${Date.now().toString().substring(6)}`,
+        company: { ...company },
+        supplier: savedSupplier,
+        items: [...items],
+        grandTotal: grandTotal,
+        paymentTerm: paymentTerm,
+        deliveryDate: deliveryDate as Date,
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        statusHistory: [
+          {
+            id: uuidv4(),
+            status: 'pending',
+            timestamp: new Date(),
+            user: 'Current User',
+            note: 'PO created'
+          }
+        ]
+      };
+
+      // Add the PO
+      const success = addPurchaseOrder(newPO);
+      
+      if (success) {
+        toast({
+          title: "Success",
+          description: `Purchase order ${newPO.poNumber} has been created`,
+        });
+        navigate('/orders');
+      } else {
+        throw new Error("Failed to create purchase order");
+      }
+    } catch (error) {
+      console.error("Error creating PO:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create purchase order",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="container mx-auto py-6 px-4">
+      <Card className="w-full max-w-5xl mx-auto">
+        <CardHeader className="border-b">
+          <CardTitle className="text-2xl flex items-center gap-2">
+            <ClipboardList className="h-6 w-6 text-primary" />
+            Create Purchase Order
+          </CardTitle>
+          <CardDescription>
+            Fill in the details below to create a new purchase order
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <form id="create-po-form" onSubmit={handleSubmit}>
+            <div className="po-form-section mb-8">
+              <div className="flex items-center mb-4">
+                <div className="mr-3 bg-blue-100 p-2 rounded-full">
+                  <Building2 className="h-5 w-5 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-medium">Company Information</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="company-name" className="required">Company Name</Label>
+                  <Input
+                    id="company-name"
+                    value={company.name}
+                    onChange={(e) => updateCompany('name', e.target.value)}
+                    placeholder="Your company name"
+                    required
+                    aria-required="true"
+                  />
+                  {getFieldError('company', 'name')}
+                </div>
+                <div>
+                  <Label htmlFor="company-address" className="required">Address</Label>
+                  <Input
+                    id="company-address"
+                    value={company.address}
+                    onChange={(e) => updateCompany('address', e.target.value)}
+                    placeholder="Company address"
+                    required
                     aria-required="true"
                   />
                   {getFieldError('company', 'address')}
