@@ -4,18 +4,20 @@ import { LucideIcon } from 'lucide-react';
 
 interface IconWithBackgroundProps {
   icon: LucideIcon;
-  bgClass: string;
-  iconClass: string;
+  bgClass?: string;
+  iconClass?: string;
+  size?: number;
 }
 
 const IconWithBackground: React.FC<IconWithBackgroundProps> = ({
   icon: Icon,
-  bgClass,
-  iconClass,
+  bgClass = "bg-primary/10",
+  iconClass = "text-primary",
+  size = 16
 }) => {
   return (
-    <div className={`rounded-full p-2 ${bgClass}`}>
-      <Icon className={`h-5 w-5 ${iconClass}`} />
+    <div className={`rounded-full ${bgClass} p-1.5 flex items-center justify-center`}>
+      <Icon className={`h-${size / 4} w-${size / 4} ${iconClass}`} />
     </div>
   );
 };
