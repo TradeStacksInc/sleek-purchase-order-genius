@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { format } from 'date-fns';
@@ -21,13 +20,11 @@ const ActivityLog: React.FC = () => {
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   
-  // Sort logs by timestamp (newest first)
   const filteredLogs = useMemo(() => {
     let logs = [...activityLogs].sort((a, b) => 
       b.timestamp.getTime() - a.timestamp.getTime()
     );
     
-    // Apply filters
     if (searchQuery) {
       logs = logs.filter(log => 
         log.details.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -161,7 +158,6 @@ const ActivityLog: React.FC = () => {
     setDateRange(undefined);
   };
   
-  // Activity stats
   const stats = useMemo(() => {
     return {
       total: activityLogs.length,
@@ -294,9 +290,8 @@ const ActivityLog: React.FC = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Date Range</label>
                   <DateRangePicker
-                    value={dateRange}
-                    onChange={setDateRange}
-                    align="start"
+                    date={dateRange}
+                    onDateChange={setDateRange}
                   />
                 </div>
               </div>
