@@ -96,7 +96,7 @@ export const useDispenserActions = (
     amount: number,
     staffId: string,
     shiftId: string,
-    paymentMethod: string = 'cash'
+    paymentMethod: "cash" | "card" | "transfer" | "credit" = 'cash'
   ): boolean => {
     try {
       if (!setSales) {
@@ -136,10 +136,12 @@ export const useDispenserActions = (
         staffId,
         shiftId,
         volume,
-        amount,
+        amount: amount,
+        unitPrice: amount / volume,
+        totalAmount: amount,
         productType: dispenser.productType,
         timestamp: new Date(),
-        paymentMethod,
+        paymentMethod: paymentMethod,
         isManualEntry: true
       };
       
@@ -151,7 +153,7 @@ export const useDispenserActions = (
         id: `log-${uuidv4()}`,
         entityType: 'dispenser',
         entityId: dispenserId,
-        action: 'sale',
+        action: 'other', // Changed from 'sale' to 'other' to match the type
         details: `Manual sale recorded: ${volume.toFixed(2)} L of ${dispenser.productType} for ₦${amount.toFixed(2)} on dispenser #${dispenser.number}`,
         user: staffId,
         timestamp: new Date(),

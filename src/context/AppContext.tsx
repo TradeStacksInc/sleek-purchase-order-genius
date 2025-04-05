@@ -280,9 +280,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const dispenserActions = useDispenserActions(
     dispensers, persistentSetDispensers,
     persistentSetActivityLogs,
-    tanks, persistentSetTanks,
-    priceActions.getCurrentPrice,
-    shifts, sales
+    setSales
   );
 
   const shiftActions = useShiftActions(
