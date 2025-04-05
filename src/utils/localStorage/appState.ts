@@ -73,6 +73,14 @@ export const loadAppState = (defaultState: Partial<StoredAppData>): StoredAppDat
     tanks: getFromLocalStorage(STORAGE_KEYS.TANKS, completeDefaultState.tanks)
   };
   
+  // Print stored data for debugging
+  console.log('Loaded app state from localStorage:', {
+    purchaseOrders: loadedState.purchaseOrders.length,
+    logs: loadedState.logs.length,
+    suppliers: loadedState.suppliers.length,
+    // Add more key counts as needed for debugging
+  });
+  
   // Check if we're using all defaults, which means no saved data was found
   const usingAllDefaults = Object.keys(loadedState).every(key => 
     JSON.stringify(loadedState[key as keyof StoredAppData]) === 

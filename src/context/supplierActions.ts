@@ -22,7 +22,7 @@ export const useSupplierActions = (
 
       // Ensure required fields
       if (!supplier.name || !supplier.contact || !supplier.address) {
-        console.error("Missing required supplier fields");
+        console.error("Missing required supplier fields", supplier);
         return null;
       }
 
@@ -36,11 +36,16 @@ export const useSupplierActions = (
       // Create new array
       const newSuppliers = [...suppliers, newSupplier];
       
+      // Save to localStorage before updating state
+      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
+      
+      if (!saveSuccess) {
+        console.error("Failed to save suppliers to localStorage");
+        return null;
+      }
+      
       // Update state
       setSuppliers(newSuppliers);
-      
-      // Save to localStorage
-      saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
 
       // Add activity log
       const newLog: LogEntry = {

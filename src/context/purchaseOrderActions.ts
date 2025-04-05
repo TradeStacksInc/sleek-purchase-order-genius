@@ -1,3 +1,4 @@
+
 import { PurchaseOrder, LogEntry, OrderStatus, StatusHistoryEntry } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
@@ -39,12 +40,9 @@ export const usePurchaseOrderActions = (
         ];
       }
       
-      // Create new array directly
+      // Create new array with new order at the beginning
       const newOrders = [order, ...purchaseOrders];
       console.log("New orders array:", newOrders);
-      
-      // Update state
-      setPurchaseOrders(newOrders);
       
       // Create log entry
       const newLog: LogEntry = {
@@ -57,11 +55,24 @@ export const usePurchaseOrderActions = (
       
       // Add log directly
       const updatedLogs = [newLog, ...logs];
-      setLogs(updatedLogs);
       
-      // Save to localStorage after state updates
-      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
+      // Save to localStorage before updating state to ensure data persistence
+      const ordersSaved = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      const logsSaved = saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
+      
+      if (!ordersSaved || !logsSaved) {
+        console.error("Failed to save data to localStorage");
+        toast({
+          title: "Storage Error",
+          description: "Failed to save order data. Please try again.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      // Only update state after successful localStorage save
+      setPurchaseOrders(newOrders);
+      setLogs(updatedLogs);
       
       toast({
         title: "Purchase Order Created",

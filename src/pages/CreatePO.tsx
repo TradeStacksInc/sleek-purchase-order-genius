@@ -243,11 +243,14 @@ const CreatePO: React.FC = () => {
     try {
       console.log("Creating supplier:", supplierData);
       
-      const selectedProducts = Object.keys(supplierData.products).filter(key => supplierData.products[key as keyof typeof supplierData.products]);
+      const selectedProducts = Object.keys(supplierData.products).filter(key => 
+        supplierData.products[key as keyof typeof supplierData.products]);
       
-      const validatedSupplierType = (supplierData.supplierType === 'Major' || supplierData.supplierType === 'Independent' || supplierData.supplierType === 'Government') 
-        ? supplierData.supplierType as 'Major' | 'Independent' | 'Government'
-        : 'Independent';
+      const validatedSupplierType = (supplierData.supplierType === 'Major' || 
+        supplierData.supplierType === 'Independent' || 
+        supplierData.supplierType === 'Government') 
+          ? supplierData.supplierType as 'Major' | 'Independent' | 'Government'
+          : 'Independent';
       
       const newSupplier: Supplier = {
         id: uuidv4(),
@@ -293,10 +296,20 @@ const CreatePO: React.FC = () => {
         status: 'pending' as const,
         createdAt: new Date(),
         updatedAt: new Date(),
+        statusHistory: [
+          {
+            id: uuidv4(),
+            status: 'pending',
+            timestamp: new Date(),
+            user: 'Current User', // In a real app, get from auth
+            note: 'Order created'
+          }
+        ]
       };
       
       console.log("Creating purchase order:", newPO);
       
+      // Prevent default form submission behavior
       const savedPO = addPurchaseOrder(newPO);
       
       if (savedPO !== null) {
@@ -307,11 +320,10 @@ const CreatePO: React.FC = () => {
           variant: "default"
         });
         
-        // Use setTimeout to avoid immediate navigation 
-        // which can prevent toast from showing
+        // Navigate after a short delay to ensure toast is visible
         setTimeout(() => {
           navigate(`/orders/${savedPO.id}`);
-        }, 1000);
+        }, 1500);
       } else {
         console.error("Failed to create purchase order - addPurchaseOrder returned null");
         toast({
