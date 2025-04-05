@@ -36,7 +36,8 @@ const AIChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [apiKey, setApiKeyState] = useState<string | null>(null);
-  const { purchaseOrders, logs, suppliers, logAIInteraction } = useApp();
+  const appContext = useApp();
+  const { purchaseOrders, logs, suppliers, logAIInteraction } = appContext;
 
   // Initialize with stored API key if available
   useEffect(() => {
@@ -137,7 +138,7 @@ const AIChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
           response = `There are ${fulfilledCount} fulfilled orders with an average fulfillment time of ${avgFulfillmentTime} days, which is ${avgFulfillmentTime < 5 ? 'better than' : 'not meeting'} your target of 5 days.`;
         }
         else if (lowercaseMessage.includes('suppliers') || lowercaseMessage.includes('vendors')) {
-          response = `You have ${suppliers.length} registered suppliers. Your top 3 suppliers by order volume are ${suppliers.slice(0, 3).map(s => s.name).join(', ')}. Based on performance metrics, ${suppliers[0].name} provides the best combination of price and delivery reliability.`;
+          response = `You have ${suppliers.length} registered suppliers. Your top 3 suppliers by order volume are ${suppliers.slice(0, 3).map(s => s.name).join(', ')}. Based on performance metrics, ${suppliers[0]?.name || 'No supplier'} provides the best combination of price and delivery reliability.`;
         }
         else if (lowercaseMessage.includes('recent activity') || lowercaseMessage.includes('latest logs')) {
           const recentLogs = logs.slice(0, 3);

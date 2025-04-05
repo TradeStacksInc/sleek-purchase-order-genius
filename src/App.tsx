@@ -28,13 +28,13 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>
-        <AIChatProvider>
-          <TooltipProvider>
+        <TooltipProvider>
+          <AIChatProvider>
             <Toaster />
             <Sonner />
             <AppRoutes />
-          </TooltipProvider>
-        </AIChatProvider>
+          </AIChatProvider>
+        </TooltipProvider>
       </AppProvider>
     </QueryClientProvider>
   );
