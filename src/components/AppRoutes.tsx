@@ -13,7 +13,8 @@ import DeliveryTracking from "../pages/DeliveryTracking";
 import OffloadLog from "../pages/OffloadLog";
 import NotFound from "../pages/NotFound";
 import TruckManagement from "../pages/TruckManagement";
-import Analytics from "../pages/Analytics";
+import FinancialDashboard from "../pages/FinancialDashboard"; 
+import DeliveryAnalytics from "../pages/DeliveryAnalytics"; 
 import TankManagement from "../pages/TankManagement";
 import DispenserManagement from "../pages/DispenserManagement";
 import PriceManagement from "../pages/PriceManagement";
@@ -37,7 +38,8 @@ const AppRoutes = () => {
           <Route path="offload-log" element={<OffloadLog />} />
           <Route path="logs" element={<ActivityLog />} />
           <Route path="manage-trucks" element={<TruckManagement />} />
-          <Route path="analytics" element={<Analytics />} />
+          <Route path="financial-dashboard" element={<FinancialDashboard />} />
+          <Route path="delivery-analytics" element={<DeliveryAnalytics />} />
           <Route path="tank-management" element={<TankManagement />} />
           <Route path="dispenser-management" element={<DispenserManagement />} />
           <Route path="price-management" element={<PriceManagement />} />

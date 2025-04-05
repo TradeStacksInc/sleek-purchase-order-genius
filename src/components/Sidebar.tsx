@@ -20,6 +20,7 @@ import {
   Users,
   Shield,
   Tag,
+  LineChart,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -42,7 +43,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
     inventory: true,
     financials: true,
     staff: true,
-    management: true
+    management: true,
+    analytics: true
   });
 
   const toggleSection = (section: keyof typeof openSections) => {
@@ -106,13 +108,22 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               <NavItem to="/dispenser-management" icon={<Fuel className="h-5 w-5" />} text="Dispenser Management" />
             </CollapsibleSection>
             
+            {/* Analytics Section - New */}
+            <CollapsibleSection 
+              title="Analytics" 
+              isOpen={openSections.analytics}
+              onToggle={() => toggleSection('analytics')}
+            >
+              <NavItem to="/delivery-analytics" icon={<LineChart className="h-5 w-5" />} text="Delivery Analytics" />
+            </CollapsibleSection>
+            
             {/* Financial Section */}
             <CollapsibleSection 
               title="Financials" 
               isOpen={openSections.financials}
               onToggle={() => toggleSection('financials')}
             >
-              <NavItem to="/analytics" icon={<BarChart2 className="h-5 w-5" />} text="Financial Dashboard" />
+              <NavItem to="/financial-dashboard" icon={<BarChart2 className="h-5 w-5" />} text="Financial Dashboard" />
               <NavItem to="/price-management" icon={<Tag className="h-5 w-5" />} text="Price Management" />
               <NavItem to="/sales-recording" icon={<DollarSign className="h-5 w-5" />} text="Sales Recording" />
             </CollapsibleSection>
