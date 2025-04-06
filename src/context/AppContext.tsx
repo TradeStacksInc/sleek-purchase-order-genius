@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -7,8 +8,9 @@ import {
 } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { STORAGE_KEYS, saveToLocalStorage, getPaginatedData } from '@/utils/localStorage';
-import { loadAppState, defaultInitialState } from '@/utils/localStorage/appState';
+import { loadAppState } from '@/utils/localStorage/appState';
 import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
+import { defaultInitialState } from '@/context/initialState';
 
 // Import all the action hooks
 import { usePurchaseOrderActions } from './purchaseOrderActions';
