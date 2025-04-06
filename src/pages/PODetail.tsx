@@ -65,7 +65,7 @@ const PODetail: React.FC = () => {
         return (
           <Button 
             className="mt-4" 
-            onClick={() => updateOrderStatus(order.id, 'active')}
+            onClick={() => updateOrderStatus(order.id, 'active', 'Order marked as active')}
           >
             Mark as Paid
           </Button>
@@ -74,7 +74,7 @@ const PODetail: React.FC = () => {
         return (
           <Button 
             className="mt-4" 
-            onClick={() => updateOrderStatus(order.id, 'fulfilled')}
+            onClick={() => updateOrderStatus(order.id, 'fulfilled', 'Order marked as fulfilled')}
           >
             Mark as Delivered
           </Button>

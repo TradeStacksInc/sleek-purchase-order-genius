@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,31 +15,26 @@ const GPSTracking: React.FC = () => {
     purchaseOrders, 
     getDriverById, 
     getTruckById, 
-    updateDeliveryStatus, 
+    updateDeliveryStatus,
     updateGPSData
   } = useApp();
   
-  // Use state for updates instead of forceUpdate pattern
   const [updateTimestamp, setUpdateTimestamp] = useState(Date.now());
   
-  // Setup interval for UI updates only
   useEffect(() => {
     const intervalId = setInterval(() => {
       setUpdateTimestamp(Date.now());
     }, 5000);
     
-    // Cleanup interval on component unmount
     return () => {
       clearInterval(intervalId);
     };
   }, []);
   
-  // Get orders that are in transit with GPS-enabled trucks
   const inTransitOrders = purchaseOrders.filter(
     order => order.deliveryDetails?.status === 'in_transit'
   );
   
-  // Get orders that are pending delivery (assigned but not yet in transit)
   const pendingDeliveryOrders = purchaseOrders.filter(
     order => 
       order.deliveryDetails?.status === 'pending' && 
@@ -152,7 +146,6 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
 }) => {
   const { toast } = useToast();
   
-  // Get driver and truck details
   const driver = order.deliveryDetails?.driverId 
     ? getDriverById(order.deliveryDetails.driverId)
     : null;
@@ -165,26 +158,21 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
     return <div>Missing delivery details</div>;
   }
   
-  // Calculate progress based on actual tracking data
   const totalDistance = order.deliveryDetails.totalDistance || 100;
   const distanceCovered = order.deliveryDetails.distanceCovered || 0;
   const progressPercentage = Math.min(Math.round((distanceCovered / totalDistance) * 100), 100);
   
-  // Format expected arrival time
   const eta = order.deliveryDetails.expectedArrivalTime 
     ? format(new Date(order.deliveryDetails.expectedArrivalTime), 'h:mm a, MMM d')
     : 'Calculating...';
     
-  // Get current speed
   const currentSpeed = truck.lastSpeed || 0;
   
-  // Handle mark as delivered
   const handleMarkDelivered = () => {
-    // Update delivery status
     updateDeliveryStatus(order.id, {
       status: 'delivered',
       destinationArrivalTime: new Date(),
-      distanceCovered: totalDistance // Make sure we record the full distance
+      distanceCovered: totalDistance
     });
     
     toast({
@@ -264,7 +252,6 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
       
       <Separator className="my-3" />
       
-      {/* Route details section */}
       <div className="mt-2">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-medium">Route Details</h4>
@@ -275,7 +262,6 @@ const DeliveryTrackingCard: React.FC<DeliveryTrackingCardProps> = ({
           </Button>
         </div>
         <div className="mt-2 bg-gradient-to-r from-slate-50 to-slate-100 p-2 rounded-md h-16 relative overflow-hidden">
-          {/* Simple route visualization */}
           <div className="absolute inset-0 flex items-center justify-between px-4">
             <div className="h-3 w-3 rounded-full bg-green-500 z-10"></div>
             <div className="h-0.5 bg-slate-300 flex-grow mx-2 relative">
@@ -313,7 +299,6 @@ const PendingDeliveryCard: React.FC<PendingDeliveryCardProps> = ({
 }) => {
   const { toast } = useToast();
   
-  // Get driver and truck details
   const driver = order.deliveryDetails?.driverId 
     ? getDriverById(order.deliveryDetails.driverId)
     : null;
@@ -326,12 +311,9 @@ const PendingDeliveryCard: React.FC<PendingDeliveryCardProps> = ({
     return <div>Missing delivery details</div>;
   }
   
-  // Check if truck has GPS
   const hasGPS = truck.hasGPS && truck.isGPSTagged;
   
-  // Handle start delivery
   const handleStartDelivery = () => {
-    // If truck doesn't have GPS, show a warning
     if (!hasGPS) {
       toast({
         title: "GPS Required",
@@ -341,7 +323,7 @@ const PendingDeliveryCard: React.FC<PendingDeliveryCardProps> = ({
       return;
     }
     
-    const totalDistance = Math.floor(Math.random() * 50) + 70; // Random distance between 70-120km for demo
+    const totalDistance = Math.floor(Math.random() * 50) + 70;
     
     updateDeliveryStatus(order.id, {
       status: 'in_transit',

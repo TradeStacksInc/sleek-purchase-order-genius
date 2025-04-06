@@ -48,7 +48,7 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
   const [deliveredOrders, setDeliveredOrders] = useState<PurchaseOrder[]>([]);
   
   const selectedOrder = selectedOrderId ? getOrderById(selectedOrderId) : null;
-  const productType = selectedOrder?.items?.[0]?.product || 'PMS';
+  const productType = selectedOrder?.items?.[0]?.productId || 'PMS';
   const driverDetails = selectedOrder?.deliveryDetails?.driverId 
     ? getDriverById(selectedOrder.deliveryDetails.driverId)
     : null;
@@ -75,9 +75,9 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
         setLoadedVolume(totalVolume);
         setDeliveredVolume(totalVolume);
         
-        const allTanks = getAllTanks();
-        const productTypeValue = order.items[0].productId || order.items[0].product;
-        const filteredTanks = allTanks.filter(tank => 
+        const allTanksResult = getAllTanks();
+        const productTypeValue = order.items[0].productId || 'PMS';
+        const filteredTanks = allTanksResult.data.filter(tank => 
           String(tank.productType) === String(productTypeValue) && 
           tank.status === 'operational'
         );
@@ -194,7 +194,7 @@ const OffloadingDialog: React.FC<OffloadingDialogProps> = ({ orderId: propOrderI
         productType,
       });
       
-      const updatedTank = recordOffloadingToTank(tankId, deliveredVolume, productType);
+      const updatedTank = recordOffloadingToTank(tankId, deliveredVolume, productType, selectedOrderId);
       
       if (!updatedTank) {
         toast({

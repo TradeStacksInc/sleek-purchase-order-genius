@@ -1,285 +1,156 @@
 
 import React, { useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Flag, AlertTriangle, MessageSquare, ThumbsUp, AlertCircle } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/context/AppContext';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-
-const incidentFormSchema = z.object({
-  type: z.enum(['delay', 'mechanical', 'accident', 'feedback', 'other'], {
-    required_error: "Please select an incident type",
-  }),
-  description: z.string().min(5, "Description must be at least 5 characters"),
-  impact: z.enum(['positive', 'negative', 'neutral'], {
-    required_error: "Please select an impact level",
-  }),
-  reportedBy: z.string().min(2, "Name must be at least 2 characters"),
-});
+import { AlertTriangle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Incident } from '@/types';
 
 interface IncidentDialogProps {
-  orderId: string;
-  children?: React.ReactNode;
+  children: React.ReactNode;
+  orderDetails?: { id: string; poNumber: string } | null;
 }
 
-const IncidentDialog: React.FC<IncidentDialogProps> = ({ orderId, children }) => {
+const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderDetails }) => {
   const { addIncident } = useApp();
   const { toast } = useToast();
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   
-  const form = useForm<z.infer<typeof incidentFormSchema>>({
-    resolver: zodResolver(incidentFormSchema),
-    defaultValues: {
-      type: 'feedback' as const,
-      description: "",
-      impact: 'neutral' as const,
-      reportedBy: "",
-    },
-  });
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [severity, setSeverity] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');
+  const [category, setCategory] = useState('');
   
-  function onSubmit(values: z.infer<typeof incidentFormSchema>) {
+  const handleSubmit = () => {
+    if (!title || !description || !category) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please fill in all the required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
-      const incidentData = {
-        type: values.type,
-        description: values.description,
-        impact: values.impact,
-        reportedBy: values.reportedBy,
-        status: 'open' as const,
-        location: "Station", // Required field
-        staffInvolved: [values.reportedBy], // Required field
+      const newIncident: Omit<Incident, 'id'> = {
+        title,
+        description,
+        severity,
+        category,
+        status: 'open',
+        timestamp: new Date(),
+        reportedBy: 'Admin',
+        relatedEntityId: orderDetails?.id || '',
+        relatedEntityType: orderDetails ? 'purchase_order' : 'general',
+        poNumber: orderDetails?.poNumber || '',
       };
       
-      console.log("Submitting incident:", incidentData, "for order:", orderId);
+      addIncident(newIncident);
       
-      addIncident(orderId, incidentData);
-      setIsOpen(false);
-      form.reset();
+      setOpen(false);
+      setTitle('');
+      setDescription('');
+      setSeverity('medium');
+      setCategory('');
       
       toast({
-        title: "Incident reported",
-        description: `The ${values.type} incident has been recorded successfully.`,
-        variant: values.impact === 'negative' ? 'destructive' : 'default',
+        title: 'Incident Reported',
+        description: 'The incident has been recorded successfully.',
       });
     } catch (error) {
-      console.error("Error reporting incident:", error);
+      console.error('Error adding incident:', error);
       toast({
-        title: "Error",
-        description: "Failed to report incident. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to report the incident. Please try again.',
+        variant: 'destructive',
       });
-    }
-  }
-  
-  const getIncidentIcon = (type: string) => {
-    switch (type) {
-      case 'delay':
-        return <AlertCircle className="h-4 w-4 mr-2" />;
-      case 'mechanical':
-        return <AlertTriangle className="h-4 w-4 mr-2" />;
-      case 'accident':
-        return <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />;
-      case 'feedback':
-        return <MessageSquare className="h-4 w-4 mr-2" />;
-      default:
-        return <Flag className="h-4 w-4 mr-2" />;
-    }
-  };
-  
-  const getImpactColor = (impact: string) => {
-    switch (impact) {
-      case 'positive':
-        return 'bg-green-50 border-green-200 text-green-700';
-      case 'negative':
-        return 'bg-red-50 border-red-200 text-red-700';
-      default:
-        return 'bg-gray-50 border-gray-200 text-gray-700';
     }
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button variant="outline" size="sm" className="incident-button hover:bg-gray-100 rounded-md">
-            <Flag className="h-4 w-4 mr-1" />
-            Report Incident
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-w-lg rounded-lg">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Report Incident</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            Report Incident
+          </DialogTitle>
           <DialogDescription>
-            Record any incidents or feedback related to this delivery.
+            {orderDetails
+              ? `Reporting an incident related to PO #${orderDetails.poNumber}`
+              : 'Report a new incident or issue'}
           </DialogDescription>
         </DialogHeader>
-        
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Incident Type</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="rounded-md">
-                          <SelectValue placeholder="Select incident type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="delay" className="flex items-center">
-                          <div className="flex items-center">
-                            {getIncidentIcon('delay')}
-                            <span>Delay</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="mechanical" className="flex items-center">
-                          <div className="flex items-center">
-                            {getIncidentIcon('mechanical')}
-                            <span>Mechanical Issue</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="accident" className="flex items-center">
-                          <div className="flex items-center">
-                            {getIncidentIcon('accident')}
-                            <span>Accident</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="feedback" className="flex items-center">
-                          <div className="flex items-center">
-                            {getIncidentIcon('feedback')}
-                            <span>Customer Feedback</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="other" className="flex items-center">
-                          <div className="flex items-center">
-                            {getIncidentIcon('other')}
-                            <span>Other</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="impact"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Impact</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="rounded-md">
-                          <SelectValue placeholder="Select impact" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="positive" className="flex items-center">
-                          <div className="flex items-center">
-                            <ThumbsUp className="h-4 w-4 mr-2 text-green-500" />
-                            <span>Positive (+)</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="negative" className="flex items-center">
-                          <div className="flex items-center">
-                            <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />
-                            <span>Negative (-)</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="neutral" className="flex items-center">
-                          <div className="flex items-center">
-                            <Flag className="h-4 w-4 mr-2 text-gray-500" />
-                            <span>Neutral</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Incident Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Short title describing the incident"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="severity">Severity</Label>
+              <Select value={severity} onValueChange={(value: 'low' | 'medium' | 'high' | 'critical') => setSeverity(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select severity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field}
-                      placeholder="Describe the incident or feedback"
-                      className="min-h-[100px] rounded-md"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="delivery">Delivery Issue</SelectItem>
+                  <SelectItem value="quality">Quality Issue</SelectItem>
+                  <SelectItem value="quantity">Quantity Discrepancy</SelectItem>
+                  <SelectItem value="documentation">Documentation Issue</SelectItem>
+                  <SelectItem value="safety">Safety Concern</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={5}
+              placeholder="Detailed description of the incident, including what happened, when, and any immediate actions taken"
             />
-            
-            <FormField
-              control={form.control}
-              name="reportedBy"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reported By</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Your name" className="rounded-md" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="rounded-md">
-                Cancel
-              </Button>
-              <Button type="submit" className="rounded-md bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">Record Incident</Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit}>Report Incident</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

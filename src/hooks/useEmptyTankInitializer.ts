@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { Tank } from '@/types';
 
 export const useEmptyTankInitializer = () => {
   const { getAllTanks, addTank, updateTank } = useApp();
@@ -8,7 +9,8 @@ export const useEmptyTankInitializer = () => {
   
   useEffect(() => {
     const checkAndInitializeTanks = async () => {
-      const existingTanks = getAllTanks();
+      const tanksResult = getAllTanks();
+      const existingTanks = tanksResult.data || [];
       
       // Check if we already have empty PMS tanks
       const emptyPMSTanks = existingTanks.filter(

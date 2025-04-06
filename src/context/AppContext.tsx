@@ -419,28 +419,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  const updateDeliveryStatus = (orderId: string, status: string): boolean => {
-    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
-    if (orderIndex === -1) return false;
-
-    const updatedOrder = { ...purchaseOrders[orderIndex] };
-    if (!updatedOrder.deliveryDetails) {
-      updatedOrder.deliveryDetails = {
-        status: status as any
-      };
-    } else {
-      updatedOrder.deliveryDetails.status = status as any;
-    }
-
-    persistentSetPurchaseOrders(prev => {
-      const newOrders = [...prev];
-      newOrders[orderIndex] = updatedOrder;
-      return newOrders;
-    });
-
-    return true;
-  };
-
   const addIncident = (incident: Omit<Incident, 'id'>): Incident => {
     const newIncident = {
       ...incident,
@@ -618,7 +596,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     persistentSetLogs(prev => [...prev, log]);
   };
 
-  // Combine all actions and state into the context value
+  const recordGPSData = (truckId: string, latitude: number, longitude: number): GPSData => {
+    const newGpsData: GPSData = {
+      id: `gps-${uuidv4().substring(0, 8)}`,
+      truckId,
+      latitude,
+      longitude,
+      timestamp: new Date(),
+      speed: Math.random() * 60, // Random speed for simulation
+      fuelLevel: Math.random() * 100,
+      location: 'In transit'
+    };
+    
+    persistentSetGPSData(prev => [...prev, newGpsData]);
+    return newGpsData;
+  };
+  
+  const getGPSDataForTruck = (truckId: string, params?: PaginationParams): PaginatedResult<GPSData> => {
+    const truckGPSData = gpsData.filter(item => item.truckId === truckId);
+    return getPaginatedData(truckGPSData, params || { page: 1, limit: 10 });
+  };
+  
+  // Add missing delivery methods
+  const updateDeliveryDetails = (orderId: string, driverId: string, truckId: string, deliveryDate: Date): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const updatedOrder = { ...purchaseOrders[orderIndex] };
+    if (!updatedOrder.deliveryDetails) {
+      updatedOrder.deliveryDetails = {
+        status: 'pending',
+        driverId,
+        truckId,
+        expectedArrivalTime: deliveryDate
+      };
+    } else {
+      updatedOrder.deliveryDetails.driverId = driverId;
+      updatedOrder.deliveryDetails.truckId = truckId;
+      updatedOrder.deliveryDetails.expectedArrivalTime = deliveryDate;
+    }
+    
+    persistentSetPurchaseOrders(prev => {
+      const newOrders = [...prev];
+      newOrders[orderIndex] = updatedOrder;
+      return newOrders;
+    });
+    
+    return true;
+  };
+  
+  const markOrderAsDelivered = (orderId: string): boolean => {
+    return updateDeliveryStatus(orderId, {
+      status: 'delivered',
+      destinationArrivalTime: new Date()
+    });
+  };
+  
+  // Fix updateDeliveryStatus to accept partial DeliveryDetails
+  const updateDeliveryStatus = (orderId: string, updates: Partial<DeliveryDetails>): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const updatedOrder = { ...purchaseOrders[orderIndex] };
+    if (!updatedOrder.deliveryDetails) {
+      updatedOrder.deliveryDetails = {
+        status: updates.status || 'pending',
+        ...updates
+      };
+    } else {
+      updatedOrder.deliveryDetails = {
+        ...updatedOrder.deliveryDetails,
+        ...updates
+      };
+    }
+    
+    persistentSetPurchaseOrders(prev => {
+      const newOrders = [...prev];
+      newOrders[orderIndex] = updatedOrder;
+      return newOrders;
+    });
+    
+    return true;
+  };
+  
+  // Create contextValue with all required properties
   const contextValue: AppContextType = {
     purchaseOrders,
     logs,
@@ -673,7 +734,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     tagTruckWithGPS,
     untagTruckGPS,
     getNonGPSTrucks,
-    logAIInteraction
+    logAIInteraction,
+    recordGPSData,
+    getGPSDataForTruck,
+    updateDeliveryDetails,
+    markOrderAsDelivered,
   };
 
   return (
