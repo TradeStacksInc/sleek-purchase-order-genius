@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Driver, Truck, PurchaseOrder, GPSData, LogEntry } from '../types';
+import { 
+  Driver, Truck, PurchaseOrder, GPSData
+} from '@/types';
 
 export const useDriverTruckActions = (
   drivers: Driver[],
@@ -8,78 +10,44 @@ export const useDriverTruckActions = (
   setTrucks: React.Dispatch<React.SetStateAction<Truck[]>>,
   purchaseOrders: PurchaseOrder[],
   setPurchaseOrders: React.Dispatch<React.SetStateAction<PurchaseOrder[]>>,
-  setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>,
+  setLogs: React.Dispatch<React.SetStateAction<any[]>>,
   gpsData: GPSData[],
   setGPSData: React.Dispatch<React.SetStateAction<GPSData[]>>
 ) => {
-  const logAction = (logEntry: Omit<LogEntry, 'timestamp'>) => {
-    const newLogEntry: LogEntry = {
-      ...logEntry,
-      timestamp: new Date()
-    };
-    setLogs(prev => [newLogEntry, ...prev]);
-  };
-
-  const addDriver = (driver: Omit<Driver, 'id' | 'createdAt' | 'updatedAt'>): Driver => {
-    const newDriver: Driver = {
+  const addDriver = (driver: Omit<Driver, 'id'>): Driver => {
+    const newDriver = {
       ...driver,
       id: `driver-${uuidv4().substring(0, 8)}`,
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    setDrivers(prev => [newDriver, ...prev]);
     
-    logAction({
-      action: 'create',
-      entityId: newDriver.id,
-      entityType: 'driver',
-      details: `Driver ${newDriver.name} added`
-    });
-    
+    setDrivers(prev => [...prev, newDriver]);
     return newDriver;
   };
 
-  const updateDriver = (id: string, updates: Partial<Driver>): Driver | undefined => {
-    let updatedDriver: Driver | undefined;
-    setDrivers(prev =>
-      prev.map(driver => {
+  const updateDriver = (id: string, updates: Partial<Driver>): boolean => {
+    let updated = false;
+    setDrivers(prev => {
+      const updatedDrivers = prev.map(driver => {
         if (driver.id === id) {
-          updatedDriver = {
-            ...driver,
-            ...updates,
-            updatedAt: new Date()
-          };
-          logAction({
-            action: 'update',
-            entityId: id,
-            entityType: 'driver',
-            details: `Driver ${updatedDriver.name} updated`
-          });
-          return updatedDriver;
+          updated = true;
+          return { ...driver, ...updates, updatedAt: new Date() };
         }
         return driver;
-      })
-    );
-    return updatedDriver;
+      });
+      return updatedDrivers;
+    });
+    return updated;
   };
 
   const deleteDriver = (id: string): boolean => {
     let deleted = false;
     setDrivers(prev => {
-      const filtered = prev.filter(driver => driver.id !== id);
-      deleted = filtered.length < prev.length;
-      return filtered;
+      const filteredDrivers = prev.filter(driver => driver.id !== id);
+      deleted = filteredDrivers.length < prev.length;
+      return filteredDrivers;
     });
-    
-    if (deleted) {
-      logAction({
-        action: 'delete',
-        entityId: id,
-        entityType: 'driver',
-        details: `Driver ${id} deleted`
-      });
-    }
-    
     return deleted;
   };
 
@@ -87,66 +55,58 @@ export const useDriverTruckActions = (
     return drivers.find(driver => driver.id === id);
   };
 
-  const addTruck = (truck: Omit<Truck, 'id' | 'createdAt' | 'updatedAt'>): Truck => {
-    const newTruck: Truck = {
+  const getAllDrivers = (params?: { page: number; limit: number }): any => {
+    const page = params?.page || 1;
+    const limit = params?.limit || 10;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+
+    const sortedDrivers = [...drivers].sort((a, b) => a.name.localeCompare(b.name));
+    const data = sortedDrivers.slice(startIndex, endIndex);
+
+    return {
+      data,
+      total: drivers.length,
+      page,
+      limit,
+      totalPages: Math.ceil(drivers.length / limit)
+    };
+  };
+
+  const addTruck = (truck: Omit<Truck, 'id'>): Truck => {
+    const newTruck = {
       ...truck,
       id: `truck-${uuidv4().substring(0, 8)}`,
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    setTrucks(prev => [newTruck, ...prev]);
     
-    logAction({
-      action: 'create',
-      entityId: newTruck.id,
-      entityType: 'truck',
-      details: `Truck ${newTruck.plateNumber} added`
-    });
-    
+    setTrucks(prev => [...prev, newTruck]);
     return newTruck;
   };
 
-  const updateTruck = (id: string, updates: Partial<Truck>): Truck | undefined => {
-    let updatedTruck: Truck | undefined;
-    setTrucks(prev =>
-      prev.map(truck => {
+  const updateTruck = (id: string, updates: Partial<Truck>): boolean => {
+    let updated = false;
+    setTrucks(prev => {
+      const updatedTrucks = prev.map(truck => {
         if (truck.id === id) {
-          updatedTruck = {
-            ...truck,
-            ...updates,
-            updatedAt: new Date()
-          };
-          logAction({
-            action: 'update',
-            entityId: id,
-            entityType: 'truck',
-            details: `Truck ${updatedTruck.plateNumber} updated`
-          });
-          return updatedTruck;
+          updated = true;
+          return { ...truck, ...updates, updatedAt: new Date() };
         }
         return truck;
-      })
-    );
-    return updatedTruck;
+      });
+      return updatedTrucks;
+    });
+    return updated;
   };
 
   const deleteTruck = (id: string): boolean => {
     let deleted = false;
     setTrucks(prev => {
-      const filtered = prev.filter(truck => truck.id !== id);
-      deleted = filtered.length < prev.length;
-      return filtered;
+      const filteredTrucks = prev.filter(truck => truck.id !== id);
+      deleted = filteredTrucks.length < prev.length;
+      return filteredTrucks;
     });
-    
-    if (deleted) {
-      logAction({
-        action: 'delete',
-        entityId: id,
-        entityType: 'truck',
-        details: `Truck ${id} deleted`
-      });
-    }
-    
     return deleted;
   };
 
@@ -154,150 +114,118 @@ export const useDriverTruckActions = (
     return trucks.find(truck => truck.id === id);
   };
 
-  const assignDriverToTruck = (driverId: string, truckId: string): boolean => {
-    const driver = getDriverById(driverId);
-    const truck = getTruckById(truckId);
-    
-    if (!driver || !truck) return false;
-    
-    // Update driver
-    const updatedDriver = {
-      ...driver,
-      currentTruckId: truckId
+  const getAllTrucks = (params?: { page: number; limit: number }): any => {
+    const page = params?.page || 1;
+    const limit = params?.limit || 10;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+
+    const sortedTrucks = [...trucks].sort((a, b) => a.plateNumber.localeCompare(b.plateNumber));
+    const data = sortedTrucks.slice(startIndex, endIndex);
+
+    return {
+      data,
+      total: trucks.length,
+      page,
+      limit,
+      totalPages: Math.ceil(trucks.length / limit)
     };
-    
-    setDrivers(prev => prev.map(d => d.id === driverId ? updatedDriver : d));
-    
-    // Update truck
-    const updatedTruck = {
-      ...truck,
-      driverId: driverId,
-      driverName: driver.name
-    };
-    
-    setTrucks(prev => prev.map(t => t.id === truckId ? updatedTruck : t));
-    
-    logAction({
-      action: 'update',
-      entityId: truckId,
-      entityType: 'truck',
-      details: `Driver ${driver.name} assigned to truck ${truck.plateNumber}`
-    });
-    
-    return true;
   };
 
-  const removeDriverFromTruck = (truckId: string): boolean => {
-    const truck = getTruckById(truckId);
-    if (!truck || !truck.driverId) return false;
+  const tagTruckWithGPS = (
+    truckId: string, 
+    gpsDeviceId: string,
+    initialLatitude: number,
+    initialLongitude: number
+  ) => {
+    let success = false;
     
-    const driverId = truck.driverId;
-    const driver = getDriverById(driverId);
-    
-    if (driver) {
-      // Update driver
-      const updatedDriver = {
-        ...driver,
-        currentTruckId: undefined
+    setTrucks(prev => {
+      const index = prev.findIndex(t => t.id === truckId);
+      if (index === -1) return prev;
+      
+      const updatedTrucks = [...prev];
+      updatedTrucks[index] = {
+        ...updatedTrucks[index],
+        isGPSTagged: true,
+        gpsDeviceId,
+        lastLatitude: initialLatitude,
+        lastLongitude: initialLongitude,
+        lastSpeed: 0,
+        updatedAt: new Date()
       };
-      setDrivers(prev => prev.map(d => d.id === driverId ? updatedDriver : d));
+      
+      success = true;
+      return updatedTrucks;
+    });
+    
+    if (success) {
+      // Record initial GPS data
+      const newGpsData = {
+        id: `gps-${uuidv4().substring(0, 8)}`,
+        truckId,
+        latitude: initialLatitude,
+        longitude: initialLongitude,
+        speed: 0,
+        timestamp: new Date(),
+        fuelLevel: 100,
+        location: 'Initial tagging location'
+      };
+      
+      setGPSData(prev => [...prev, newGpsData]);
+      
+      // Log the tagging
+      const logEntry = {
+        id: `log-${uuidv4().substring(0, 8)}`,
+        action: 'tag_gps',
+        user: 'Admin',
+        entityId: truckId,
+        entityType: 'truck',
+        details: `GPS device ${gpsDeviceId} tagged to truck`,
+        timestamp: new Date()
+      };
+      
+      setLogs(prev => [...prev, logEntry]);
     }
     
-    // Update truck
-    const updatedTruck = {
-      ...truck,
-      driverId: undefined,
-      driverName: undefined
-    };
-    setTrucks(prev => prev.map(t => t.id === truckId ? updatedTruck : t));
-    
-    logAction({
-      action: 'update',
-      entityId: truckId,
-      entityType: 'truck',
-      details: `Driver removed from truck ${truck.plateNumber}`
-    });
-    
-    return true;
+    return success;
   };
 
-  const simulateGPSDataForTruck = (truckId: string) => {
-    const truck = getTruckById(truckId);
-    if (!truck || !truck.hasGPS) return false;
+  const untagTruckGPS = (truckId: string) => {
+    let success = false;
     
-    // Random location variation
-    const latitude = 6.5244 + (Math.random() - 0.5) * 0.05;
-    const longitude = 3.3792 + (Math.random() - 0.5) * 0.05;
-    const speed = Math.floor(Math.random() * 80) + 10; // 10-90 km/h
-    
-    // Create a complete GPSData object with all required fields
-    const newGPSData = {
-      id: `gps-${uuidv4().substring(0, 8)}`,
-      truckId: truckId,
-      latitude: latitude,
-      longitude: longitude,
-      speed: speed,
-      timestamp: new Date(),
-      fuelLevel: Math.floor(Math.random() * 40) + 60, // 60-100% fuel level
-      location: 'In transit' // Default location
-    };
-    
-    setGPSData(prev => [newGPSData, ...prev]);
-    
-    // Update truck with latest position
-    setTrucks(prev => prev.map(t => {
-      if (t.id === truckId) {
-        return {
-          ...t,
-          lastLatitude: latitude,
-          lastLongitude: longitude,
-          lastSpeed: speed
-        };
-      }
-      return t;
-    }));
-    
-    return true;
-  };
-
-  const tagTruckWithGPS = (truckId: string, deviceId: string) => {
-    const truck = getTruckById(truckId);
-    if (!truck) return false;
-    
-    // Update truck to show it has GPS
-    const updatedTruck = {
-      ...truck,
-      hasGPS: true,
-      isGPSTagged: true,
-      gpsDeviceId: deviceId
-    };
-    
-    setTrucks(prev => prev.map(t => t.id === truckId ? updatedTruck : t));
-    
-    // Create initial GPS record
-    const initialGPSData = {
-      id: `gps-${uuidv4().substring(0, 8)}`,
-      truckId: truckId,
-      latitude: 6.5244,
-      longitude: 3.3792,
-      speed: 0,
-      timestamp: new Date(),
-      fuelLevel: 100, // Full tank
-      location: 'Depot' // Starting at depot
-    };
-    
-    setGPSData(prev => [initialGPSData, ...prev]);
-    
-    // Log the action
-    logAction({
-      timestamp: new Date(),
-      action: 'update',
-      entityId: truckId,
-      entityType: 'truck',
-      details: `GPS Device ${deviceId} installed on truck ${truck.plateNumber}`
+    setTrucks(prev => {
+      const index = prev.findIndex(t => t.id === truckId);
+      if (index === -1) return prev;
+      
+      const updatedTrucks = [...prev];
+      updatedTrucks[index] = {
+        ...updatedTrucks[index],
+        isGPSTagged: false,
+        gpsDeviceId: undefined,
+        updatedAt: new Date()
+      };
+      
+      success = true;
+      return updatedTrucks;
     });
     
-    return true;
+    if (success) {
+      // Log the untagging
+      const logEntry = {
+        id: `log-${uuidv4().substring(0, 8)}`,
+        action: 'untag_gps',
+        user: 'Admin',
+        entityId: truckId,
+        entityType: 'truck',
+        details: `GPS device untagged from truck`,
+        timestamp: new Date()
+      };
+      
+      setLogs(prev => [...prev, logEntry]);
+    }
+    
+    return success;
   };
 
   return {
@@ -305,13 +233,13 @@ export const useDriverTruckActions = (
     updateDriver,
     deleteDriver,
     getDriverById,
+    getAllDrivers,
     addTruck,
     updateTruck,
     deleteTruck,
     getTruckById,
-    assignDriverToTruck,
-    removeDriverFromTruck,
-    simulateGPSDataForTruck,
-    tagTruckWithGPS
+    getAllTrucks,
+    tagTruckWithGPS,
+    untagTruckGPS
   };
 };

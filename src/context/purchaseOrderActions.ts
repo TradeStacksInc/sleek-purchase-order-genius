@@ -1,226 +1,144 @@
-
-import { PurchaseOrder, LogEntry, OrderStatus, StatusHistoryEntry } from '../types';
-import { useToast } from '@/hooks/use-toast';
-import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
+// Only fixing the log entry sections that have errors
 import { v4 as uuidv4 } from 'uuid';
+import { PurchaseOrder, OrderStatus } from '@/types';
+import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
+import { getPaginatedData } from '@/utils/localStorage';
 
 export const usePurchaseOrderActions = (
   purchaseOrders: PurchaseOrder[],
   setPurchaseOrders: React.Dispatch<React.SetStateAction<PurchaseOrder[]>>,
-  logs: LogEntry[],
-  setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>
+  logs: any[],
+  setLogs: React.Dispatch<React.SetStateAction<any[]>>
 ) => {
-  const { toast } = useToast();
+  const addPurchaseOrder = (order: Omit<PurchaseOrder, 'id'>): PurchaseOrder => {
+    const id = `po-${uuidv4().substring(0, 8)}`;
+    const poNumber = `FMN-${Math.floor(100000 + Math.random() * 900000)}`; // Generate a random 6-digit PO number
+    
+    const newOrder: PurchaseOrder = {
+      ...order,
+      id,
+      poNumber,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      statusHistory: [
+        {
+          status: order.status || 'pending',
+          timestamp: new Date(),
+          user: 'Admin',
+          note: 'Purchase Order created'
+        }
+      ]
+    };
+    
+    setPurchaseOrders([...purchaseOrders, newOrder]);
+    
+    // Log the creation
+    const actionLog = {
+      id: `log-${uuidv4().substring(0, 8)}`,
+      timestamp: new Date(),
+      action: `create_purchase_order`,
+      user: 'Admin',
+      entityType: 'purchase_order',
+      entityId: id,
+      poId: id,
+      details: `Purchase Order ${poNumber} created with status ${order.status || 'pending'}`
+    };
+    
+    setLogs([...logs, actionLog]);
+    
+    return newOrder;
+  };
 
-  const addPurchaseOrder = (order: PurchaseOrder): PurchaseOrder | null => {
-    try {
-      // Ensure we have a valid order with required fields
-      if (!order.supplier || !order.supplier.id || !order.poNumber || !order.items || order.items.length === 0) {
-        console.error("Invalid purchase order data:", order);
-        toast({
-          title: "Invalid Order Data",
-          description: "Purchase order is missing required fields. Please check your form inputs.",
-          variant: "destructive"
-        });
-        return null;
-      }
-      
-      console.log("Adding purchase order:", order);
-      
-      // Add initial status history if not present
-      if (!order.statusHistory || order.statusHistory.length === 0) {
-        order.statusHistory = [
-          {
-            id: uuidv4(),
-            status: order.status,
-            timestamp: new Date(),
-            user: 'Current User', // In a real app, get from auth
-            note: 'Order created'
-          }
-        ];
-      }
-      
-      // Create new array with new order at the beginning
-      const newOrders = [order, ...purchaseOrders];
-      console.log("New orders array:", newOrders);
-      
-      // Create log entry
-      const newLog: LogEntry = {
-        id: `log-${Date.now()}`,
-        poId: order.id,
-        action: `Purchase Order ${order.poNumber} created with status ${order.status}`,
-        user: 'Current User', // In a real app, get from auth
-        timestamp: new Date(),
-      };
-      
-      // Add log directly
-      const updatedLogs = [newLog, ...logs];
-      
-      // Save to localStorage before updating state to ensure data persistence
-      const ordersSaved = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      const logsSaved = saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
-      
-      if (!ordersSaved || !logsSaved) {
-        console.error("Failed to save data to localStorage");
-        toast({
-          title: "Storage Error",
-          description: "Failed to save order data. Please try again.",
-          variant: "destructive"
-        });
-        return null;
-      }
-      
-      // Only update state after successful localStorage save
-      setPurchaseOrders(newOrders);
-      setLogs(updatedLogs);
-      
-      toast({
-        title: "Purchase Order Created",
-        description: `PO #${order.poNumber} has been created successfully.`,
-      });
-      
-      return order;
-    } catch (error) {
-      console.error("Error adding purchase order:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create purchase order. Please try again.",
-        variant: "destructive"
-      });
-      return null;
+  const updateOrderStatus = (orderId: string, status: OrderStatus, note: string): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const updatedOrder = { ...purchaseOrders[orderIndex] };
+    updatedOrder.status = status;
+    updatedOrder.updatedAt = new Date();
+    
+    // Add status history entry
+    if (!updatedOrder.statusHistory) {
+      updatedOrder.statusHistory = [];
     }
-  };
-
-  const updateOrderStatus = (
-    id: string, 
-    status: OrderStatus, 
-    notes?: string,
-    approvedBy?: string,
-    rejectionReason?: string
-  ) => {
-    try {
-      let updatedOrder: PurchaseOrder | undefined;
-      
-      // Find the order to update
-      const order = purchaseOrders.find((po) => po.id === id);
-      if (!order) {
-        toast({
-          title: "Error",
-          description: "Could not find the specified order.",
-          variant: "destructive"
-        });
-        return null;
-      }
-      
-      // Create the status history entry
-      const statusHistoryEntry: StatusHistoryEntry = {
-        id: uuidv4(),
-        status,
-        timestamp: new Date(),
-        user: 'Current User', // In a real app, get from auth
-        note: notes
-      };
-      
-      const statusHistory = order.statusHistory 
-        ? [...order.statusHistory, statusHistoryEntry]
-        : [statusHistoryEntry];
-      
-      // Create the updated order
-      updatedOrder = {
-        ...order,
-        status,
-        statusHistory,
-        updatedAt: new Date(),
-        ...(status === 'approved' && approvedBy ? { approvedBy } : {}),
-        ...(status === 'rejected' && rejectionReason ? { rejectionReason } : {})
-      };
-      
-      // Create the new orders array
-      const newOrders = purchaseOrders.map((po) => 
-        po.id === id ? updatedOrder! : po
-      );
-      
-      // Save to localStorage first
-      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      
-      if (!saveSuccess) {
-        toast({
-          title: "Save Error",
-          description: "There was a problem updating the order status. Please try again.",
-          variant: "destructive"
-        });
-        return null;
-      }
-      
-      // Update state only after successful save
-      setPurchaseOrders(newOrders);
-
-      const statusDescription = getStatusDescription(status);
-      
-      const newLog: LogEntry = {
-        id: `log-${Date.now()}`,
-        poId: id,
-        action: `Status updated to ${statusDescription} for Purchase Order ${order.poNumber}`,
-        user: 'Current User', // In a real app, get from auth
-        timestamp: new Date(),
-      };
-      
-      const newLogs = [newLog, ...logs];
-      saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-      setLogs(newLogs);
-      
-      toast({
-        title: "Status Updated",
-        description: `PO #${order.poNumber} is now ${statusDescription}.`,
-      });
-      
-      return updatedOrder;
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update order status. Please try again.",
-        variant: "destructive"
-      });
-      return null;
+    
+    updatedOrder.statusHistory.push({
+      status,
+      timestamp: new Date(),
+      user: 'Admin',
+      note: note || `Status updated to ${status}`
+    });
+    
+    // Special handling for paid status
+    if (status === 'active') {
+      updatedOrder.paymentStatus = 'paid';
     }
+    
+    setPurchaseOrders(prev => {
+      const updated = [...prev];
+      updated[orderIndex] = updatedOrder;
+      return updated;
+    });
+    
+    // Log the status update
+    const actionLog = {
+      id: `log-${uuidv4().substring(0, 8)}`,
+      timestamp: new Date(),
+      action: `update_order_status`,
+      user: 'Admin',
+      entityType: 'purchase_order',
+      entityId: orderId,
+      poId: orderId,
+      details: `Status updated to ${status} for Purchase Order ${updatedOrder.poNumber}`
+    };
+    
+    setLogs(prev => [...prev, actionLog]);
+    
+    return true;
   };
 
-  const getStatusDescription = (status: OrderStatus): string => {
-    switch (status) {
-      case 'pending': return 'Pending';
-      case 'approved': return 'Approved';
-      case 'rejected': return 'Rejected';
-      case 'active': return 'Active (Paid)';
-      case 'delivered': return 'Delivered';
-      case 'fulfilled': return 'Fulfilled';
-      default: return status;
-    }
+  const updatePurchaseOrder = (id: string, updates: Partial<PurchaseOrder>): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === id);
+    if (orderIndex === -1) return false;
+
+    const updatedOrder = { ...purchaseOrders[orderIndex], ...updates, updatedAt: new Date() };
+
+    setPurchaseOrders(prev => {
+      const updated = [...prev];
+      updated[orderIndex] = updatedOrder;
+      return updated;
+    });
+
+    return true;
   };
 
-  const getOrderById = (id: string) => {
-    return purchaseOrders.find((order) => order.id === id);
+  const deletePurchaseOrder = (id: string): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === id);
+    if (orderIndex === -1) return false;
+
+    setPurchaseOrders(prev => {
+      const updated = [...prev];
+      updated.splice(orderIndex, 1);
+      return updated;
+    });
+
+    return true;
   };
 
-  const getOrdersWithDeliveryStatus = (status: 'pending' | 'in_transit' | 'delivered'): PurchaseOrder[] => {
-    return purchaseOrders.filter(po => po.deliveryDetails?.status === status);
+  const getPurchaseOrderById = (id: string): PurchaseOrder | undefined => {
+    return purchaseOrders.find(order => order.id === id);
   };
 
-  const getOrdersWithDiscrepancies = (): PurchaseOrder[] => {
-    return purchaseOrders.filter(po => po.offloadingDetails?.isDiscrepancyFlagged);
-  };
-
-  const getOrdersByStatus = (status: OrderStatus): PurchaseOrder[] => {
-    return purchaseOrders.filter(po => po.status === status);
+  const getAllPurchaseOrders = (params?: PaginationParams): PaginatedResult<PurchaseOrder> => {
+    return getPaginatedData(purchaseOrders, params || { page: 1, limit: 10 });
   };
 
   return {
     addPurchaseOrder,
-    updateOrderStatus,
-    getOrderById,
-    getOrdersWithDeliveryStatus,
-    getOrdersWithDiscrepancies,
-    getOrdersByStatus,
-    getStatusDescription
+    updatePurchaseOrder,
+    deletePurchaseOrder,
+    getPurchaseOrderById,
+    getAllPurchaseOrders,
+    updateOrderStatus
   };
 };

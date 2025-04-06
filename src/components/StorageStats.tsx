@@ -23,7 +23,7 @@ const StorageStats: React.FC = () => {
         // Estimate total localStorage size
         for (const key in localStorage) {
           if (localStorage.hasOwnProperty(key)) {
-            totalSize += localStorage[key].length * 2; // Approx 2 bytes per character
+            totalSize += (localStorage[key].length * 2); // Approx 2 bytes per character
           }
         }
         

@@ -363,17 +363,259 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return dispenserActions.recordManualSale?.(id, volume, amount, staffId, shiftId, 'cash') || false;
   };
 
-  const getDispenserSalesStats = (id: string, dateRange?: { from: Date, to: Date }) => {
-    const convertedRange = dateRange ? {
-      start: dateRange.from,
-      end: dateRange.to
-    } : undefined;
-
+  const getDispenserSalesStats = (id: string, dateRange?: { start: Date, end: Date }) => {
     return {
       volume: 0,
       amount: 0,
       transactions: 0
     };
+  };
+
+  const getOrderById = (id: string): PurchaseOrder | undefined => {
+    return purchaseOrders.find(po => po.id === id);
+  };
+
+  const getOrdersWithDeliveryStatus = (status: string): PurchaseOrder[] => {
+    return purchaseOrders.filter(order => 
+      order.deliveryDetails && order.deliveryDetails.status === status
+    );
+  };
+
+  const startDelivery = (orderId: string): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+
+    const updatedOrder = { ...purchaseOrders[orderIndex] };
+    if (!updatedOrder.deliveryDetails) return false;
+
+    updatedOrder.deliveryDetails.status = 'in_transit';
+    updatedOrder.deliveryDetails.depotDepartureTime = new Date();
+
+    persistentSetPurchaseOrders(prev => {
+      const newOrders = [...prev];
+      newOrders[orderIndex] = updatedOrder;
+      return newOrders;
+    });
+
+    return true;
+  };
+
+  const completeDelivery = (orderId: string): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+
+    const updatedOrder = { ...purchaseOrders[orderIndex] };
+    if (!updatedOrder.deliveryDetails) return false;
+
+    updatedOrder.deliveryDetails.status = 'delivered';
+    updatedOrder.deliveryDetails.destinationArrivalTime = new Date();
+
+    persistentSetPurchaseOrders(prev => {
+      const newOrders = [...prev];
+      newOrders[orderIndex] = updatedOrder;
+      return newOrders;
+    });
+
+    return true;
+  };
+
+  const updateDeliveryStatus = (orderId: string, status: string): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+
+    const updatedOrder = { ...purchaseOrders[orderIndex] };
+    if (!updatedOrder.deliveryDetails) {
+      updatedOrder.deliveryDetails = {
+        status: status as any
+      };
+    } else {
+      updatedOrder.deliveryDetails.status = status as any;
+    }
+
+    persistentSetPurchaseOrders(prev => {
+      const newOrders = [...prev];
+      newOrders[orderIndex] = updatedOrder;
+      return newOrders;
+    });
+
+    return true;
+  };
+
+  const addIncident = (incident: Omit<Incident, 'id'>): Incident => {
+    const newIncident = {
+      ...incident,
+      id: `incident-${uuidv4().substring(0, 8)}`,
+      timestamp: new Date()
+    };
+    
+    setIncidents(prev => [...prev, newIncident]);
+    return newIncident;
+  };
+
+  const recordOffloadingDetails = (orderId: string, details: any): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+
+    const updatedOrder = { ...purchaseOrders[orderIndex] };
+    updatedOrder.offloadingDetails = details;
+
+    persistentSetPurchaseOrders(prev => {
+      const newOrders = [...prev];
+      newOrders[orderIndex] = updatedOrder;
+      return newOrders;
+    });
+
+    return true;
+  };
+
+  const recordOffloadingToTank = (tankId: string, volume: number, source: string, sourceId: string): boolean => {
+    const tankIndex = tanks.findIndex(tank => tank.id === tankId);
+    if (tankIndex === -1) return false;
+
+    const updatedTank = { ...tanks[tankIndex] };
+    const currentVolume = updatedTank.currentVolume || 0;
+    updatedTank.currentVolume = currentVolume + volume;
+    updatedTank.lastRefillDate = new Date();
+
+    persistentSetTanks(prev => {
+      const newTanks = [...prev];
+      newTanks[tankIndex] = updatedTank;
+      return newTanks;
+    });
+
+    return true;
+  };
+
+  const updateGPSData = (truckId: string, latitude: number, longitude: number, speed: number): void => {
+    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
+    if (truckIndex === -1) return;
+
+    const updatedTruck = { ...trucks[truckIndex] };
+    updatedTruck.lastLatitude = latitude;
+    updatedTruck.lastLongitude = longitude;
+    updatedTruck.lastSpeed = speed;
+
+    persistentSetTrucks(prev => {
+      const newTrucks = [...prev];
+      newTrucks[truckIndex] = updatedTruck;
+      return newTrucks;
+    });
+
+    const newGPSData = {
+      id: `gps-${uuidv4().substring(0, 8)}`,
+      truckId,
+      latitude,
+      longitude,
+      speed,
+      timestamp: new Date(),
+      fuelLevel: Math.random() * 100,
+      location: 'On route'
+    };
+    
+    persistentSetGPSData(prev => [...prev, newGPSData]);
+  };
+
+  const getOrdersWithDiscrepancies = (): PurchaseOrder[] => {
+    return purchaseOrders.filter(order => 
+      order.offloadingDetails && 
+      order.offloadingDetails.isDiscrepancyFlagged
+    );
+  };
+
+  const assignDriverToOrder = (orderId: string, driverId: string, truckId: string): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+
+    const driver = drivers.find(d => d.id === driverId);
+    const truck = trucks.find(t => t.id === truckId);
+    if (!driver || !truck) return false;
+
+    const updatedOrder = { ...purchaseOrders[orderIndex] };
+    if (!updatedOrder.deliveryDetails) {
+      updatedOrder.deliveryDetails = {
+        status: 'pending',
+        driverId,
+        truckId
+      };
+    } else {
+      updatedOrder.deliveryDetails.driverId = driverId;
+      updatedOrder.deliveryDetails.truckId = truckId;
+    }
+
+    persistentSetPurchaseOrders(prev => {
+      const newOrders = [...prev];
+      newOrders[orderIndex] = updatedOrder;
+      return newOrders;
+    });
+
+    persistentSetDrivers(prev =>
+      prev.map(d => (d.id === driverId ? { ...d, isAvailable: false } : d))
+    );
+
+    persistentSetTrucks(prev =>
+      prev.map(t => (t.id === truckId ? { ...t, isAvailable: false, driverId } : t))
+    );
+
+    return true;
+  };
+
+  const tagTruckWithGPS = (
+    truckId: string,
+    deviceId: string,
+    initialLatitude: number,
+    initialLongitude: number
+  ): boolean => {
+    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
+    if (truckIndex === -1) return false;
+
+    const updatedTruck = { ...trucks[truckIndex] };
+    updatedTruck.isGPSTagged = true;
+    updatedTruck.gpsDeviceId = deviceId;
+    updatedTruck.lastLatitude = initialLatitude;
+    updatedTruck.lastLongitude = initialLongitude;
+
+    persistentSetTrucks(prev => {
+      const newTrucks = [...prev];
+      newTrucks[truckIndex] = updatedTruck;
+      return newTrucks;
+    });
+
+    return true;
+  };
+
+  const untagTruckGPS = (truckId: string): boolean => {
+    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
+    if (truckIndex === -1) return false;
+
+    const updatedTruck = { ...trucks[truckIndex] };
+    updatedTruck.isGPSTagged = false;
+    updatedTruck.gpsDeviceId = undefined;
+
+    persistentSetTrucks(prev => {
+      const newTrucks = [...prev];
+      newTrucks[truckIndex] = updatedTruck;
+      return newTrucks;
+    });
+
+    return true;
+  };
+
+  const getNonGPSTrucks = (): Truck[] => {
+    return trucks.filter(truck => !truck.hasGPS || !truck.isGPSTagged);
+  };
+
+  const logAIInteraction = (prompt: string, response: string): void => {
+    const truncatedPrompt = prompt.length > 50 ? `${prompt.substring(0, 47)}...` : prompt;
+    const log = {
+      id: `log-${uuidv4().substring(0, 8)}`,
+      timestamp: new Date(),
+      action: "ai_interaction",
+      user: "AI System",
+      entityType: "ai_chat",
+      details: `AI Interaction - User asked: "${truncatedPrompt}" and received a response`
+    };
+    
+    persistentSetLogs(prev => [...prev, log]);
   };
 
   // Combine all actions and state into the context value
@@ -416,7 +658,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     exportDatabase,
     importDatabase,
     generateAIInsights: aiActions.generateAIInsights,
-    getInsightsByType: aiActions.getInsightsByType
+    getInsightsByType: aiActions.getInsightsByType,
+    getOrderById,
+    getOrdersWithDeliveryStatus,
+    startDelivery,
+    completeDelivery,
+    updateDeliveryStatus,
+    addIncident,
+    recordOffloadingDetails,
+    recordOffloadingToTank,
+    updateGPSData,
+    getOrdersWithDiscrepancies,
+    assignDriverToOrder,
+    tagTruckWithGPS,
+    untagTruckGPS,
+    getNonGPSTrucks,
+    logAIInteraction
   };
 
   return (

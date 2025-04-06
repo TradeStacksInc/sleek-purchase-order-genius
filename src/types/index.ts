@@ -1,4 +1,3 @@
-
 // Product types
 export type Product = 'PMS' | 'AGO' | 'DPK' | 'LPG' | 'KERO';
 export type ProductType = Product | string; // Allow string comparison for Product types

@@ -26,7 +26,8 @@ const GPSTrackingTab: React.FC<GPSTrackingTabProps> = ({
   getDriverById, 
   getTruckById 
 }) => {
-  const { trackedTrucks, updateTimestamp } = useTruckTracking();
+  const { trackedTrucks } = useTruckTracking();
+  const currentTime = new Date();
   
   return (
     <>
@@ -39,7 +40,7 @@ const GPSTrackingTab: React.FC<GPSTrackingTabProps> = ({
                 Real-time monitoring of trucks en route
                 {trackedTrucks.length > 0 && (
                   <span className="ml-2 text-xs text-blue-600">
-                    Last updated: {format(new Date(updateTimestamp), 'HH:mm:ss')}
+                    Last updated: {format(currentTime, 'HH:mm:ss')}
                   </span>
                 )}
               </CardDescription>

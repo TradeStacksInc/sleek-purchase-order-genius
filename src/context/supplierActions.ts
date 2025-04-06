@@ -1,75 +1,105 @@
-
-import { Supplier, LogEntry } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
+import { Supplier } from '@/types';
+import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
+import { getPaginatedData } from '@/utils/localStorage';
 
 export const useSupplierActions = (
   suppliers: Supplier[],
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>,
-  setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>
+  setLogs: React.Dispatch<React.SetStateAction<any[]>>
 ) => {
-  const addSupplier = (supplier: Supplier): Supplier | null => {
-    try {
-      // Check if supplier with same name already exists
-      const existingSupplier = suppliers.find(
-        (s) => s.name.toLowerCase() === supplier.name.toLowerCase()
-      );
+  const addSupplier = (supplier: Omit<Supplier, 'id'>): Supplier => {
+    const newSupplier = {
+      ...supplier,
+      id: `supplier-${uuidv4().substring(0, 8)}`,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    setSuppliers(prev => [...prev, newSupplier]);
+    
+    // Log the supplier addition
+    const actionLog = {
+      id: `log-${uuidv4().substring(0, 8)}`,
+      timestamp: new Date(),
+      action: `create_supplier`,
+      user: 'Admin',
+      entityType: 'supplier',
+      entityId: newSupplier.id,
+      details: `New supplier "${newSupplier.name}" added`
+    };
+    
+    setLogs(prev => [...prev, actionLog]);
+    
+    return newSupplier;
+  };
 
-      if (existingSupplier) {
-        console.log("Using existing supplier:", existingSupplier);
-        return existingSupplier;
-      }
+  const updateSupplier = (id: string, updates: Partial<Supplier>): boolean => {
+    const supplierIndex = suppliers.findIndex(supplier => supplier.id === id);
+    if (supplierIndex === -1) return false;
 
-      // Ensure required fields
-      if (!supplier.name || !supplier.contact || !supplier.address) {
-        console.error("Missing required supplier fields", supplier);
-        return null;
-      }
+    const updatedSupplier = { ...suppliers[supplierIndex], ...updates, updatedAt: new Date() };
 
-      // Add creation timestamp and ensure ID
-      const newSupplier = {
-        ...supplier,
-        id: supplier.id || uuidv4(),
-        createdAt: new Date(),
-      };
+    setSuppliers(prev => {
+      const updated = [...prev];
+      updated[supplierIndex] = updatedSupplier;
+      return updated;
+    });
 
-      // Create new array
-      const newSuppliers = [...suppliers, newSupplier];
-      
-      // Save to localStorage before updating state
-      const saveSuccess = saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
-      
-      if (!saveSuccess) {
-        console.error("Failed to save suppliers to localStorage");
-        return null;
-      }
-      
-      // Update state
-      setSuppliers(newSuppliers);
+    // Log the supplier update
+    const actionLog = {
+      id: `log-${uuidv4().substring(0, 8)}`,
+      timestamp: new Date(),
+      action: `update_supplier`,
+      user: 'Admin',
+      entityType: 'supplier',
+      entityId: id,
+      details: `Supplier "${updatedSupplier.name}" updated`
+    };
+    
+    setLogs(prev => [...prev, actionLog]);
 
-      // Add activity log
-      const newLog: LogEntry = {
-        id: `log-${Date.now()}`,
-        poId: "system",
-        action: `New supplier "${newSupplier.name}" added`,
-        user: 'Current User', // In a real app, get from auth
+    return true;
+  };
+
+  const deleteSupplier = (id: string): boolean => {
+    const initialLength = suppliers.length;
+    
+    setSuppliers(prev => prev.filter(supplier => supplier.id !== id));
+    
+    const deletionSuccessful = suppliers.length < initialLength;
+
+    if (deletionSuccessful) {
+      // Log the supplier deletion
+      const actionLog = {
+        id: `log-${uuidv4().substring(0, 8)}`,
         timestamp: new Date(),
+        action: `delete_supplier`,
+        user: 'Admin',
+        entityType: 'supplier',
+        entityId: id,
+        details: `Supplier with id "${id}" deleted`
       };
-
-      setLogs((prevLogs) => {
-        const updatedLogs = [newLog, ...prevLogs];
-        saveToLocalStorage(STORAGE_KEYS.LOGS, updatedLogs);
-        return updatedLogs;
-      });
-
-      return newSupplier;
-    } catch (error) {
-      console.error("Error adding supplier:", error);
-      return null;
+      
+      setLogs(prev => [...prev, actionLog]);
     }
+
+    return deletionSuccessful;
+  };
+
+  const getSupplierById = (id: string): Supplier | undefined => {
+    return suppliers.find(supplier => supplier.id === id);
+  };
+
+  const getAllSuppliers = (params?: PaginationParams): PaginatedResult<Supplier> => {
+    return getPaginatedData(suppliers, params || { page: 1, limit: 10 });
   };
 
   return {
     addSupplier,
+    updateSupplier,
+    deleteSupplier,
+    getSupplierById,
+    getAllSuppliers
   };
 };

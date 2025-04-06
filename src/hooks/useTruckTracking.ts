@@ -10,6 +10,7 @@ export const useTruckTracking = () => {
   const [trackedTrucks, setTrackedTrucks] = useState<string[]>([]);
   const [trackingInfo, setTrackingInfo] = useState<Record<string, TrackingInfo>>({});
   const [activeTrackedTruck, setActiveTrackedTruck] = useState<string | null>(null);
+  const [updateTimestamp, setUpdateTimestamp] = useState<Date>(new Date());
   
   useEffect(() => {
     const gpsService = GPSTrackingService.getInstance();
@@ -17,6 +18,7 @@ export const useTruckTracking = () => {
     // Register for updates from the GPS service
     const callbackId = gpsService.registerUpdateCallback((truckId, info) => {
       setTrackingInfo(prev => ({ ...prev, [truckId]: info }));
+      setUpdateTimestamp(new Date());
     });
     
     // Get initial tracking data
@@ -101,14 +103,20 @@ export const useTruckTracking = () => {
   const selectTruck = useCallback((truckId: string) => {
     setActiveTrackedTruck(truckId);
   }, []);
+
+  const getTrackingInfo = useCallback((truckId: string): TrackingInfo | undefined => {
+    return trackingInfo[truckId];
+  }, [trackingInfo]);
   
   return {
     isTracking,
     trackedTrucks,
     trackingInfo,
     activeTrackedTruck,
+    updateTimestamp,
     startTracking,
     stopTracking,
-    selectTruck
+    selectTruck,
+    getTrackingInfo
   };
 };
