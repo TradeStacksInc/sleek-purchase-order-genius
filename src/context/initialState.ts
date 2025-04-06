@@ -1,26 +1,24 @@
 
-import { v4 as uuidv4 } from 'uuid';
 import { 
   PurchaseOrder, 
-  LogEntry, 
   Supplier, 
-  Driver,
-  Truck,
-  GPSData,
-  AIInsight,
-  Staff,
-  Dispenser,
-  Shift,
-  Sale,
-  PriceRecord,
-  Incident,
-  ActivityLog,
-  Tank
+  Driver, 
+  Truck, 
+  GPSData, 
+  AIInsight, 
+  Staff, 
+  Dispenser, 
+  Shift, 
+  Sale, 
+  Price, 
+  Incident, 
+  ActivityLog, 
+  Tank 
 } from '../types';
 
-export interface AppState {
+interface InitialState {
   purchaseOrders: PurchaseOrder[];
-  logs: LogEntry[];
+  logs: any[];
   suppliers: Supplier[];
   drivers: Driver[];
   trucks: Truck[];
@@ -30,14 +28,13 @@ export interface AppState {
   dispensers: Dispenser[];
   shifts: Shift[];
   sales: Sale[];
-  prices: PriceRecord[];
+  prices: Price[];
   incidents: Incident[];
   activityLogs: ActivityLog[];
   tanks: Tank[];
 }
 
-// Initial empty state with no mock data
-export const defaultInitialState: AppState = {
+export const defaultInitialState: InitialState = {
   purchaseOrders: [],
   logs: [],
   suppliers: [],

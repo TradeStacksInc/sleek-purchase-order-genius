@@ -1,3 +1,4 @@
+
 import { 
   LogEntry, 
   PurchaseOrder, 
@@ -81,8 +82,10 @@ export interface AppContextType {
   completeDelivery: (orderId: string) => void;
   
   // AI actions
-  generateDiscrepancyInsights: () => void;
+  generateAIInsights: () => void;
+  getInsightsByType: (type: string) => AIInsight[];
   markInsightAsRead: (id: string) => void;
+  generateDiscrepancyInsights: () => void;
   
   // Staff actions
   addStaff: (staff: Omit<Staff, 'id'>) => Staff;
@@ -100,7 +103,7 @@ export interface AppContextType {
   setDispenserActive: (id: string, isActive: boolean) => Dispenser | undefined;
   recordDispensing: (id: string, volume: number, staffId: string, shiftId: string) => boolean;
   resetDispenserShiftStats: (id: string) => Dispenser | undefined;
-  getDispenserSalesStats: (id: string, dateRange?: { start: Date; end: Date }) => {
+  getDispenserSalesStats: (id: string, dateRange?: { from: Date; to: Date }) => {
     volume: number;
     amount: number;
     transactions: number;
@@ -135,7 +138,7 @@ export interface AppContextType {
   getTankById: (id: string) => Tank | undefined;
   getAllTanks: () => Tank[];
   recordOffloadingToTank: (tankId: string, volume: number, productType: string) => Tank | undefined;
-  createEmptyTank: (name: string, capacity: number, productType: 'PMS' | 'AGO' | 'DPK') => Tank;
+  createEmptyTank: (name: string, capacity: number, productType: ProductType) => Tank;
   clearAllTanks: () => void;
   connectTankToDispenser: (tankId: string, dispenserId: string) => boolean;
   disconnectTankFromDispenser: (tankId: string, dispenserId: string) => boolean;

@@ -1,18 +1,19 @@
 
-import { GPSData } from '@/types';
-import GPSSimulator, { TrackingInfo } from './GPSSimulator';
+import { v4 as uuidv4 } from 'uuid';
+import GPSSimulator from './GPSSimulator';
+import type { TrackingInfo } from './GPSSimulator';
 
-// Singleton class for GPS tracking
-class GPSTrackingService {
+export default class GPSTrackingService {
   private static instance: GPSTrackingService;
   private simulator: GPSSimulator;
   
-  // Private constructor to enforce singleton pattern
   private constructor() {
     this.simulator = GPSSimulator.getInstance();
+    
+    // Register for updates
+    this.simulator.registerUpdateCallback(this.handleGPSUpdate.bind(this));
   }
   
-  // Get the singleton instance
   public static getInstance(): GPSTrackingService {
     if (!GPSTrackingService.instance) {
       GPSTrackingService.instance = new GPSTrackingService();
@@ -20,54 +21,37 @@ class GPSTrackingService {
     return GPSTrackingService.instance;
   }
   
-  // Register a callback to be called when GPS data updates
-  public registerUpdateCallback(callback: (data: GPSData) => void): void {
-    this.simulator.registerUpdateCallback(callback);
+  public startTracking(truckId: string, latitude: number, longitude: number): void {
+    this.simulator.startTracking(truckId, latitude, longitude);
+    console.log(`Started tracking truck ${truckId} at (${latitude}, ${longitude})`);
   }
   
-  // Start tracking a truck
-  public startTracking(
-    truckId: string,
-    startLatitude: number,
-    startLongitude: number,
-    totalDistance: number,
-    sourceLocation?: { lat: number, lng: number, name: string },
-    destinationLocation?: { lat: number, lng: number, name: string }
-  ): void {
-    this.simulator.startTracking(
-      truckId, 
-      startLatitude, 
-      startLongitude, 
-      totalDistance,
-      sourceLocation,
-      destinationLocation
-    );
-  }
-  
-  // Stop tracking a truck
   public stopTracking(truckId: string): void {
     this.simulator.stopTracking(truckId);
+    console.log(`Stopped tracking truck ${truckId}`);
   }
   
-  // Check if a truck is being tracked
-  public isTracking(truckId: string): boolean {
-    return this.simulator.isTracking(truckId);
+  public isTracking(): boolean {
+    return this.simulator.isTracking();
   }
   
-  // Get tracking info for a truck
-  public getTrackingInfo(truckId: string): TrackingInfo | null {
+  public getTrackingInfo(truckId: string): TrackingInfo | undefined {
     return this.simulator.getTrackingInfo(truckId);
   }
   
-  // Get all tracked trucks
-  public getAllTrackedTrucks(): string[] {
+  public getAllTrackedTrucks(): Array<{ truckId: string, info: TrackingInfo }> {
     return this.simulator.getAllTrackedTrucks();
   }
   
-  // Get path history for a truck
-  public getPathHistory(truckId: string): { lat: number, lng: number }[] {
+  public getPathHistory(truckId: string): Array<{ lat: number, lng: number }> {
     return this.simulator.getPathHistory(truckId);
   }
+  
+  private handleGPSUpdate(truckId: string, info: TrackingInfo): void {
+    // Handle updates from simulator
+    // This is where you might want to trigger React state updates or dispatch to a store
+    // Since this is singleton and outside React, you might need to use a pub/sub pattern
+    // For now, just log
+    console.log(`GPS update for truck ${truckId}: ${info.currentLatitude}, ${info.currentLongitude}, ${info.currentSpeed} km/h`);
+  }
 }
-
-export default GPSTrackingService;

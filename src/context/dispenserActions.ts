@@ -63,7 +63,7 @@ export const useDispenserActions = (
           entityType: 'dispenser',
           entityId: updatedDispenser.id,
           action: 'update',
-          details: `Reset shift stats for dispenser #${updatedDispenser.number}`,
+          details: `Reset shift stats for dispenser ${updatedDispenser.name || updatedDispenser.number || updatedDispenser.id}`,
           user: 'Current User',
           timestamp: new Date()
         };
@@ -72,7 +72,7 @@ export const useDispenserActions = (
         
         toast({
           title: "Shift Reset",
-          description: `Dispenser #${updatedDispenser.number}'s shift stats have been reset.`,
+          description: `Dispenser ${updatedDispenser.name || updatedDispenser.number || updatedDispenser.id}'s shift stats have been reset.`,
           variant: "default", // Changed from "success" to "default"
         });
       }
@@ -132,7 +132,7 @@ export const useDispenserActions = (
       const newSale: Sale = {
         id: `sale-${uuidv4().substring(0, 8)}`,
         dispenserId,
-        dispenserNumber: dispenser.number,
+        dispenserNumber: dispenser.number || dispenser.name,
         staffId,
         shiftId,
         volume,
@@ -154,12 +154,12 @@ export const useDispenserActions = (
         entityType: 'dispenser',
         entityId: dispenserId,
         action: 'other', // Changed from 'sale' to 'other' to match the type
-        details: `Manual sale recorded: ${volume.toFixed(2)} L of ${dispenser.productType} for ₦${amount.toFixed(2)} on dispenser #${dispenser.number}`,
+        details: `Manual sale recorded: ${volume.toFixed(2)} L of ${dispenser.productType} for ₦${amount.toFixed(2)} on dispenser ${dispenser.name || dispenser.number || dispenser.id}`,
         user: staffId,
         timestamp: new Date(),
         metadata: {
           dispenserId,
-          dispenserNumber: dispenser.number,
+          dispenserNumber: dispenser.number || dispenser.name,
           staffId,
           shiftId,
           volume,

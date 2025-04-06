@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -51,7 +50,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [drivers, setDrivers] = useState<Driver[]>(loadedState.drivers);
   const [trucks, setTrucks] = useState<Truck[]>(loadedState.trucks);
   const [gpsData, setGPSData] = useState<GPSData[]>(loadedState.gpsData);
-  const [aiInsights, setAIInsights] = useState<AIInsight[]>(loadedState.aiInsights);
+  const [aiInsights, setAIInsights] = useState<AIInsight[]>(loadedState.aiInsights || []);
   const [staff, setStaff] = useState<Staff[]>(loadedState.staff || []);
   const [dispensers, setDispensers] = useState<Dispenser[]>(loadedState.dispensers || []);
   const [shifts, setShifts] = useState<Shift[]>(loadedState.shifts || []);
@@ -365,7 +364,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const getDispenserSalesStats = (id: string, dateRange?: { from: Date, to: Date }) => {
-    // Default implementation
+    const convertedRange = dateRange ? {
+      start: dateRange.from,
+      end: dateRange.to
+    } : undefined;
+
     return {
       volume: 0,
       amount: 0,
@@ -402,7 +405,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ...saleActions,
     ...priceActions,
     ...tankActionsMethods,
-    // Add the missing dispenser functions
     addDispenser,
     deleteDispenser,
     getDispenserById,
@@ -410,10 +412,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDispenserActive,
     recordDispensing,
     getDispenserSalesStats,
-    // Add database management functions
     resetDatabase,
     exportDatabase,
-    importDatabase
+    importDatabase,
+    generateAIInsights: aiActions.generateAIInsights,
+    getInsightsByType: aiActions.getInsightsByType
   };
 
   return (

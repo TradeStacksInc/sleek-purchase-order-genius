@@ -1,8 +1,17 @@
-class GPSSimulator {
-  private static instance: GPSSimulator;
-  private pathHistory: { [truckId: string]: { lat: number; lng: number }[] } = {};
 
-  private constructor() {}
+import { v4 as uuidv4 } from 'uuid';
+import { TrackingInfo } from '@/types';
+
+export default class GPSSimulator {
+  private static instance: GPSSimulator;
+  private trackedTrucks: Map<string, TrackingInfo> = new Map();
+  private updateCallbacks: Array<(truckId: string, info: TrackingInfo) => void> = [];
+  private intervals: Map<string, NodeJS.Timeout> = new Map();
+  private isRunning: boolean = false;
+
+  private constructor() {
+    // Private constructor to enforce singleton pattern
+  }
 
   public static getInstance(): GPSSimulator {
     if (!GPSSimulator.instance) {
@@ -11,94 +20,106 @@ class GPSSimulator {
     return GPSSimulator.instance;
   }
 
-  startSimulation(truckId: string, updateInterval: number = 3000) {
-    if (!this.pathHistory[truckId]) {
-      this.pathHistory[truckId] = [];
+  public registerUpdateCallback(callback: (truckId: string, info: TrackingInfo) => void): void {
+    this.updateCallbacks.push(callback);
+  }
+
+  public startTracking(truckId: string, initialLatitude: number, initialLongitude: number): void {
+    // Don't track the same truck twice
+    if (this.trackedTrucks.has(truckId)) {
+      return;
     }
 
-    setInterval(() => {
-      this.simulateGPSData(truckId);
-    }, updateInterval);
+    const newTrackingInfo: TrackingInfo = {
+      truckId,
+      currentLatitude: initialLatitude,
+      currentLongitude: initialLongitude,
+      currentSpeed: Math.random() * 60 + 20, // 20-80 km/h
+      distanceCovered: 0,
+      lastUpdated: new Date(),
+      route: [{ lat: initialLatitude, lng: initialLongitude }]
+    };
+
+    this.trackedTrucks.set(truckId, newTrackingInfo);
+    
+    // Start interval for this truck
+    const interval = setInterval(() => this.updateTruckPosition(truckId), 3000);
+    this.intervals.set(truckId, interval);
+    
+    this.isRunning = true;
   }
 
-  getPathHistory(truckId: string): { lat: number; lng: number }[] {
-    return this.pathHistory[truckId] || [];
+  public stopTracking(truckId: string): void {
+    // Clear interval
+    const interval = this.intervals.get(truckId);
+    if (interval) {
+      clearInterval(interval);
+      this.intervals.delete(truckId);
+    }
+    
+    // Remove from tracked trucks
+    this.trackedTrucks.delete(truckId);
+    
+    // Update running state
+    if (this.intervals.size === 0) {
+      this.isRunning = false;
+    }
   }
 
-  getTrackingInfo(truckId: string): { currentLatitude: number; currentLongitude: number; currentSpeed: number; distanceCovered: number } | null {
-    const history = this.pathHistory[truckId];
-    if (!history || history.length === 0) return null;
+  public isTracking(): boolean {
+    return this.isRunning;
+  }
 
-    const lastPosition = history[history.length - 1];
-    const currentSpeed = Math.floor(Math.random() * 80) + 10; // 10-90 km/h
+  public getTrackingInfo(truckId: string): TrackingInfo | undefined {
+    return this.trackedTrucks.get(truckId);
+  }
 
-    let distanceCovered = 0;
-    if (history.length > 1) {
-      for (let i = 1; i < history.length; i++) {
-        distanceCovered += this.calculateDistance(history[i - 1].lat, history[i - 1].lng, history[i].lat, history[i].lng);
+  public getAllTrackedTrucks(): Array<{ truckId: string, info: TrackingInfo }> {
+    const result: Array<{ truckId: string, info: TrackingInfo }> = [];
+    this.trackedTrucks.forEach((info, truckId) => {
+      result.push({ truckId, info });
+    });
+    return result;
+  }
+
+  public getPathHistory(truckId: string): Array<{ lat: number, lng: number }> {
+    const info = this.trackedTrucks.get(truckId);
+    return info?.route || [];
+  }
+
+  private updateTruckPosition(truckId: string): void {
+    const info = this.trackedTrucks.get(truckId);
+    if (!info) return;
+
+    // Calculate new position
+    const direction = Math.random() * Math.PI * 2; // Random direction
+    const distance = (info.currentSpeed / 3600) * 3; // Distance in 3 seconds (km)
+    const latChange = distance * Math.cos(direction) / 111; // Approx conversion to degrees
+    const lngChange = distance * Math.sin(direction) / (111 * Math.cos(info.currentLatitude * (Math.PI / 180)));
+
+    const newLat = info.currentLatitude + latChange;
+    const newLng = info.currentLongitude + lngChange;
+
+    // Update tracking info
+    info.currentLatitude = newLat;
+    info.currentLongitude = newLng;
+    info.currentSpeed = Math.min(120, Math.max(20, info.currentSpeed + (Math.random() - 0.5) * 10)); // Vary speed slightly
+    info.distanceCovered += distance;
+    info.lastUpdated = new Date();
+    
+    // Add to route history
+    if (info.route) {
+      info.route.push({ lat: newLat, lng: newLng });
+      // Limit history length
+      if (info.route.length > 100) {
+        info.route = info.route.slice(-100);
       }
     }
 
-    return {
-      currentLatitude: lastPosition.lat,
-      currentLongitude: lastPosition.lng,
-      currentSpeed: currentSpeed,
-      distanceCovered: distanceCovered
-    };
-  }
-
-  private simulateGPSData(truckId: string) {
-    // Simulate a GPS data point
-    const lastPosition = this.pathHistory[truckId] ? this.pathHistory[truckId][this.pathHistory[truckId].length - 1] : { lat: 6.5244, lng: 3.3792 }; // Lagos coordinates
-    const newLatitude = lastPosition.lat + (Math.random() - 0.5) * 0.01;
-    const newLongitude = lastPosition.lng + (Math.random() - 0.5) * 0.01;
-    const speed = Math.floor(Math.random() * 80) + 10; // 10-90 km/h
-    const heading = Math.floor(Math.random() * 360);
-
-    const gpsData = this.createGpsDataPoint(truckId, newLatitude, newLongitude, speed, heading);
-    this.pathHistory[truckId].push({ lat: newLatitude, lng: newLongitude });
-  }
-
-  createGpsDataPoint(truckId: string, latitude: number, longitude: number, speed: number, heading: number) {
-    return {
-      id: `gps-${Math.random().toString(36).substring(2, 10)}`,
-      truckId,
-      latitude,
-      longitude,
-      speed,
-      heading, // Added as an optional property in the GPSData interface
-      timestamp: new Date(),
-      fuelLevel: Math.floor(Math.random() * 40) + 60, // 60-100% fuel level
-      location: this.getLocationName(latitude, longitude)
-    };
-  }
-  
-  getLocationName(lat: number, lng: number): string {
-    // Simple location determination based on coordinates
-    // In a real implementation, this would use reverse geocoding
-    if (lat > 6.5 && lng < 3.35) return "Ikeja";
-    if (lat < 6.48 && lng > 3.38) return "Victoria Island";
-    if (lat > 6.6) return "Ikorodu";
-    if (lng < 3.3) return "Agege";
-    return "Lagos Mainland";
-  }
-
-  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371; // Radius of the earth in km
-    const dLat = this.deg2rad(lat2 - lat1);
-    const dLon = this.deg2rad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; // Distance in km
-    return d;
-  }
-
-  private deg2rad(deg: number): number {
-    return deg * (Math.PI / 180);
+    // Notify callbacks
+    this.updateCallbacks.forEach(callback => callback(truckId, info));
   }
 }
 
-export default GPSSimulator;
+// Export the TrackingInfo type
+export type { TrackingInfo };
