@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -31,7 +30,7 @@ const DriverSituationCard: React.FC<DriverSituationCardProps> = ({
   
   // Calculate progress
   const totalDistance = deliveryDetails.totalDistance || 100;
-  const distanceCovered = truckTrackingInfo?.distance || deliveryDetails.distanceCovered || 0;
+  const distanceCovered = truckTrackingInfo?.distanceCovered || deliveryDetails.distanceCovered || 0;
   const progressPercentage = Math.min(Math.round((distanceCovered / totalDistance) * 100), 100);
   
   // Calculate ETA
@@ -40,7 +39,7 @@ const DriverSituationCard: React.FC<DriverSituationCardProps> = ({
     : 'Calculating...';
   
   // Get current speed
-  const currentSpeed = truckTrackingInfo?.speed || truck.lastSpeed || 0;
+  const currentSpeed = truckTrackingInfo?.currentSpeed || truck.lastSpeed || 0;
   
   return (
     <Card className="overflow-hidden border shadow-sm hover:shadow-md transition-shadow duration-200 bg-white rounded-xl">

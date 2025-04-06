@@ -4,7 +4,7 @@ import {
   PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight, Staff, 
   Dispenser, Shift, Sale, Incident, ActivityLog, Tank, Price, 
   Product, ProductType, DeliveryDetails
-} from '../types';
+} from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { STORAGE_KEYS, saveToLocalStorage, getPaginatedData } from '@/utils/localStorage';
 import { loadAppState } from '@/utils/localStorage/appState';
@@ -652,7 +652,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
   
-  // Fix updateDeliveryStatus to accept partial DeliveryDetails
+  // Fix updateDeliveryStatus to handle Partial<DeliveryDetails>
   const updateDeliveryStatus = (orderId: string, updates: Partial<DeliveryDetails>): boolean => {
     const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
     if (orderIndex === -1) return false;
@@ -739,18 +739,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getGPSDataForTruck,
     updateDeliveryDetails,
     markOrderAsDelivered,
-    // Add missing staff actions
-    deleteStaff: staffActions.deleteStaff,
-    // Add missing shift actions
-    addShift: shiftActions.addShift,
-    updateShift: shiftActions.updateShift,
-    deleteShift: shiftActions.deleteShift,
+    deleteStaff,
+    addShift,
+    updateShift,
+    deleteShift,
     getShiftById: shiftActions.getShiftById,
-    getAllShifts: shiftActions.getAllShifts,
+    getAllShifts,
     startShift: shiftActions.startShift,
     endShift: shiftActions.endShift,
-    getShiftsByStaffId: shiftActions.getShiftsByStaffId,
-    getCurrentStaffShift: shiftActions.getCurrentStaffShift
+    getShiftsByStaffId,
+    getCurrentStaffShift
   };
 
   return (
@@ -760,5 +758,4 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
-// Export the context for direct usage if needed
 export default AppContext;

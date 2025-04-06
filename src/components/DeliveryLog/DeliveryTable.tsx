@@ -550,9 +550,10 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries }) => {
                           </OffloadingDialog>
                         )}
                         
-                        <IncidentDialog orderDetails={{ id: order.id, poNumber: order.poNumber || '' }}>
-                          <Button variant="ghost" size="sm" className="text-amber-500 hover:bg-amber-50 hover:text-amber-600 mr-2 h-8 w-8">
-                            <AlertTriangle className="h-4 w-4" />
+                        <IncidentDialog orderDetails={{ id: order.id, poNumber: order.poNumber }}>
+                          <Button size="sm" variant="ghost" className="flex items-center gap-1 text-amber-600 hover:text-amber-700">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Report Issue
                           </Button>
                         </IncidentDialog>
                         

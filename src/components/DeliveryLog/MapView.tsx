@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Driver, GPSData, PurchaseOrder, Truck as TruckType } from '@/types';
 import { format } from 'date-fns';
-import GPSTrackingService from '@/services/GPSTrackingService';
+import GPSTrackingService, { TrackingInfo } from '@/services/GPSTrackingService';
 
 interface MapViewProps {
   onBack: () => void;
@@ -80,7 +80,7 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     const gpsService = GPSTrackingService.getInstance();
     const trackingInfo = gpsService.getTrackingInfo(order.deliveryDetails.truckId || '');
     
-    const distanceCovered = trackingInfo?.distance || order.deliveryDetails.distanceCovered || 0;
+    const distanceCovered = trackingInfo?.distanceCovered || order.deliveryDetails.distanceCovered || 0;
     const totalDistance = order.deliveryDetails.totalDistance || 100;
     
     return Math.min(Math.round((distanceCovered / totalDistance) * 100), 99);
@@ -98,8 +98,8 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     const gpsService = GPSTrackingService.getInstance();
     const trackingInfo = gpsService.getTrackingInfo(selectedDeliveryDetails.deliveryDetails?.truckId || '');
     
-    const currentLat = latestPosition?.latitude || trackingInfo?.currentLatitude || 0;
-    const currentLng = latestPosition?.longitude || trackingInfo?.currentLongitude || 0;
+    const currentLat = latestPosition?.latitude || trackingInfo?.latitude || 0;
+    const currentLng = latestPosition?.longitude || trackingInfo?.longitude || 0;
     
     return (
       <div className="relative w-full h-full bg-blue-50 rounded-lg overflow-hidden">
