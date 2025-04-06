@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { 
   PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight, Staff, 
   Dispenser, Shift, Sale, Incident, ActivityLog, Tank, Price, 
-  Product, ProductType
+  Product, ProductType, DeliveryDetails
 } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { STORAGE_KEYS, saveToLocalStorage, getPaginatedData } from '@/utils/localStorage';
@@ -739,6 +739,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getGPSDataForTruck,
     updateDeliveryDetails,
     markOrderAsDelivered,
+    // Add missing staff actions
+    deleteStaff: staffActions.deleteStaff,
+    // Add missing shift actions
+    addShift: shiftActions.addShift,
+    updateShift: shiftActions.updateShift,
+    deleteShift: shiftActions.deleteShift,
+    getShiftById: shiftActions.getShiftById,
+    getAllShifts: shiftActions.getAllShifts,
+    startShift: shiftActions.startShift,
+    endShift: shiftActions.endShift,
+    getShiftsByStaffId: shiftActions.getShiftsByStaffId,
+    getCurrentStaffShift: shiftActions.getCurrentStaffShift
   };
 
   return (

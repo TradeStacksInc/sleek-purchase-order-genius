@@ -7,6 +7,8 @@ export interface TrackingInfo {
   longitude: number;
   speed: number;
   distance: number;
+  distanceCovered: number;
+  currentSpeed: number;
   lastUpdate: Date;
   path: Array<{lat: number, lng: number, timestamp: Date}>;
 }
@@ -14,13 +16,21 @@ export interface TrackingInfo {
 class GPSTrackingService {
   private simulator: GPSSimulator;
   private trackingInfo: Record<string, TrackingInfo> = {};
-  private updateCallbacks: Array<() => void> = [];
+  private updateCallbacks: Array<(truckId: string, info: TrackingInfo) => void> = [];
   private isActive: boolean = false;
   private activeTrackedTruck: string = '';
+  private static instance: GPSTrackingService;
   
-  constructor() {
+  private constructor() {
     this.simulator = new GPSSimulator();
     this.simulator.onUpdate = this.handleGPSUpdate.bind(this);
+  }
+  
+  public static getInstance(): GPSTrackingService {
+    if (!GPSTrackingService.instance) {
+      GPSTrackingService.instance = new GPSTrackingService();
+    }
+    return GPSTrackingService.instance;
   }
   
   private handleGPSUpdate(truckId: string, latitude: number, longitude: number, speed: number, distance: number) {
@@ -31,6 +41,8 @@ class GPSTrackingService {
         longitude,
         speed,
         distance,
+        distanceCovered: distance,
+        currentSpeed: speed,
         lastUpdate: new Date(),
         path: [{lat: latitude, lng: longitude, timestamp: new Date()}]
       };
@@ -39,31 +51,51 @@ class GPSTrackingService {
       this.trackingInfo[truckId].longitude = longitude;
       this.trackingInfo[truckId].speed = speed;
       this.trackingInfo[truckId].distance = distance;
+      this.trackingInfo[truckId].distanceCovered = distance;
+      this.trackingInfo[truckId].currentSpeed = speed;
       this.trackingInfo[truckId].lastUpdate = new Date();
       this.trackingInfo[truckId].path.push({lat: latitude, lng: longitude, timestamp: new Date()});
     }
     
     // Notify update callbacks
-    this.updateCallbacks.forEach(callback => callback());
+    this.updateCallbacks.forEach(callback => callback(truckId, this.trackingInfo[truckId]));
   }
   
-  public registerUpdateCallback(callback: () => void) {
+  public registerUpdateCallback(callback: (truckId: string, info: TrackingInfo) => void): number {
     this.updateCallbacks.push(callback);
+    return this.updateCallbacks.length - 1;
   }
   
-  public startTracking(truck: Truck) {
-    // Only start tracking if truck has GPS
-    if (!truck.hasGPS || !truck.isGPSTagged || !truck.lastLatitude || !truck.lastLongitude) {
-      console.error('Cannot track truck without GPS');
+  public unregisterUpdateCallback(callbackId: number): void {
+    if (callbackId >= 0 && callbackId < this.updateCallbacks.length) {
+      this.updateCallbacks.splice(callbackId, 1);
+    }
+  }
+  
+  public startTracking(truck: Truck | string, initialLatitude?: number, initialLongitude?: number): void {
+    const truckId = typeof truck === 'string' ? truck : truck.id;
+    
+    // Get initial coordinates if a Truck object is provided
+    let startLat = initialLatitude;
+    let startLng = initialLongitude;
+    
+    if (typeof truck !== 'string') {
+      startLat = truck.lastLatitude || initialLatitude;
+      startLng = truck.lastLongitude || initialLongitude;
+    }
+    
+    // Only start tracking if coordinates are available
+    if (!startLat || !startLng) {
+      console.error('Cannot track truck without coordinates');
       return;
     }
     
-    this.simulator.startTracking(truck.id, truck.lastLatitude, truck.lastLongitude);
+    this.simulator.startTracking(truckId, startLat, startLng);
     this.isActive = true;
-    this.activeTrackedTruck = truck.id;
+    this.activeTrackedTruck = truckId;
   }
   
-  public stopTracking(truckId: string) {
+  public stopTracking(truckId: string): void {
     this.simulator.stopTracking(truckId);
     if (this.activeTrackedTruck === truckId) {
       this.activeTrackedTruck = '';
@@ -77,8 +109,11 @@ class GPSTrackingService {
     return this.isActive;
   }
   
-  public getAllTrackedTrucks(): string[] {
-    return this.simulator.getAllTrackedTrucks();
+  public getAllTrackedTrucks(): Array<{truckId: string, info: TrackingInfo}> {
+    return this.simulator.getAllTrackedTrucks().map(truckId => ({
+      truckId,
+      info: this.trackingInfo[truckId]
+    }));
   }
   
   public getTrackingInfo(truckId: string): TrackingInfo | undefined {

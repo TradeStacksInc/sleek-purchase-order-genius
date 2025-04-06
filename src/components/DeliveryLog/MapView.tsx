@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ArrowLeft, MapPin, Truck, Navigation, Clock, User, AlertTriangle, Route } from 'lucide-react';
@@ -81,7 +80,7 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
     const gpsService = GPSTrackingService.getInstance();
     const trackingInfo = gpsService.getTrackingInfo(order.deliveryDetails.truckId || '');
     
-    const distanceCovered = trackingInfo?.distanceCovered || order.deliveryDetails.distanceCovered || 0;
+    const distanceCovered = trackingInfo?.distance || order.deliveryDetails.distanceCovered || 0;
     const totalDistance = order.deliveryDetails.totalDistance || 100;
     
     return Math.min(Math.round((distanceCovered / totalDistance) * 100), 99);

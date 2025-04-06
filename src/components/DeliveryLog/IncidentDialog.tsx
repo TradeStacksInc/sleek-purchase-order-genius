@@ -23,7 +23,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderDetails 
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [severity, setSeverity] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');
+  const [severity, setSeverity] = useState<'low' | 'medium' | 'high'>('medium');
   const [category, setCategory] = useState('');
   
   const handleSubmit = () => {
@@ -38,16 +38,14 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderDetails 
     
     try {
       const newIncident: Omit<Incident, 'id'> = {
-        title,
+        type: category as 'delay' | 'mechanical' | 'accident' | 'feedback' | 'other',
         description,
-        severity,
-        category,
-        status: 'open',
         timestamp: new Date(),
         reportedBy: 'Admin',
-        relatedEntityId: orderDetails?.id || '',
-        relatedEntityType: orderDetails ? 'purchase_order' : 'general',
-        poNumber: orderDetails?.poNumber || '',
+        severity,
+        status: 'open',
+        location: 'On site',
+        staffInvolved: []
       };
       
       addIncident(newIncident);
@@ -102,7 +100,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderDetails 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="severity">Severity</Label>
-              <Select value={severity} onValueChange={(value: 'low' | 'medium' | 'high' | 'critical') => setSeverity(value)}>
+              <Select value={severity} onValueChange={(value: 'low' | 'medium' | 'high') => setSeverity(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select severity" />
                 </SelectTrigger>
@@ -110,7 +108,6 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderDetails 
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
                 </SelectContent>
               </Select>
             </div>
