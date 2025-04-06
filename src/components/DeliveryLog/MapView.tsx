@@ -387,8 +387,20 @@ const MapView: React.FC<MapViewProps> = ({ onBack }) => {
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div className="text-sm">
-                          <p className="text-gra
-  
+                          <p className="text-gray-500">Current Location</p>
+                          <p className="font-medium">{latestPosition.location || 'Unknown'}</p>
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-gray-500">Speed</p>
+                          <p className="font-medium">{latestPosition.speed.toFixed(1)} km/h</p>
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-gray-500">Fuel Level</p>
+                          <p className="font-medium">{latestPosition.fuelLevel}%</p>
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-gray-500">Last Update</p>
+                          <p className="font-medium">{format(new Date(latestPosition.timestamp), 'HH:mm:ss')}</p>
                         </div>
                       </div>
                     </div>
