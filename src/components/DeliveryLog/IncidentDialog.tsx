@@ -1,153 +1,157 @@
 
-import React, { useState } from 'react';
-import { useApp } from '@/context/AppContext';
+import React from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useApp } from '@/context/AppContext';
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
-import { Incident } from '@/types';
 
-interface IncidentDialogProps {
+const incidentSchema = z.object({
+  title: z.string().min(5, { message: 'Title is required and must be at least 5 characters' }),
+  description: z.string().min(10, { message: 'Description is required and must be at least 10 characters' }),
+  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  location: z.string().min(3, { message: 'Location is required' }),
+});
+
+export interface IncidentDialogProps {
   children: React.ReactNode;
-  orderDetails?: { id: string; poNumber: string } | null;
+  orderId: string;
 }
 
-const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderDetails }) => {
+const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) => {
   const { addIncident } = useApp();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
   
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [severity, setSeverity] = useState<'low' | 'medium' | 'high'>('medium');
-  const [category, setCategory] = useState('');
-  
-  const handleSubmit = () => {
-    if (!title || !description || !category) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill in all the required fields.',
-        variant: 'destructive',
-      });
-      return;
-    }
+  const form = useForm<z.infer<typeof incidentSchema>>({
+    resolver: zodResolver(incidentSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      severity: 'medium',
+      location: '',
+    },
+  });
+
+  const onSubmit = (data: z.infer<typeof incidentSchema>) => {
+    const incident = {
+      ...data,
+      orderId,
+      reportedAt: new Date(),
+      status: 'open',
+      reportedBy: 'Current User',
+    };
     
-    try {
-      const newIncident: Omit<Incident, 'id'> = {
-        type: category as 'delay' | 'mechanical' | 'accident' | 'feedback' | 'other',
-        description,
-        timestamp: new Date(),
-        reportedBy: 'Admin',
-        severity,
-        status: 'open',
-        location: 'On site',
-        staffInvolved: []
-      };
-      
-      addIncident(newIncident);
-      
-      setOpen(false);
-      setTitle('');
-      setDescription('');
-      setSeverity('medium');
-      setCategory('');
-      
-      toast({
-        title: 'Incident Reported',
-        description: 'The incident has been recorded successfully.',
-      });
-    } catch (error) {
-      console.error('Error adding incident:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to report the incident. Please try again.',
-        variant: 'destructive',
-      });
-    }
+    addIncident(incident);
+    
+    toast({
+      title: 'Incident Reported',
+      description: 'The incident has been logged successfully.',
+    });
+    
+    form.reset();
+    setIsOpen(false);
   };
   
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
             Report Incident
           </DialogTitle>
           <DialogDescription>
-            {orderDetails
-              ? `Reporting an incident related to PO #${orderDetails.poNumber}`
-              : 'Report a new incident or issue'}
+            Log delivery-related incidents, issues, or anomalies for this order.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
+        
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-3">
+          <div>
             <Label htmlFor="title">Incident Title</Label>
-            <Input
+            <Input 
               id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Short title describing the incident"
+              placeholder="Brief title for the incident"
+              {...form.register('title')} 
             />
+            {form.formState.errors.title && (
+              <p className="text-sm text-red-500 mt-1">{form.formState.errors.title.message}</p>
+            )}
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               <Label htmlFor="severity">Severity</Label>
-              <Select value={severity} onValueChange={(value: 'low' | 'medium' | 'high') => setSeverity(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select severity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller
+                control={form.control}
+                name="severity"
+                render={({ field }) => (
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select severity level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {form.formState.errors.severity && (
+                <p className="text-sm text-red-500 mt-1">{form.formState.errors.severity.message}</p>
+              )}
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="delivery">Delivery Issue</SelectItem>
-                  <SelectItem value="quality">Quality Issue</SelectItem>
-                  <SelectItem value="quantity">Quantity Discrepancy</SelectItem>
-                  <SelectItem value="documentation">Documentation Issue</SelectItem>
-                  <SelectItem value="safety">Safety Concern</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+            
+            <div>
+              <Label htmlFor="location">Location</Label>
+              <Input 
+                id="location"
+                placeholder="Where did the incident occur?"
+                {...form.register('location')} 
+              />
+              {form.formState.errors.location && (
+                <p className="text-sm text-red-500 mt-1">{form.formState.errors.location.message}</p>
+              )}
             </div>
           </div>
-
-          <div className="space-y-2">
+          
+          <div>
             <Label htmlFor="description">Description</Label>
-            <Textarea
+            <Textarea 
               id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={5}
-              placeholder="Detailed description of the incident, including what happened, when, and any immediate actions taken"
+              placeholder="Detailed description of what happened"
+              className="min-h-[100px]"
+              {...form.register('description')} 
             />
+            {form.formState.errors.description && (
+              <p className="text-sm text-red-500 mt-1">{form.formState.errors.description.message}</p>
+            )}
           </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit}>Report Incident</Button>
-        </DialogFooter>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              Report Incident
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

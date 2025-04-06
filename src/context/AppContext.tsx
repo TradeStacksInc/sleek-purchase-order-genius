@@ -652,22 +652,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
   
-  // Fix updateDeliveryStatus to handle Partial<DeliveryDetails>
-  const updateDeliveryStatus = (orderId: string, updates: Partial<DeliveryDetails>): boolean => {
+  // Fixed updateDeliveryStatus to accept either status string or partial DeliveryDetails
+  const updateDeliveryStatus = (orderId: string, updates: Partial<DeliveryDetails> | string): boolean => {
     const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
     if (orderIndex === -1) return false;
     
     const updatedOrder = { ...purchaseOrders[orderIndex] };
     if (!updatedOrder.deliveryDetails) {
-      updatedOrder.deliveryDetails = {
-        status: updates.status || 'pending',
-        ...updates
-      };
+      // If updates is a string, treat it as status
+      if (typeof updates === 'string') {
+        updatedOrder.deliveryDetails = {
+          status: updates as 'pending' | 'in_transit' | 'delivered'
+        };
+      } else {
+        // Otherwise, it's a partial DeliveryDetails object
+        updatedOrder.deliveryDetails = {
+          status: updates.status || 'pending',
+          ...updates
+        };
+      }
     } else {
-      updatedOrder.deliveryDetails = {
-        ...updatedOrder.deliveryDetails,
-        ...updates
-      };
+      // If updates is a string, update only status
+      if (typeof updates === 'string') {
+        updatedOrder.deliveryDetails.status = updates as 'pending' | 'in_transit' | 'delivered';
+      } else {
+        // Otherwise, merge the updates
+        updatedOrder.deliveryDetails = {
+          ...updatedOrder.deliveryDetails,
+          ...updates
+        };
+      }
     }
     
     persistentSetPurchaseOrders(prev => {

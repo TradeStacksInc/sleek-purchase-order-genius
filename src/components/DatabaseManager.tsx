@@ -1,3 +1,4 @@
+
 // DatabaseManager.tsx
 import React, { useState, useEffect } from 'react';
 import { getDatabaseInfo, exportDatabase, importDatabase, resetDatabase } from '@/utils/databaseManager';
@@ -65,9 +66,9 @@ const DatabaseManager: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold mb-2">Database Information</h3>
             <ul className="list-disc list-inside">
-              <li>Version: {dbInfo.version}</li>
+              {dbInfo.version && <li>Version: {dbInfo.version}</li>}
               <li>Last Update: {dbInfo.lastUpdate.toLocaleString()}</li>
-              <li>Last Reset: {dbInfo.lastReset ? dbInfo.lastReset.toLocaleString() : 'Never'}</li>
+              {dbInfo.lastReset && <li>Last Reset: {dbInfo.lastReset.toLocaleString()}</li>}
               {Object.entries(dbInfo.recordCounts).map(([key, count]) => (
                 <li key={key}>{key}: {count} records</li>
               ))}
