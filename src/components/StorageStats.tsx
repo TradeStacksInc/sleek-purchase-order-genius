@@ -33,7 +33,7 @@ const StorageStats: React.FC = () => {
         setStorageInfo({
           totalSize,
           usedPercentage: Math.min(100, (totalSize / maxSize) * 100),
-          recordCounts: dbInfo.recordCounts,
+          recordCounts: dbInfo.recordCounts || {},
           lastUpdate: new Date()
         });
       } catch (e) {

@@ -1,30 +1,25 @@
-
 import { 
-  LogEntry, 
   PurchaseOrder, 
   Supplier, 
   Driver, 
   Truck, 
-  DeliveryDetails, 
   GPSData, 
-  OffloadingDetails, 
-  Incident, 
   AIInsight, 
-  OrderStatus, 
   Staff, 
   Dispenser, 
   Shift, 
   Sale, 
-  PriceRecord, 
-  ActivityLog,
-  Tank 
-} from '../types';
-import { PaginationParams, PaginatedResult } from '../utils/localStorage/types';
+  Price, 
+  Incident, 
+  ActivityLog, 
+  Tank,
+  ProductType 
+} from '@/types';
+import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
 
-export interface AppContextType {
-  // Data collections
+export type AppContextType = {
   purchaseOrders: PurchaseOrder[];
-  logs: LogEntry[];
+  logs: any[];
   suppliers: Supplier[];
   drivers: Driver[];
   trucks: Truck[];
@@ -34,113 +29,85 @@ export interface AppContextType {
   dispensers: Dispenser[];
   shifts: Shift[];
   sales: Sale[];
-  prices: PriceRecord[];
+  prices: Price[];
   incidents: Incident[];
   activityLogs: ActivityLog[];
   tanks: Tank[];
-  
-  // Purchase Order actions
-  addPurchaseOrder: (order: PurchaseOrder) => PurchaseOrder | null;
-  updateOrderStatus: (id: string, status: OrderStatus, notes?: string, approvedBy?: string, rejectionReason?: string) => PurchaseOrder | null;
-  getOrderById: (id: string) => PurchaseOrder | undefined;
-  getOrdersWithDeliveryStatus: (status: 'pending' | 'in_transit' | 'delivered') => PurchaseOrder[];
-  getOrdersWithDiscrepancies: () => PurchaseOrder[];
-  getOrdersByStatus: (status: OrderStatus) => PurchaseOrder[];
-  getStatusDescription: (status: OrderStatus) => string;
-  
-  // Supplier actions
-  addSupplier: (supplier: Supplier) => Supplier | null;
-  
-  // Log actions
-  getLogsByOrderId: (id: string) => LogEntry[];
-  logAIInteraction: (query: string, response: string) => void;
-  getActivityLogs: (params?: PaginationParams) => PaginatedResult<ActivityLog>;
-  
-  // Driver and Truck actions
+  addPurchaseOrder: (order: Omit<PurchaseOrder, 'id'>) => PurchaseOrder;
+  updatePurchaseOrder: (id: string, updates: Partial<PurchaseOrder>) => boolean;
+  deletePurchaseOrder: (id: string) => boolean;
+  getPurchaseOrderById: (id: string) => PurchaseOrder | undefined;
+  getAllPurchaseOrders: (params?: PaginationParams) => PaginatedResult<PurchaseOrder>;
+  addLog: (log: any) => void;
+  deleteLog: (id: string) => void;
+  getLogById: (id: string) => any | undefined;
+  getAllLogs: (params?: PaginationParams) => PaginatedResult<any>;
+  addSupplier: (supplier: Omit<Supplier, 'id'>) => Supplier;
+  updateSupplier: (id: string, updates: Partial<Supplier>) => boolean;
+  deleteSupplier: (id: string) => boolean;
+  getSupplierById: (id: string) => Supplier | undefined;
+  getAllSuppliers: (params?: PaginationParams) => PaginatedResult<Supplier>;
   addDriver: (driver: Omit<Driver, 'id'>) => Driver;
-  addTruck: (truck: Omit<Truck, 'id'>) => Truck;
+  updateDriver: (id: string, updates: Partial<Driver>) => boolean;
+  deleteDriver: (id: string) => boolean;
   getDriverById: (id: string) => Driver | undefined;
+  getAllDrivers: (params?: PaginationParams) => PaginatedResult<Driver>;
+  addTruck: (truck: Omit<Truck, 'id'>) => Truck;
+  updateTruck: (id: string, updates: Partial<Truck>) => boolean;
+  deleteTruck: (id: string) => boolean;
   getTruckById: (id: string) => Truck | undefined;
-  getAvailableDrivers: () => Driver[];
-  getAvailableTrucks: () => Truck[];
-  getGPSTaggedTrucks: () => Truck[];
-  getNonTaggedTrucks: () => Truck[];
-  getNonGPSTrucks: () => Truck[];
-  tagTruckWithGPS: (truckId: string, gpsDeviceId: string, initialLatitude: number, initialLongitude: number) => void;
-  untagTruckGPS: (truckId: string) => void;
-  
-  // Delivery actions
-  assignDriverToOrder: (orderId: string, driverId: string, truckId: string) => void;
-  updateDeliveryStatus: (
-    orderId: string, 
-    updates: Partial<DeliveryDetails>
-  ) => PurchaseOrder | undefined;
-  updateGPSData: (truckId: string, latitude: number, longitude: number, speed: number) => void;
-  recordOffloadingDetails: (orderId: string, offloadingData: Omit<OffloadingDetails, 'id' | 'deliveryId' | 'timestamp' | 'discrepancyPercentage' | 'isDiscrepancyFlagged' | 'status'>) => void;
-  addIncident: (orderId: string, incident: Omit<Incident, 'id' | 'deliveryId' | 'timestamp'>) => void;
-  startDelivery: (orderId: string) => void;
-  completeDelivery: (orderId: string) => void;
-  
-  // AI actions
-  generateAIInsights: () => void;
-  getInsightsByType: (type: string) => AIInsight[];
-  markInsightAsRead: (id: string) => void;
-  generateDiscrepancyInsights: () => void;
-  
-  // Staff actions
+  getAllTrucks: (params?: PaginationParams) => PaginatedResult<Truck>;
+  recordGPSData: (truckId: string, latitude: number, longitude: number) => GPSData;
+  getGPSDataForTruck: (truckId: string, params?: PaginationParams) => PaginatedResult<GPSData>;
+  updateDeliveryDetails: (
+    orderId: string,
+    driverId: string,
+    truckId: string,
+    deliveryDate: Date
+  ) => boolean;
+  markOrderAsDelivered: (orderId: string) => boolean;
   addStaff: (staff: Omit<Staff, 'id'>) => Staff;
-  updateStaff: (id: string, data: Partial<Staff>) => Staff | undefined;
-  removeStaff: (id: string) => boolean;
+  updateStaff: (id: string, updates: Partial<Staff>) => boolean;
+  deleteStaff: (id: string) => boolean;
   getStaffById: (id: string) => Staff | undefined;
   getAllStaff: (params?: PaginationParams) => PaginatedResult<Staff>;
-  
-  // Dispenser actions
   addDispenser: (dispenser: Omit<Dispenser, 'id'>) => Dispenser;
-  updateDispenser: (id: string, data: Partial<Dispenser>) => Dispenser | undefined;
+  updateDispenser: (id: string, updates: Partial<Dispenser>) => boolean | undefined;
   deleteDispenser: (id: string) => boolean;
   getDispenserById: (id: string) => Dispenser | undefined;
   getAllDispensers: (params?: PaginationParams) => PaginatedResult<Dispenser>;
   setDispenserActive: (id: string, isActive: boolean) => Dispenser | undefined;
-  recordDispensing: (id: string, volume: number, staffId: string, shiftId: string) => boolean;
-  resetDispenserShiftStats: (id: string) => Dispenser | undefined;
-  getDispenserSalesStats: (id: string, dateRange?: { from: Date; to: Date }) => {
-    volume: number;
-    amount: number;
-    transactions: number;
-  };
-  
-  // Shift actions
-  startShift: (staffId: string) => Shift;
-  endShift: (shiftId: string) => Shift | undefined;
+  recordManualSale: (dispenserId: string, volume: number, amount: number, staffId: string, shiftId: string, paymentType: string) => boolean;
+  getDispenserSalesStats: (dispenserId: string, dateRange?: { from: Date, to: Date }) => { volume: number; amount: number; transactions: number; };
+  addShift: (shift: Omit<Shift, 'id'>) => Shift;
+  updateShift: (id: string, updates: Partial<Shift>) => boolean;
+  deleteShift: (id: string) => boolean;
   getShiftById: (id: string) => Shift | undefined;
-  getShiftsByStaffId: (staffId: string, params?: PaginationParams) => PaginatedResult<Shift>;
-  
-  // Sale actions
-  recordSale: (sale: Omit<Sale, 'id' | 'timestamp'>) => Sale;
+  getAllShifts: (params?: PaginationParams) => PaginatedResult<Shift>;
+  startShift: (staffId: string) => Shift | undefined;
+  endShift: (staffId: string) => Shift | undefined;
+  addSale: (sale: Omit<Sale, 'id'>) => Sale;
+  updateSale: (id: string, updates: Partial<Sale>) => boolean;
+  deleteSale: (id: string) => boolean;
   getSaleById: (id: string) => Sale | undefined;
-  getSalesByStaffId: (staffId: string, params?: PaginationParams) => PaginatedResult<Sale>;
-  getSalesByProductType: (productType: string, params?: PaginationParams) => PaginatedResult<Sale>;
-  
-  // Price actions
-  setPriceRecord: (price: Omit<PriceRecord, 'id' | 'effectiveDate'>) => PriceRecord;
-  getCurrentPrice: (productType: string) => PriceRecord | undefined;
-  getPriceHistory: (productType: string, params?: PaginationParams) => PaginatedResult<PriceRecord>;
-  
-  // Database management
+  getAllSales: (params?: PaginationParams) => PaginatedResult<Sale>;
+  addPrice: (price: Omit<Price, 'id'>) => Price;
+  updatePrice: (id: string, updates: Partial<Price>) => boolean;
+  deletePrice: (id: string) => boolean;
+  getPriceById: (id: string) => Price | undefined;
+  getAllPrices: (params?: PaginationParams) => PaginatedResult<Price>;
+  getAvailableDrivers: () => Driver[];
+  getAvailableTrucks: () => Truck[];
+  getGPSTaggedTrucks: () => Truck[];
+  getNonTaggedTrucks: () => Truck[];
+  getShiftsByStaffId: (staffId: string) => Shift[];
+  getCurrentStaffShift: (staffId: string) => Shift | null;
+  getTankByProductType: (productType: ProductType) => Tank | undefined;
+  getActiveDispensersByTankId: (tankId: string) => Dispenser[];
+  getActiveTanksByProductType: (productType: ProductType) => Tank[];
+  generateAIInsights: () => void;
+  getInsightsByType: (type: string) => AIInsight[];
   resetDatabase: (includeSeedData?: boolean) => void;
   exportDatabase: () => string;
   importDatabase: (jsonData: string) => boolean;
-  
-  // Tank actions
-  addTank: (tank: Omit<Tank, 'id'>) => Tank;
-  updateTank: (id: string, data: Partial<Tank>) => Tank | undefined;
-  deleteTank: (id: string) => boolean;
-  getTankById: (id: string) => Tank | undefined;
-  getAllTanks: () => Tank[];
-  recordOffloadingToTank: (tankId: string, volume: number, productType: string) => Tank | undefined;
-  createEmptyTank: (name: string, capacity: number, productType: ProductType) => Tank;
-  clearAllTanks: () => void;
-  connectTankToDispenser: (tankId: string, dispenserId: string) => boolean;
-  disconnectTankFromDispenser: (tankId: string, dispenserId: string) => boolean;
-  setTankActive: (tankId: string, isActive: boolean) => Tank | undefined;
-}
+};

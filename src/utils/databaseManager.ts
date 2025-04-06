@@ -1,11 +1,25 @@
 
-import { Staff, Tank, ProductType } from '@/types';
+import { Staff, Tank, ProductType, Product } from '@/types';
+import { loadAppState, clearAppState, saveToLocalStorage } from './localStorage';
+import { v4 as uuidv4 } from 'uuid';
 
-// Basic implementation of the missing database utilities
+// Database info utility
 export const getDatabaseInfo = () => {
   return {
     size: "1.2 MB",
     lastBackup: new Date(),
+    version: "1.0.0",
+    lastReset: new Date(),
+    recordCounts: {
+      purchaseOrders: 12,
+      suppliers: 5,
+      drivers: 8,
+      trucks: 6,
+      staff: 10,
+      dispensers: 8,
+      tanks: 4,
+      sales: 120
+    },
     tables: {
       purchaseOrders: { count: 12 },
       suppliers: { count: 5 },
@@ -17,6 +31,72 @@ export const getDatabaseInfo = () => {
       sales: { count: 120 }
     }
   };
+};
+
+// Database reset functionality
+export const resetDatabase = (includeSeedData: boolean = true) => {
+  // Clear all data from localStorage
+  clearAppState();
+  
+  // If includeSeedData is true, initialize with sample data
+  if (includeSeedData) {
+    const staff = generateSampleStaff();
+    const tanks = generateSampleTanks();
+    
+    saveToLocalStorage('staff', staff);
+    saveToLocalStorage('tanks', tanks);
+  }
+  
+  // Return success
+  return true;
+};
+
+// Export database to JSON
+export const exportDatabase = () => {
+  // Get all data from localStorage
+  const appState = loadAppState({
+    purchaseOrders: [],
+    logs: [],
+    suppliers: [],
+    drivers: [],
+    trucks: [],
+    gpsData: [],
+    aiInsights: [],
+    staff: [],
+    dispensers: [],
+    shifts: [],
+    sales: [],
+    prices: [],
+    incidents: [],
+    activityLogs: [],
+    tanks: []
+  });
+  
+  // Convert to JSON string
+  return JSON.stringify(appState, null, 2);
+};
+
+// Import database from JSON
+export const importDatabase = (jsonData: string): boolean => {
+  try {
+    // Parse the JSON data
+    const data = JSON.parse(jsonData);
+    
+    // Validate the data structure
+    if (!data) return false;
+    
+    // Save each entity type to localStorage
+    Object.keys(data).forEach(key => {
+      if (Array.isArray(data[key])) {
+        saveToLocalStorage(key, data[key]);
+      }
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error importing database:', error);
+    return false;
+  }
 };
 
 // Sample data for dev/demo purposes

@@ -1,119 +1,87 @@
-
 import { v4 as uuidv4 } from 'uuid';
-import { AIInsight, PurchaseOrder } from '../types';
+import { PurchaseOrder, Driver, Truck } from '@/types';
+
+interface DriverPerformanceInsight {
+  driverId: string;
+  averageSpeed: number;
+  incidents: number;
+}
+
+interface TruckUtilizationInsight {
+  truckId: string;
+  utilizationRate: number;
+  maintenanceNeeded: boolean;
+}
 
 export const useAIActions = (
-  purchaseOrders: PurchaseOrder[],
-  aiInsights: AIInsight[],
-  setAIInsights: React.Dispatch<React.SetStateAction<AIInsight[]>>,
-  getDriverById: (id: string) => any,
-  getTruckById: (id: string) => any
+  purchaseOrders: any[],
+  aiInsights: any[],
+  setAIInsights: any,
+  getDriverById: any,
+  getTruckById: any
 ) => {
-  const getInsightsByType = (type: string): AIInsight[] => {
-    return aiInsights.filter(insight => insight.type === type);
-  };
+  const generateDriverPerformanceInsights = (): DriverPerformanceInsight[] => {
+    const insights: DriverPerformanceInsight[] = [];
 
-  const markInsightAsRead = (id: string): void => {
-    setAIInsights(prev => prev.map(insight => 
-      insight.id === id ? { ...insight, isRead: true } : insight
-    ));
-  };
-
-  const generateAIInsights = (): void => {
-    // Generate efficiency recommendations
-    const efficiencyInsight: AIInsight = {
-      id: `insight-${uuidv4()}`,
-      type: 'efficiency_recommendation',
-      description: 'Based on recent delivery patterns, scheduling deliveries on Tuesdays and Thursdays could reduce fuel consumption by approximately 12% due to lower traffic volumes.',
-      severity: 'medium',
-      relatedEntityIds: [],
-      generatedAt: new Date(),
-      isRead: false
-    };
-
-    // Generate discrepancy patterns
-    const discrepancyInsight: AIInsight = {
-      id: `insight-${uuidv4()}`,
-      type: 'discrepancy_pattern',
-      description: 'Consistent volume discrepancies detected for deliveries from Supplier X. Average variance is 3.2% higher than other suppliers.',
-      severity: 'high',
-      relatedEntityIds: [],
-      generatedAt: new Date(),
-      isRead: false
-    };
-
-    // Generate driver analysis
-    const driverInsight: AIInsight = {
-      id: `insight-${uuidv4()}`,
-      type: 'driver_analysis',
-      description: 'Driver John Doe has maintained an excellent delivery record with no incidents and minimal discrepancies over the last 20 deliveries.',
-      severity: 'low',
-      relatedEntityIds: [],
-      generatedAt: new Date(),
-      isRead: false
-    };
-
-    setAIInsights(prev => [efficiencyInsight, discrepancyInsight, driverInsight, ...prev]);
-  };
-
-  const generateDiscrepancyInsights = (): void => {
-    // Find orders with potential discrepancies
-    const ordersWithIssues = purchaseOrders.filter(order => 
-      order.offloadingDetails && 
-      order.offloadingDetails.isDiscrepancyFlagged
-    );
-
-    if (ordersWithIssues.length === 0) {
-      const noIssuesInsight: AIInsight = {
-        id: `insight-${uuidv4()}`,
-        type: 'discrepancy_pattern',
-        description: 'No significant delivery discrepancies detected in recent orders. Operations are running within expected parameters.',
-        severity: 'low',
-        relatedEntityIds: [],
-        generatedAt: new Date(),
-        isRead: false
-      };
-      
-      setAIInsights(prev => [noIssuesInsight, ...prev]);
-      return;
-    }
-
-    // Create insights based on found issues
-    const insights = ordersWithIssues.map(order => {
-      const driver = order.deliveryDetails?.driverId 
-        ? getDriverById(order.deliveryDetails.driverId) 
-        : null;
-        
-      const truck = order.deliveryDetails?.truckId
-        ? getTruckById(order.deliveryDetails.truckId)
-        : null;
-        
-      const driverName = driver?.name || 'Unknown driver';
-      const truckInfo = truck?.plateNumber || 'Unknown truck';
-      
-      return {
-        id: `insight-${uuidv4()}`,
-        type: 'discrepancy_pattern',
-        description: `Volume discrepancy detected in order ${order.poNumber}. Delivered volume is ${order.offloadingDetails?.discrepancyPercentage?.toFixed(2)}% off from loaded volume. Driver: ${driverName}, Truck: ${truckInfo}.`,
-        severity: 'medium',
-        relatedEntityIds: [order.id],
-        truckId: order.deliveryDetails?.truckId,
-        timestamp: new Date(),
-        anomalyType: 'volume_discrepancy',
-        generatedAt: new Date(),
-        isRead: false
-      };
+    // Mock data for demonstration
+    const driverIds = ['driver-001', 'driver-002', 'driver-003']; // Replace with actual driver IDs
+    driverIds.forEach(driverId => {
+      insights.push({
+        driverId: driverId,
+        averageSpeed: Math.random() * 80 + 40, // Random speed between 40-120
+        incidents: Math.floor(Math.random() * 3) // Random number of incidents
+      });
     });
+
+    return insights;
+  };
+
+  const generateTruckUtilizationInsights = (): TruckUtilizationInsight[] => {
+    const insights: TruckUtilizationInsight[] = [];
+
+    // Mock data for demonstration
+    const truckIds = ['truck-001', 'truck-002', 'truck-003']; // Replace with actual truck IDs
+    truckIds.forEach(truckId => {
+      insights.push({
+        truckId: truckId,
+        utilizationRate: Math.random() * 100, // Random utilization rate
+        maintenanceNeeded: Math.random() > 0.5 // Random boolean for maintenance
+      });
+    });
+
+    return insights;
+  };
+
+  const generateAIInsights = () => {
+    const newInsights = [
+      ...generateDriverPerformanceInsights().map(insight => ({
+        id: `ai-insight-${uuidv4()}`,
+        type: 'driver_performance',
+        data: insight,
+        createdAt: new Date(),
+        isRead: false
+      })),
+      ...generateTruckUtilizationInsights().map(insight => ({
+        id: `ai-insight-${uuidv4()}`,
+        type: 'truck_utilization',
+        data: insight,
+        createdAt: new Date(),
+        isRead: false
+      }))
+    ];
     
-    if (insights.length > 0) {
-      setAIInsights(prev => [...insights, ...prev]);
-    }
+    // Add new insights to the state
+    setAIInsights((prev: any[]) => {
+      return [...newInsights, ...prev];
+    });
+  };
+
+  const getInsightsByType = (type: string) => {
+    return aiInsights.filter((insight: any) => insight.type === type);
   };
 
   return {
-    getInsightsByType,
-    markInsightAsRead,
     generateAIInsights,
-    generateDiscrepancyInsights
+    getInsightsByType
   };
 };

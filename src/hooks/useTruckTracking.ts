@@ -1,163 +1,114 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
-import GPSTrackingService from '@/services/GPSTrackingService';
-import { useToast } from './use-toast';
-import { GPSData } from '@/types';
+import GPSTrackingService, { TrackingInfo } from '@/services/GPSTrackingService';
+import { Truck } from '@/types';
 
-export function useTruckTracking() {
-  const { updateGPSData, updateDeliveryStatus, getTruckById } = useApp();
+export const useTruckTracking = () => {
+  const { trucks } = useApp();
+  const [isTracking, setIsTracking] = useState(false);
   const [trackedTrucks, setTrackedTrucks] = useState<string[]>([]);
-  const [updateTimestamp, setUpdateTimestamp] = useState(Date.now());
-  const { toast } = useToast();
+  const [trackingInfo, setTrackingInfo] = useState<Record<string, TrackingInfo>>({});
+  const [activeTrackedTruck, setActiveTrackedTruck] = useState<string | null>(null);
   
-  // Register the callback once
   useEffect(() => {
     const gpsService = GPSTrackingService.getInstance();
     
-    // Register the callback with the service - ensure it handles GPSData correctly
-    gpsService.registerUpdateCallback((data: GPSData) => {
-      if (data && data.truckId) {
-        updateGPSData(data.truckId, data.latitude, data.longitude, data.speed);
-      }
+    // Register for updates from the GPS service
+    const callbackId = gpsService.registerUpdateCallback((truckId, info) => {
+      setTrackingInfo(prev => ({ ...prev, [truckId]: info }));
     });
     
-    // Set up interval to update UI
-    const intervalId = setInterval(() => {
-      // Update tracked trucks list
-      const activeTrucks = gpsService.getAllTrackedTrucks();
-      setTrackedTrucks(activeTrucks);
-      
-      // Update timestamp to force re-render
-      setUpdateTimestamp(Date.now());
-    }, 3000);
+    // Get initial tracking data
+    const allTracked = gpsService.getAllTrackedTrucks();
+    const trackedIds = allTracked.map(item => item.truckId);
+    setTrackedTrucks(trackedIds);
+    
+    // Initialize tracking info state
+    const initialInfo: Record<string, TrackingInfo> = {};
+    allTracked.forEach(({ truckId, info }) => {
+      initialInfo[truckId] = info;
+    });
+    setTrackingInfo(initialInfo);
+    
+    // Set tracking status
+    setIsTracking(gpsService.isTracking());
+    
+    // If we have tracked trucks but no active one is selected, select the first one
+    if (trackedIds.length > 0 && !activeTrackedTruck) {
+      setActiveTrackedTruck(trackedIds[0]);
+    }
     
     return () => {
-      clearInterval(intervalId);
+      // Clean up the callback registration
+      gpsService.unregisterUpdateCallback(callbackId);
     };
-  }, [updateGPSData]);
+  }, []);
   
-  // Start tracking a truck
-  const startTracking = (
-    truckId: string, 
-    initialLatitude?: number, 
-    initialLongitude?: number,
-    totalDistance?: number,
-    sourceLocation?: { lat: number, lng: number, name: string },
-    destinationLocation?: { lat: number, lng: number, name: string }
-  ) => {
-    const gpsService = GPSTrackingService.getInstance();
-    const truck = getTruckById(truckId);
+  const startTracking = useCallback((truck: Truck) => {
+    if (!truck) return;
     
-    if (!truck) {
-      toast({
-        title: "Error",
-        description: "Could not find truck with the provided ID.",
-        variant: "destructive"
-      });
-      return false;
+    const gpsService = GPSTrackingService.getInstance();
+    
+    // Default starting position
+    const startingLatitude = 6.5244 + (Math.random() - 0.5) * 0.1;
+    const startingLongitude = 3.3792 + (Math.random() - 0.5) * 0.1;
+    
+    gpsService.startTracking(truck.id, startingLatitude, startingLongitude);
+    
+    // Update states
+    setTrackedTrucks(prev => [...prev, truck.id]);
+    setIsTracking(true);
+    
+    // Make this the active truck if none is selected
+    if (!activeTrackedTruck) {
+      setActiveTrackedTruck(truck.id);
     }
     
-    // Use provided coordinates or truck's last known position or default
-    const startLatitude = initialLatitude ?? truck.lastLatitude ?? 6.5244;
-    const startLongitude = initialLongitude ?? truck.lastLongitude ?? 3.3792;
-    const distance = totalDistance ?? 100;
+    // Update tracked trucks list
+    const allTracked = gpsService.getAllTrackedTrucks();
+    const trackedIds = allTracked.map(item => item.truckId);
+    setTrackedTrucks(trackedIds);
+  }, [activeTrackedTruck]);
+  
+  const stopTracking = useCallback((truckId: string) => {
+    const gpsService = GPSTrackingService.getInstance();
+    gpsService.stopTracking(truckId);
     
-    // Start tracking
-    gpsService.startTracking(
-      truckId,
-      startLatitude,
-      startLongitude,
-      distance,
-      sourceLocation,
-      destinationLocation
-    );
-    
-    // Update UI
-    setTrackedTrucks(gpsService.getAllTrackedTrucks());
-    
-    toast({
-      title: "Tracking Started",
-      description: `Now tracking truck ${truck.plateNumber} in real-time.`,
+    // Update states
+    setTrackedTrucks(prev => prev.filter(id => id !== truckId));
+    setTrackingInfo(prev => {
+      const newInfo = { ...prev };
+      delete newInfo[truckId];
+      return newInfo;
     });
     
-    return true;
-  };
-  
-  // Stop tracking a truck
-  const stopTracking = (truckId: string) => {
-    const gpsService = GPSTrackingService.getInstance();
-    const truck = getTruckById(truckId);
-    
-    if (!truck) {
-      toast({
-        title: "Error",
-        description: "Could not find truck with the provided ID.",
-        variant: "destructive"
-      });
-      return;
+    // If this was the active truck, select a new one
+    if (activeTrackedTruck === truckId) {
+      const allTracked = gpsService.getAllTrackedTrucks();
+      const trackedIds = allTracked.map(item => item.truckId);
+      setActiveTrackedTruck(trackedIds.length > 0 ? trackedIds[0] : null);
     }
     
-    // Stop tracking
-    gpsService.stopTracking(truckId);
+    setIsTracking(gpsService.isTracking());
     
-    // Update UI
-    setTrackedTrucks(gpsService.getAllTrackedTrucks());
-    
-    toast({
-      title: "Tracking Stopped",
-      description: `Stopped tracking truck ${truck.plateNumber}.`,
-    });
-  };
+    // Update tracked trucks list
+    const allTracked = gpsService.getAllTrackedTrucks();
+    const trackedIds = allTracked.map(item => item.truckId);
+    setTrackedTrucks(trackedIds);
+  }, [activeTrackedTruck]);
   
-  // Mark a delivery as delivered
-  const markAsDelivered = (orderId: string, truckId: string) => {
-    const gpsService = GPSTrackingService.getInstance();
-    
-    // Stop tracking first
-    gpsService.stopTracking(truckId);
-    
-    // Update delivery status
-    updateDeliveryStatus(orderId, {
-      status: 'delivered',
-      destinationArrivalTime: new Date()
-    });
-    
-    // Update UI
-    setTrackedTrucks(gpsService.getAllTrackedTrucks());
-    
-    toast({
-      title: "Delivery Completed",
-      description: `Delivery has been marked as completed.`,
-    });
-  };
-  
-  // Get tracking info for a truck
-  const getTrackingInfo = (truckId: string) => {
-    const gpsService = GPSTrackingService.getInstance();
-    return gpsService.getTrackingInfo(truckId);
-  };
-  
-  // Check if a truck is being tracked
-  const isTracking = (truckId: string) => {
-    const gpsService = GPSTrackingService.getInstance();
-    return gpsService.isTracking(truckId);
-  };
-  
-  // Get path history for a truck
-  const getPathHistory = (truckId: string) => {
-    const gpsService = GPSTrackingService.getInstance();
-    return gpsService.getPathHistory(truckId);
-  };
+  const selectTruck = useCallback((truckId: string) => {
+    setActiveTrackedTruck(truckId);
+  }, []);
   
   return {
+    isTracking,
     trackedTrucks,
-    updateTimestamp,
+    trackingInfo,
+    activeTrackedTruck,
     startTracking,
     stopTracking,
-    markAsDelivered,
-    getTrackingInfo,
-    isTracking,
-    getPathHistory
+    selectTruck
   };
-}
+};
