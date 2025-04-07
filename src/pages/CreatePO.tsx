@@ -46,7 +46,7 @@ interface ValidationErrors {
 
 const CreatePO: React.FC = () => {
   const navigate = useNavigate();
-  const { addPurchaseOrder, addSupplier } = useApp();
+  const { addPurchaseOrder, addSupplier, addActivityLog } = useApp();
   const { toast } = useToast();
 
   const [company, setCompany] = useState<Company>({
@@ -72,6 +72,7 @@ const CreatePO: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({
     company: {}, supplier: {}, items: {}
   });
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const grandTotal = useMemo(() => {
     return items.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -131,7 +132,6 @@ const CreatePO: React.FC = () => {
     const phoneRegex = /^\+?[\d\s-]{10,}$/;
     const emailRegex = /^\S+@\S+\.\S+$/;
 
-    // Company validation
     if (!company.name) errors.company.name = "Company name is required";
     if (!company.address) errors.company.address = "Company address is required";
     if (!company.contact || !phoneRegex.test(company.contact)) {
@@ -139,7 +139,6 @@ const CreatePO: React.FC = () => {
     }
     if (!company.taxId) errors.company.taxId = "Company tax ID is required";
 
-    // Supplier validation
     if (!supplierData.name) errors.supplier.name = "Supplier name is required";
     if (!supplierData.contact || !phoneRegex.test(supplierData.contact)) {
       errors.supplier.contact = "Valid phone number is required";
@@ -149,7 +148,6 @@ const CreatePO: React.FC = () => {
       errors.supplier.email = "Valid email address is required";
     }
 
-    // Items validation
     items.forEach((item, index) => {
       if (!item.product) errors.items[`product_${index}`] = "Product is required";
       if (item.quantity < 1000) {
@@ -175,8 +173,6 @@ const CreatePO: React.FC = () => {
     return error ? <div className="text-sm text-red-500 mt-1">{error}</div> : null;
   };
 
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const { errors, isValid } = validateForm();
@@ -197,7 +193,6 @@ const CreatePO: React.FC = () => {
         .filter(([_, value]) => value)
         .map(([key]) => key as Product);
 
-      // Create supplier object conforming to Supplier type
       const newSupplier: Supplier = {
         id: uuidv4(),
         name: supplierData.name,
@@ -209,14 +204,12 @@ const CreatePO: React.FC = () => {
         products: selectedProducts
       };
 
-      // Add the supplier and get the result
       const savedSupplier = addSupplier(newSupplier);
       
       if (!savedSupplier) {
         throw new Error("Failed to create supplier");
       }
 
-      // Create PO object
       const newPO: PurchaseOrder = {
         id: uuidv4(),
         poNumber: `PO-${Date.now().toString().substring(6)}`,
@@ -240,10 +233,17 @@ const CreatePO: React.FC = () => {
         ]
       };
 
-      // Add the PO
       const success = addPurchaseOrder(newPO);
       
       if (success) {
+        addActivityLog({
+          action: 'create',
+          entityType: 'purchase_order',
+          entityId: newPO.id,
+          details: `Purchase Order ${newPO.poNumber} created with status pending`,
+          user: 'Current User'
+        });
+        
         toast({
           title: "Success",
           description: `Purchase order ${newPO.poNumber} has been created`,
@@ -266,7 +266,7 @@ const CreatePO: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4">
+    <div className="space-y-6">
       {showSuccessDialog && (
         <Card className="w-full max-w-5xl mx-auto mb-4 bg-green-50 border-green-200">
           <CardHeader className="pb-2">
@@ -283,6 +283,7 @@ const CreatePO: React.FC = () => {
           <CardFooter className="pt-2 flex justify-end gap-2">
             <Button 
               variant="outline" 
+              className="transition-all duration-200 rounded-lg"
               onClick={() => {
                 setShowSuccessDialog(false);
                 setCompany({ name: '', address: '', contact: '', taxId: '' });
@@ -299,14 +300,17 @@ const CreatePO: React.FC = () => {
             >
               Create Another
             </Button>
-            <Button onClick={() => navigate('/orders')}>
+            <Button 
+              className="transition-all duration-200 rounded-lg"
+              onClick={() => navigate('/orders')}
+            >
               View All Orders
             </Button>
           </CardFooter>
         </Card>
       )}
       
-      <Card className="w-full max-w-5xl mx-auto">
+      <Card className="w-full rounded-xl transition-all duration-200 shadow-sm hover:shadow-md">
         <CardHeader className="border-b">
           <CardTitle className="text-2xl flex items-center gap-2">
             <ClipboardList className="h-6 w-6 text-primary" />
@@ -335,6 +339,7 @@ const CreatePO: React.FC = () => {
                     placeholder="Your company name"
                     required
                     aria-required="true"
+                    className="rounded-lg transition-all duration-200"
                   />
                   {getFieldError('company', 'name')}
                 </div>
@@ -347,6 +352,7 @@ const CreatePO: React.FC = () => {
                     placeholder="Company address"
                     required
                     aria-required="true"
+                    className="rounded-lg transition-all duration-200"
                   />
                   {getFieldError('company', 'address')}
                 </div>
@@ -359,6 +365,7 @@ const CreatePO: React.FC = () => {
                     placeholder="+234..."
                     required
                     aria-required="true"
+                    className="rounded-lg transition-all duration-200"
                   />
                   {getFieldError('company', 'contact')}
                 </div>
@@ -371,6 +378,7 @@ const CreatePO: React.FC = () => {
                     placeholder="Enter TIN"
                     required
                     aria-required="true"
+                    className="rounded-lg transition-all duration-200"
                   />
                   {getFieldError('company', 'taxId')}
                 </div>
@@ -391,6 +399,7 @@ const CreatePO: React.FC = () => {
                     value={supplierData.name}
                     onChange={(e) => updateSupplier('name', e.target.value)}
                     placeholder="e.g. Total Nigeria PLC"
+                    className="rounded-lg transition-all duration-200"
                   />
                   {getFieldError('supplier', 'name')}
                 </div>
@@ -400,6 +409,7 @@ const CreatePO: React.FC = () => {
                     value={supplierData.depotName}
                     onChange={(e) => updateSupplier('depotName', e.target.value)}
                     placeholder="e.g. Apapa"
+                    className="rounded-lg transition-all duration-200"
                   />
                 </div>
                 <div>
@@ -407,6 +417,7 @@ const CreatePO: React.FC = () => {
                   <Input
                     value={supplierData.depotLocation}
                     onChange={(e) => updateSupplier('depotLocation', e.target.value)}
+                    className="rounded-lg transition-all duration-200"
                   />
                 </div>
                 <div>
@@ -415,6 +426,7 @@ const CreatePO: React.FC = () => {
                     value={supplierData.regNumber}
                     onChange={(e) => updateSupplier('regNumber', e.target.value)}
                     placeholder="CAC Reg. No."
+                    className="rounded-lg transition-all duration-200"
                   />
                 </div>
                 <div>
@@ -422,6 +434,7 @@ const CreatePO: React.FC = () => {
                   <Input
                     value={supplierData.contactPerson}
                     onChange={(e) => updateSupplier('contactPerson', e.target.value)}
+                    className="rounded-lg transition-all duration-200"
                   />
                 </div>
                 <div>
@@ -431,6 +444,7 @@ const CreatePO: React.FC = () => {
                     value={supplierData.email}
                     onChange={(e) => updateSupplier('email', e.target.value)}
                     placeholder="example@email.com"
+                    className="rounded-lg transition-all duration-200"
                   />
                   {getFieldError('supplier', 'email')}
                 </div>
@@ -440,6 +454,7 @@ const CreatePO: React.FC = () => {
                     value={supplierData.contact}
                     onChange={(e) => updateSupplier('contact', e.target.value)}
                     placeholder="+234..."
+                    className="rounded-lg transition-all duration-200"
                   />
                   {getFieldError('supplier', 'contact')}
                 </div>
@@ -449,6 +464,7 @@ const CreatePO: React.FC = () => {
                     value={supplierData.address}
                     onChange={(e) => updateSupplier('address', e.target.value)}
                     placeholder="Supplier address"
+                    className="rounded-lg transition-all duration-200"
                   />
                   {getFieldError('supplier', 'address')}
                 </div>
@@ -460,10 +476,10 @@ const CreatePO: React.FC = () => {
                       updateSupplier('supplierType', value as SupplierData['supplierType'])
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="rounded-lg transition-all duration-200">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-lg">
                       <SelectItem value="Major">Major</SelectItem>
                       <SelectItem value="Independent">Independent</SelectItem>
                       <SelectItem value="Government">Government</SelectItem>
@@ -482,6 +498,7 @@ const CreatePO: React.FC = () => {
                         onCheckedChange={(checked) =>
                           updateSupplier('products', { product, checked: Boolean(checked) })
                         }
+                        className="rounded-sm transition-all duration-200"
                       />
                       <span>{product}</span>
                     </label>
@@ -499,17 +516,17 @@ const CreatePO: React.FC = () => {
               </div>
               <div className="space-y-4">
                 {items.map((item, index) => (
-                  <div key={item.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end border p-4 rounded-lg relative">
+                  <div key={item.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end border p-4 rounded-lg relative transition-all duration-200 hover:shadow-sm">
                     <div>
                       <Label>Product</Label>
                       <Select
                         value={item.product}
                         onValueChange={(val) => debouncedUpdateItem(item.id, 'product', val)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="rounded-lg transition-all duration-200">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-lg">
                           <SelectItem value="PMS">PMS</SelectItem>
                           <SelectItem value="AGO">AGO</SelectItem>
                           <SelectItem value="DPK">DPK</SelectItem>
@@ -523,6 +540,7 @@ const CreatePO: React.FC = () => {
                         type="number"
                         value={item.quantity}
                         onChange={(e) => debouncedUpdateItem(item.id, 'quantity', parseFloat(e.target.value))}
+                        className="rounded-lg transition-all duration-200"
                       />
                       {getFieldError('items', `quantity_${index}`)}
                     </div>
@@ -532,18 +550,23 @@ const CreatePO: React.FC = () => {
                         type="number"
                         value={item.unitPrice}
                         onChange={(e) => debouncedUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value))}
+                        className="rounded-lg transition-all duration-200"
                       />
                       {getFieldError('items', `unitPrice_${index}`)}
                     </div>
                     <div>
                       <Label>Total (₦)</Label>
-                      <Input value={item.totalPrice.toFixed(2)} disabled />
+                      <Input 
+                        value={item.totalPrice.toFixed(2)} 
+                        disabled 
+                        className="rounded-lg bg-gray-50"
+                      />
                     </div>
                     {items.length > 1 && (
                       <Button
                         type="button"
                         variant="ghost"
-                        className="absolute top-2 right-2 text-red-500"
+                        className="absolute top-2 right-2 text-red-500 rounded-full hover:bg-red-50 transition-all duration-200"
                         onClick={() => removeItem(item.id)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -551,7 +574,12 @@ const CreatePO: React.FC = () => {
                     )}
                   </div>
                 ))}
-                <Button type="button" variant="outline" onClick={addItem} className="flex items-center gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={addItem} 
+                  className="flex items-center gap-2 rounded-lg transition-all duration-200"
+                >
                   <Plus className="h-4 w-4" />
                   Add Item
                 </Button>
@@ -572,10 +600,10 @@ const CreatePO: React.FC = () => {
                     value={paymentTerm}
                     onValueChange={(val) => setPaymentTerm(val as PaymentTerm)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="rounded-lg transition-all duration-200">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-lg">
                       <SelectItem value="50% Advance">50% Advance</SelectItem>
                       <SelectItem value="100% Advance">100% Advance</SelectItem>
                       <SelectItem value="Credit">Credit</SelectItem>
@@ -588,18 +616,19 @@ const CreatePO: React.FC = () => {
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className={cn("w-full justify-start text-left font-normal", !deliveryDate && "text-muted-foreground")}
+                        className={cn("w-full justify-start text-left font-normal rounded-lg transition-all duration-200", !deliveryDate && "text-muted-foreground")}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {deliveryDate ? format(deliveryDate, "PPP") : "Pick a date"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0 rounded-lg">
                       <Calendar
                         mode="single"
                         selected={deliveryDate}
                         onSelect={setDeliveryDate}
                         disabled={(date) => date < new Date()}
+                        className="rounded-lg"
                       />
                     </PopoverContent>
                   </Popover>
@@ -611,7 +640,12 @@ const CreatePO: React.FC = () => {
         </CardContent>
         <CardFooter className="flex justify-between items-center border-t pt-4">
           <div className="text-lg font-semibold">Grand Total: ₦{grandTotal.toLocaleString()}</div>
-          <Button type="submit" form="create-po-form" disabled={isSubmitting}>
+          <Button 
+            type="submit" 
+            form="create-po-form" 
+            disabled={isSubmitting}
+            className="rounded-lg transition-all duration-200 hover:shadow-sm"
+          >
             {isSubmitting ? 'Submitting...' : 'Create Purchase Order'}
           </Button>
         </CardFooter>

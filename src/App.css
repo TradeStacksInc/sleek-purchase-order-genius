@@ -39,3 +39,32 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Global classes for better scroll behavior and rounded UI */
+button, input, select, textarea {
+  transition: all 0.2s ease-in-out;
+}
+
+.sidebar-item {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Custom scrollbar for browsers that support it */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}

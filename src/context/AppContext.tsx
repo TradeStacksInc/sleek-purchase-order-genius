@@ -33,6 +33,7 @@ import { defaultCompany } from '../data/mockData';
 import { supabase } from '@/integrations/supabase/client';
 import { fromSupabaseFormat, toSupabaseFormat } from '@/utils/supabaseAdapters';
 import { AppContextType } from './appContextTypes';
+import { useLogActions } from './logActions';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -53,6 +54,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [tanks, setTanks] = useState<Tank[]>([]);
   const [company, setCompany] = useState(defaultCompany);
+  
+  const { 
+    addLog, 
+    deleteLog, 
+    getLogById, 
+    getAllLogs, 
+    getLogsByOrderId,
+    addActivityLog,
+    getAllActivityLogs,
+    getActivityLogsByEntityType,
+    getActivityLogsByAction,
+    getRecentActivityLogs 
+  } = useLogActions(logs, setLogs, activityLogs, setActivityLogs);
 
   useEffect(() => {
     setPurchaseOrders(getFromLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, []));
@@ -93,15 +107,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const savedOrder = fromSupabaseFormat.purchaseOrder(data);
       setPurchaseOrders(prev => [...prev, savedOrder]);
       saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, [...purchaseOrders, savedOrder]);
+      
+      addActivityLog({
+        action: 'create',
+        entityType: 'purchase_order',
+        entityId: savedOrder.id,
+        details: `Purchase order ${savedOrder.poNumber} created`,
+        user: 'Current User'
+      });
+      
       return savedOrder;
     } catch (error) {
       console.error('Error saving purchase order to Supabase:', error);
       
       setPurchaseOrders(prev => [...prev, newOrder]);
       saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, [...purchaseOrders, newOrder]);
+      
+      addActivityLog({
+        action: 'create',
+        entityType: 'purchase_order',
+        entityId: newOrder.id,
+        details: `Purchase order ${newOrder.poNumber} created (offline)`,
+        user: 'Current User'
+      });
+      
       return newOrder;
     }
-  }, [purchaseOrders]);
+  }, [purchaseOrders, addActivityLog]);
 
   const updatePurchaseOrder = useCallback(async (id: string, orderUpdate: Partial<PurchaseOrder>): Promise<PurchaseOrder | null> => {
     const orderIndex = purchaseOrders.findIndex(order => order.id === id);
@@ -125,6 +157,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newOrders[orderIndex] = updatedOrder;
       setPurchaseOrders(newOrders);
       saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      addActivityLog({
+        action: 'update',
+        entityType: 'purchase_order',
+        entityId: id,
+        details: `Purchase order ${updatedOrder.poNumber} updated`,
+        user: 'Current User'
+      });
+      
       return updatedOrder;
     } catch (error) {
       console.error('Error updating purchase order in Supabase:', error);
@@ -133,980 +174,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newOrders[orderIndex] = updatedOrder;
       setPurchaseOrders(newOrders);
       saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      addActivityLog({
+        action: 'update',
+        entityType: 'purchase_order',
+        entityId: id,
+        details: `Purchase order ${updatedOrder.poNumber} updated (offline)`,
+        user: 'Current User'
+      });
+      
       return updatedOrder;
     }
-  }, [purchaseOrders]);
-
-  const getPurchaseOrderById = useCallback((id: string): PurchaseOrder | undefined => {
-    return purchaseOrders.find(order => order.id === id);
-  }, [purchaseOrders]);
-  
-  const getOrderById = useCallback((id: string): PurchaseOrder | undefined => {
-    return purchaseOrders.find(order => order.id === id);
-  }, [purchaseOrders]);
-
-  const getAllPurchaseOrders = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<PurchaseOrder> => {
-    return getPaginatedData(purchaseOrders, params);
-  }, [purchaseOrders]);
-
-  const deletePurchaseOrder = useCallback((id: string): boolean => {
-    const orderIndex = purchaseOrders.findIndex(order => order.id === id);
-    if (orderIndex === -1) return false;
-
-    try {
-      supabase
-        .from('purchase_orders')
-        .delete()
-        .eq('id', id)
-        .then(({ error }) => {
-          if (error) throw error;
-        });
-      
-      const newOrders = purchaseOrders.filter(order => order.id !== id);
-      setPurchaseOrders(newOrders);
-      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      return true;
-    } catch (error) {
-      console.error('Error deleting purchase order:', error);
-      
-      const newOrders = purchaseOrders.filter(order => order.id !== id);
-      setPurchaseOrders(newOrders);
-      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
-      return true;
-    }
-  }, [purchaseOrders]);
-
-  const addLog = useCallback((log: Omit<LogEntry, 'id' | 'timestamp'>): LogEntry => {
-    const newLog: LogEntry = {
-      ...log,
-      id: uuidv4(),
-      timestamp: new Date()
-    };
-    
-    const newLogs = [...logs, newLog];
-    setLogs(newLogs);
-    saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-    return newLog;
-  }, [logs]);
-
-  const getLogsByOrderId = useCallback((orderId: string): LogEntry[] => {
-    return logs.filter(log => log.poId === orderId);
-  }, [logs]);
-  
-  const getLogById = useCallback((id: string): LogEntry | undefined => {
-    return logs.find(log => log.id === id);
-  }, [logs]);
-  
-  const deleteLog = useCallback((id: string): boolean => {
-    const logIndex = logs.findIndex(log => log.id === id);
-    if (logIndex === -1) return false;
-
-    const newLogs = logs.filter(log => log.id !== id);
-    setLogs(newLogs);
-    saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
-    return true;
-  }, [logs]);
-
-  const getAllLogs = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<LogEntry> => {
-    return getPaginatedData(logs, params);
-  }, [logs]);
-
-  const addSupplier = useCallback((supplier: Omit<Supplier, 'id'>): Supplier => {
-    const newSupplier: Supplier = {
-      ...supplier,
-      id: uuidv4()
-    };
-    
-    const newSuppliers = [...suppliers, newSupplier];
-    setSuppliers(newSuppliers);
-    saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
-    return newSupplier;
-  }, [suppliers]);
-
-  const updateSupplier = useCallback((id: string, supplierUpdate: Partial<Supplier>): Supplier | null => {
-    const supplierIndex = suppliers.findIndex(supplier => supplier.id === id);
-    if (supplierIndex === -1) return null;
-
-    const updatedSupplier = {
-      ...suppliers[supplierIndex],
-      ...supplierUpdate
-    };
-
-    const newSuppliers = [...suppliers];
-    newSuppliers[supplierIndex] = updatedSupplier;
-    setSuppliers(newSuppliers);
-    saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
-    return updatedSupplier;
-  }, [suppliers]);
-
-  const getSupplierById = useCallback((id: string): Supplier | undefined => {
-    return suppliers.find(supplier => supplier.id === id);
-  }, [suppliers]);
-
-  const getAllSuppliers = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Supplier> => {
-    return getPaginatedData(suppliers, params);
-  }, [suppliers]);
-
-  const deleteSupplier = useCallback((id: string): boolean => {
-    const supplierIndex = suppliers.findIndex(supplier => supplier.id === id);
-    if (supplierIndex === -1) return false;
-
-    const newSuppliers = suppliers.filter(supplier => supplier.id !== id);
-    setSuppliers(newSuppliers);
-    saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
-    return true;
-  }, [suppliers]);
-
-  const addDriver = useCallback((driver: Omit<Driver, 'id'>): Driver => {
-    const now = new Date();
-    const newDriver: Driver = {
-      ...driver,
-      id: uuidv4(),
-      createdAt: now,
-      updatedAt: now
-    };
-    
-    const newDrivers = [...drivers, newDriver];
-    setDrivers(newDrivers);
-    saveToLocalStorage(STORAGE_KEYS.DRIVERS, newDrivers);
-    return newDriver;
-  }, [drivers]);
-
-  const updateDriver = useCallback((id: string, driverUpdate: Partial<Driver>): Driver | null => {
-    const driverIndex = drivers.findIndex(driver => driver.id === id);
-    if (driverIndex === -1) return null;
-
-    const updatedDriver = {
-      ...drivers[driverIndex],
-      ...driverUpdate,
-      updatedAt: new Date()
-    };
-
-    const newDrivers = [...drivers];
-    newDrivers[driverIndex] = updatedDriver;
-    setDrivers(newDrivers);
-    saveToLocalStorage(STORAGE_KEYS.DRIVERS, newDrivers);
-    return updatedDriver;
-  }, [drivers]);
-
-  const getDriverById = useCallback((id: string): Driver | undefined => {
-    return drivers.find(driver => driver.id === id);
-  }, [drivers]);
-
-  const getAllDrivers = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Driver> => {
-    return getPaginatedData(drivers, params);
-  }, [drivers]);
-
-  const deleteDriver = useCallback((id: string): boolean => {
-    const driverIndex = drivers.findIndex(driver => driver.id === id);
-    if (driverIndex === -1) return false;
-
-    const newDrivers = drivers.filter(driver => driver.id !== id);
-    setDrivers(newDrivers);
-    saveToLocalStorage(STORAGE_KEYS.DRIVERS, newDrivers);
-    return true;
-  }, [drivers]);
-
-  const getAvailableDrivers = useCallback((): Driver[] => {
-    return drivers.filter(driver => driver.isAvailable);
-  }, [drivers]);
-
-  const addTruck = useCallback((truck: Omit<Truck, 'id'>): Truck => {
-    const now = new Date();
-    const newTruck: Truck = {
-      ...truck,
-      id: uuidv4(),
-      createdAt: now,
-      updatedAt: now
-    };
-    
-    const newTrucks = [...trucks, newTruck];
-    setTrucks(newTrucks);
-    saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
-    return newTruck;
-  }, [trucks]);
-
-  const updateTruck = useCallback((id: string, truckUpdate: Partial<Truck>): Truck | null => {
-    const truckIndex = trucks.findIndex(truck => truck.id === id);
-    if (truckIndex === -1) return null;
-
-    const updatedTruck = {
-      ...trucks[truckIndex],
-      ...truckUpdate,
-      updatedAt: new Date()
-    };
-
-    const newTrucks = [...trucks];
-    newTrucks[truckIndex] = updatedTruck;
-    setTrucks(newTrucks);
-    saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
-    return updatedTruck;
-  }, [trucks]);
-
-  const getTruckById = useCallback((id: string): Truck | undefined => {
-    return trucks.find(truck => truck.id === id);
-  }, [trucks]);
-
-  const getAllTrucks = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Truck> => {
-    return getPaginatedData(trucks, params);
-  }, [trucks]);
-
-  const deleteTruck = useCallback((id: string): boolean => {
-    const truckIndex = trucks.findIndex(truck => truck.id === id);
-    if (truckIndex === -1) return false;
-
-    const newTrucks = trucks.filter(truck => truck.id !== id);
-    setTrucks(newTrucks);
-    saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
-    return true;
-  }, [trucks]);
-
-  const getAvailableTrucks = useCallback((): Truck[] => {
-    return trucks.filter(truck => truck.isAvailable);
-  }, [trucks]);
-
-  const tagTruckWithGPS = useCallback((truckId: string, gpsDeviceId: string, latitude?: number, longitude?: number): boolean => {
-    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
-    if (truckIndex === -1) return false;
-
-    const updatedTruck = {
-      ...trucks[truckIndex],
-      isGPSTagged: true,
-      gpsDeviceId,
-      lastLatitude: latitude || trucks[truckIndex].lastLatitude,
-      lastLongitude: longitude || trucks[truckIndex].lastLongitude,
-      updatedAt: new Date()
-    };
-
-    const newTrucks = [...trucks];
-    newTrucks[truckIndex] = updatedTruck;
-    setTrucks(newTrucks);
-    saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
-    return true;
-  }, [trucks]);
-
-  const untagTruckGPS = useCallback((truckId: string): boolean => {
-    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
-    if (truckIndex === -1) return false;
-
-    const updatedTruck = {
-      ...trucks[truckIndex],
-      isGPSTagged: false,
-      gpsDeviceId: undefined,
-      updatedAt: new Date()
-    };
-
-    const newTrucks = [...trucks];
-    newTrucks[truckIndex] = updatedTruck;
-    setTrucks(newTrucks);
-    saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
-    return true;
-  }, [trucks]);
-
-  const getNonGPSTrucks = useCallback((): Truck[] => {
-    return trucks.filter(truck => !truck.isGPSTagged);
-  }, [trucks]);
-
-  const addGPSData = useCallback((data: Omit<GPSData, 'id' | 'timestamp'>): GPSData => {
-    const newData: GPSData = {
-      ...data,
-      id: uuidv4(),
-      timestamp: new Date()
-    };
-    
-    const newGpsData = [...gpsData, newData];
-    setGpsData(newGpsData);
-    saveToLocalStorage(STORAGE_KEYS.GPS_DATA, newGpsData);
-    return newData;
-  }, [gpsData]);
-
-  const getGPSDataForTruck = useCallback((truckId: string, limit: number = 100): GPSData[] => {
-    return gpsData
-      .filter(data => data.truckId === truckId)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, limit);
-  }, [gpsData]);
-
-  const getAllGPSData = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<GPSData> => {
-    return getPaginatedData(gpsData, params);
-  }, [gpsData]);
-  
-  const updateGPSData = useCallback((truckId: string, latitude: number, longitude: number, speed: number): void => {
-    const newGPSData: GPSData = {
-      id: uuidv4(),
-      truckId,
-      latitude,
-      longitude,
-      speed,
-      timestamp: new Date(),
-      heading: 0,
-      location: "Unknown",
-      fuelLevel: 100
-    };
-    
-    setGpsData(prev => [...prev, newGPSData]);
-    
-    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
-    if (truckIndex !== -1) {
-      const updatedTruck = {
-        ...trucks[truckIndex],
-        lastLatitude: latitude,
-        lastLongitude: longitude,
-        lastSpeed: speed,
-        updatedAt: new Date()
-      };
-      
-      const newTrucks = [...trucks];
-      newTrucks[truckIndex] = updatedTruck;
-      setTrucks(newTrucks);
-    }
-  }, [gpsData, trucks]);
-
-  const addAIInsight = useCallback((insight: Omit<AIInsight, 'id' | 'isRead'>): AIInsight => {
-    const newInsight: AIInsight = {
-      ...insight,
-      id: uuidv4(),
-      isRead: false,
-      generatedAt: new Date()
-    };
-    
-    const newInsights = [...aiInsights, newInsight];
-    setAiInsights(newInsights);
-    saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, newInsights);
-    return newInsight;
-  }, [aiInsights]);
-
-  const markAIInsightAsRead = useCallback((id: string): boolean => {
-    const insightIndex = aiInsights.findIndex(insight => insight.id === id);
-    if (insightIndex === -1) return false;
-
-    const updatedInsight = {
-      ...aiInsights[insightIndex],
-      isRead: true
-    };
-
-    const newInsights = [...aiInsights];
-    newInsights[insightIndex] = updatedInsight;
-    setAiInsights(newInsights);
-    saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, newInsights);
-    return true;
-  }, [aiInsights]);
-
-  const getUnreadAIInsights = useCallback((): AIInsight[] => {
-    return aiInsights.filter(insight => !insight.isRead);
-  }, [aiInsights]);
-
-  const getAllAIInsights = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<AIInsight> => {
-    return getPaginatedData(aiInsights, params);
-  }, [aiInsights]);
-
-  const resetAIInsights = useCallback((): boolean => {
-    setAiInsights([]);
-    return true;
-  }, []);
-  
-  const getInsightsByType = useCallback((type: string): AIInsight[] => {
-    return aiInsights.filter(insight => insight.type === type);
-  }, [aiInsights]);
-  
-  const generateAIInsights = useCallback((data: any): AIInsight => {
-    const newInsight: AIInsight = {
-      id: uuidv4(),
-      type: "system_generated",
-      description: `AI insight generated based on system data: ${JSON.stringify(data).substring(0, 50)}...`,
-      timestamp: new Date(),
-      severity: "low",
-      isRead: false,
-      generatedAt: new Date(),
-      relatedEntityIds: []
-    };
-    
-    setAiInsights(prev => [...prev, newInsight]);
-    return newInsight;
-  }, []);
-
-  const addStaff = useCallback((staffMember: Omit<Staff, 'id'>): Staff => {
-    const now = new Date();
-    const newStaff: Staff = {
-      ...staffMember,
-      id: uuidv4(),
-      createdAt: now,
-      updatedAt: now
-    };
-    
-    const newStaffList = [...staff, newStaff];
-    setStaff(newStaffList);
-    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
-    return newStaff;
-  }, [staff]);
-
-  const updateStaff = useCallback((id: string, staffUpdate: Partial<Staff>): Staff | null => {
-    const staffIndex = staff.findIndex(s => s.id === id);
-    if (staffIndex === -1) return null;
-
-    const updatedStaff = {
-      ...staff[staffIndex],
-      ...staffUpdate,
-      updatedAt: new Date()
-    };
-
-    const newStaffList = [...staff];
-    newStaffList[staffIndex] = updatedStaff;
-    setStaff(newStaffList);
-    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
-    return updatedStaff;
-  }, [staff]);
-
-  const getStaffById = useCallback((id: string): Staff | undefined => {
-    return staff.find(s => s.id === id);
-  }, [staff]);
-
-  const getAllStaff = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Staff> => {
-    return getPaginatedData(staff, params);
-  }, [staff]);
-
-  const deleteStaff = useCallback((id: string): boolean => {
-    const staffIndex = staff.findIndex(s => s.id === id);
-    if (staffIndex === -1) return false;
-
-    const newStaffList = staff.filter(s => s.id !== id);
-    setStaff(newStaffList);
-    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
-    return true;
-  }, [staff]);
-  
-  const getActiveStaff = useCallback((): Staff[] => {
-    return staff.filter(s => s.isActive);
-  }, [staff]);
-
-  const addDispenser = useCallback((dispenser: Omit<Dispenser, 'id'>): Dispenser => {
-    const newDispenser: Dispenser = {
-      ...dispenser,
-      id: uuidv4(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    const newDispensers = [...dispensers, newDispenser];
-    setDispensers(newDispensers);
-    saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newDispensers);
-    return newDispenser;
-  }, [dispensers]);
-
-  const updateDispenser = useCallback((id: string, dispenserUpdate: Partial<Dispenser>): Dispenser | null => {
-    const dispenserIndex = dispensers.findIndex(d => d.id === id);
-    if (dispenserIndex === -1) return null;
-
-    const updatedDispenser = {
-      ...dispensers[dispenserIndex],
-      ...dispenserUpdate,
-      updatedAt: new Date()
-    };
-
-    const newDispensers = [...dispensers];
-    newDispensers[dispenserIndex] = updatedDispenser;
-    setDispensers(newDispensers);
-    saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newDispensers);
-    return updatedDispenser;
-  }, [dispensers]);
-
-  const getDispenserById = useCallback((id: string): Dispenser | undefined => {
-    return dispensers.find(d => d.id === id);
-  }, [dispensers]);
-
-  const getAllDispensers = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Dispenser> => {
-    return getPaginatedData(dispensers, params);
-  }, [dispensers]);
-
-  const deleteDispenser = useCallback((id: string): boolean => {
-    const dispenserIndex = dispensers.findIndex(d => d.id === id);
-    if (dispenserIndex === -1) return false;
-
-    const newDispensers = dispensers.filter(d => d.id !== id);
-    setDispensers(newDispensers);
-    saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newDispensers);
-    return true;
-  }, [dispensers]);
-  
-  const getActiveDispensers = useCallback((): Dispenser[] => {
-    return dispensers.filter(d => d.isActive);
-  }, [dispensers]);
-
-  const addShift = useCallback((shift: Omit<Shift, 'id'>): Shift => {
-    const newShift: Shift = {
-      ...shift,
-      id: uuidv4()
-    };
-    
-    const newShifts = [...shifts, newShift];
-    setShifts(newShifts);
-    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
-    return newShift;
-  }, [shifts]);
-
-  const updateShift = useCallback((id: string, shiftUpdate: Partial<Shift>): Shift | null => {
-    const shiftIndex = shifts.findIndex(s => s.id === id);
-    if (shiftIndex === -1) return null;
-
-    const updatedShift = {
-      ...shifts[shiftIndex],
-      ...shiftUpdate
-    };
-
-    const newShifts = [...shifts];
-    newShifts[shiftIndex] = updatedShift;
-    setShifts(newShifts);
-    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
-    return updatedShift;
-  }, [shifts]);
-
-  const getShiftById = useCallback((id: string): Shift | undefined => {
-    return shifts.find(s => s.id === id);
-  }, [shifts]);
-
-  const getAllShifts = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Shift> => {
-    return getPaginatedData(shifts, params);
-  }, [shifts]);
-
-  const deleteShift = useCallback((id: string): boolean => {
-    const shiftIndex = shifts.findIndex(s => s.id === id);
-    if (shiftIndex === -1) return false;
-
-    const newShifts = shifts.filter(s => s.id !== id);
-    setShifts(newShifts);
-    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
-    return true;
-  }, [shifts]);
-  
-  const getCurrentShift = useCallback((): Shift | null => {
-    return shifts.find(s => s.status === 'active') || null;
-  }, [shifts]);
-
-  const addSale = useCallback((sale: Omit<Sale, 'id'>): Sale => {
-    const newSale: Sale = {
-      ...sale,
-      id: uuidv4()
-    };
-    
-    const newSales = [...sales, newSale];
-    setSales(newSales);
-    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
-    return newSale;
-  }, [sales]);
-
-  const updateSale = useCallback((id: string, saleUpdate: Partial<Sale>): Sale | null => {
-    const saleIndex = sales.findIndex(s => s.id === id);
-    if (saleIndex === -1) return null;
-
-    const updatedSale = {
-      ...sales[saleIndex],
-      ...saleUpdate
-    };
-
-    const newSales = [...sales];
-    newSales[saleIndex] = updatedSale;
-    setSales(newSales);
-    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
-    return updatedSale;
-  }, [sales]);
-
-  const getSaleById = useCallback((id: string): Sale | undefined => {
-    return sales.find(s => s.id === id);
-  }, [sales]);
-
-  const getAllSales = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Sale> => {
-    return getPaginatedData(sales, params);
-  }, [sales]);
-
-  const deleteSale = useCallback((id: string): boolean => {
-    const saleIndex = sales.findIndex(s => s.id === id);
-    if (saleIndex === -1) return false;
-
-    const newSales = sales.filter(s => s.id !== id);
-    setSales(newSales);
-    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
-    return true;
-  }, [sales]);
+  }, [purchaseOrders, addActivityLog]);
 
   const updateOrderStatus = useCallback(async (id: string, status: OrderStatus): Promise<boolean> => {
     const orderIndex = purchaseOrders.findIndex(order => order.id === id);
     if (orderIndex === -1) return false;
     
+    const oldStatus = purchaseOrders[orderIndex].status;
     await updatePurchaseOrder(id, { status });
-    return true;
-  }, [purchaseOrders, updatePurchaseOrder]);
-  
-  const getOrdersWithDeliveryStatus = useCallback((status: string): PurchaseOrder[] => {
-    return purchaseOrders.filter(order => 
-      order.deliveryDetails && order.deliveryDetails.status === status
-    );
-  }, [purchaseOrders]);
-  
-  const getOrdersWithDiscrepancies = useCallback((): PurchaseOrder[] => {
-    return purchaseOrders.filter(order => 
-      order.offloadingDetails && order.offloadingDetails.isDiscrepancyFlagged
-    );
-  }, [purchaseOrders]);
-  
-  const logAIInteraction = useCallback((prompt: string, response: string): void => {
-    const newLog: ActivityLog = {
-      id: `log-${uuidv4()}`,
-      entityType: 'ai',
-      entityId: 'chat',
-      action: 'interaction',
-      details: `AI chat interaction`,
-      user: 'Current User',
-      timestamp: new Date(),
-      metadata: { prompt, response }
-    };
     
-    setActivityLogs(prev => [newLog, ...prev]);
-  }, []);
-  
-  const getSalesForShift = useCallback((shiftId: string): Sale[] => {
-    return sales.filter(sale => sale.shiftId === shiftId);
-  }, [sales]);
-  
-  const addPrice = useCallback((price: Omit<Price, 'id'>): Price => {
-    const newPrice: Price = {
-      ...price,
-      id: uuidv4()
-    };
-    
-    setPrices(prev => [...prev, newPrice]);
-    saveToLocalStorage(STORAGE_KEYS.PRICES, [...prices, newPrice]);
-    return newPrice;
-  }, [prices]);
-  
-  const updatePrice = useCallback((id: string, priceUpdate: Partial<Price>): Price | null => {
-    const priceIndex = prices.findIndex(p => p.id === id);
-    if (priceIndex === -1) return null;
-    
-    const updatedPrice = {
-      ...prices[priceIndex],
-      ...priceUpdate
-    };
-    
-    const newPrices = [...prices];
-    newPrices[priceIndex] = updatedPrice;
-    setPrices(newPrices);
-    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
-    return updatedPrice;
-  }, [prices]);
-  
-  const deletePrice = useCallback((id: string): boolean => {
-    const priceIndex = prices.findIndex(p => p.id === id);
-    if (priceIndex === -1) return false;
-    
-    const newPrices = prices.filter(p => p.id !== id);
-    setPrices(newPrices);
-    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
-    return true;
-  }, [prices]);
-  
-  const getPriceById = useCallback((id: string): Price | undefined => {
-    return prices.find(p => p.id === id);
-  }, [prices]);
-  
-  const getAllPrices = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Price> => {
-    return getPaginatedData(prices, params);
-  }, [prices]);
-  
-  const getCurrentPrices = useCallback((): Record<ProductType, number> => {
-    const currentPrices: Partial<Record<ProductType, number>> = {};
-    
-    prices.forEach(price => {
-      if (price.isActive) {
-        currentPrices[price.productType as ProductType] = price.price;
-      }
+    addActivityLog({
+      action: 'update',
+      entityType: 'purchase_order',
+      entityId: id,
+      details: `Order status changed from ${oldStatus} to ${status} for order ${purchaseOrders[orderIndex].poNumber}`,
+      user: 'Current User'
     });
     
-    return currentPrices as Record<ProductType, number>;
-  }, [prices]);
-  
-  const addIncident = useCallback((incident: Omit<Incident, 'id'>): Incident => {
-    const newIncident: Incident = {
-      ...incident,
-      id: uuidv4()
-    };
-    
-    setIncidents(prev => [...prev, newIncident]);
-    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, [...incidents, newIncident]);
-    return newIncident;
-  }, [incidents]);
-  
-  const updateIncident = useCallback((id: string, incidentUpdate: Partial<Incident>): Incident | null => {
-    const incidentIndex = incidents.findIndex(i => i.id === id);
-    if (incidentIndex === -1) return null;
-    
-    const updatedIncident = {
-      ...incidents[incidentIndex],
-      ...incidentUpdate
-    };
-    
-    const newIncidents = [...incidents];
-    newIncidents[incidentIndex] = updatedIncident;
-    setIncidents(newIncidents);
-    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newIncidents);
-    return updatedIncident;
-  }, [incidents]);
-  
-  const deleteIncident = useCallback((id: string): boolean => {
-    const incidentIndex = incidents.findIndex(i => i.id === id);
-    if (incidentIndex === -1) return false;
-    
-    const newIncidents = incidents.filter(i => i.id !== id);
-    setIncidents(newIncidents);
-    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newIncidents);
     return true;
-  }, [incidents]);
-  
-  const getIncidentById = useCallback((id: string): Incident | undefined => {
-    return incidents.find(i => i.id === id);
-  }, [incidents]);
-  
-  const getAllIncidents = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Incident> => {
-    return getPaginatedData(incidents, params);
-  }, [incidents]);
-  
-  const addActivityLog = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>): ActivityLog => {
-    const newLog: ActivityLog = {
-      ...log,
-      id: uuidv4(),
-      timestamp: new Date()
-    };
-    
-    setActivityLogs(prev => [...prev, newLog]);
-    saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, [...activityLogs, newLog]);
-    return newLog;
-  }, [activityLogs]);
-  
-  const getAllActivityLogs = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<ActivityLog> => {
-    return getPaginatedData(activityLogs, params);
-  }, [activityLogs]);
-  
-  const addTank = useCallback((tank: Omit<Tank, 'id'>): Tank => {
-    const newTank: Tank = {
-      ...tank,
-      id: uuidv4()
-    };
-    
-    setTanks(prev => [...prev, newTank]);
-    saveToLocalStorage(STORAGE_KEYS.TANKS, [...tanks, newTank]);
-    return newTank;
-  }, [tanks]);
-  
-  const updateTank = useCallback((id: string, tankUpdate: Partial<Tank>): Tank | null => {
-    const tankIndex = tanks.findIndex(t => t.id === id);
-    if (tankIndex === -1) return null;
-    
-    const updatedTank = {
-      ...tanks[tankIndex],
-      ...tankUpdate
-    };
-    
-    const newTanks = [...tanks];
-    newTanks[tankIndex] = updatedTank;
-    setTanks(newTanks);
-    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
-    return updatedTank;
-  }, [tanks]);
-  
-  const deleteTank = useCallback((id: string): boolean => {
-    const tankIndex = tanks.findIndex(t => t.id === id);
-    if (tankIndex === -1) return false;
-    
-    const newTanks = tanks.filter(t => t.id !== id);
-    setTanks(newTanks);
-    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
-    return true;
-  }, [tanks]);
-  
-  const getTankById = useCallback((id: string): Tank | undefined => {
-    return tanks.find(t => t.id === id);
-  }, [tanks]);
-  
-  const getAllTanks = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Tank> => {
-    return getPaginatedData(tanks, params);
-  }, [tanks]);
-  
-  const getTanksByProduct = useCallback((productType: ProductType): Tank[] => {
-    return tanks.filter(t => t.productType === productType);
-  }, [tanks]);
-  
-  const setTankActive = useCallback((id: string, isActive: boolean): boolean => {
-    const tankIndex = tanks.findIndex(t => t.id === id);
-    if (tankIndex === -1) return false;
-    
-    const updatedTank = {
-      ...tanks[tankIndex],
-      isActive
-    };
-    
-    const newTanks = [...tanks];
-    newTanks[tankIndex] = updatedTank;
-    setTanks(newTanks);
-    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
-    return true;
-  }, [tanks]);
-  
-  const updateCompany = useCallback((data: Partial<typeof defaultCompany>): void => {
-    setCompany(prev => ({ ...prev, ...data }));
-  }, []);
-  
-  const completeDelivery = useCallback(async (orderId: string): Promise<boolean> => {
-    const order = purchaseOrders.find(o => o.id === orderId);
-    if (!order) return false;
-    
-    const updatedOrder = {
-      ...order,
-      updatedAt: new Date(),
-      deliveryDetails: {
-        ...order.deliveryDetails,
-        status: 'delivered' as const,
-        actualArrivalTime: new Date()
-      }
-    };
-    
-    await updatePurchaseOrder(orderId, updatedOrder);
-    return true;
-  }, [purchaseOrders, updatePurchaseOrder]);
-  
-  const recordOffloadingDetails = useCallback((orderId: string, details: any): boolean => {
-    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) return false;
-    
-    const offloadingDetails: OffloadingDetails = {
-      tankId: details.tankId,
-      initialTankVolume: details.initialTankVolume,
-      finalTankVolume: details.finalTankVolume,
-      loadedVolume: details.loadedVolume,
-      deliveredVolume: details.deliveredVolume,
-      isDiscrepancyFlagged: details.isDiscrepancyFlagged || false,
-      discrepancyPercentage: details.discrepancyPercentage,
-      productType: details.productType,
-      measuredBy: details.measuredBy,
-      measuredByRole: details.measuredByRole,
-      timestamp: new Date(),
-      notes: details.notes
-    };
-    
-    const updatedOrder = {
-      ...purchaseOrders[orderIndex],
-      offloadingDetails
-    };
-    
-    updatePurchaseOrder(orderId, updatedOrder);
-    
-    // Maybe add a log entry
-    const logEntry = {
-      poId: orderId,
-      action: 'record_offloading',
-      details: `Offloading details recorded for order ${orderId}`,
-      entityType: 'offloading',
-      entityId: orderId,
-      user: 'Current User'
-    };
-    
-    addLog(logEntry);
-    
-    // If discrepancy, maybe add an incident
-    if (offloadingDetails.isDiscrepancyFlagged) {
-      const incident = {
-        orderId: orderId,
-        type: 'discrepancy',
-        severity: 'medium',
-        description: `Discrepancy detected during offloading of order ${orderId}. Percentage: ${offloadingDetails.discrepancyPercentage}%`,
-        location: 'Tank Area',
-        reportedBy: 'System'
-      };
-      
-      addIncident(incident);
-    }
-    
-    return true;
-  }, [purchaseOrders, updatePurchaseOrder, addLog, addIncident]);
-  
-  const recordOffloadingToTank = useCallback((tankId: string, volume: number, source: string, sourceId: string): boolean => {
-    const tankIndex = tanks.findIndex(t => t.id === tankId);
-    if (tankIndex === -1) return false;
-    
-    const tank = tanks[tankIndex];
-    const updatedTank = {
-      ...tank,
-      currentVolume: (tank.currentVolume || 0) + volume,
-      currentLevel: ((tank.currentVolume || 0) + volume) / tank.capacity * 100,
-      lastRefillDate: new Date()
-    };
-    
-    updateTank(tankId, updatedTank);
-    
-    // Add an activity log
-    const log = {
-      action: 'tank_refill',
-      entityType: 'tank',
-      entityId: tankId,
-      details: `Tank ${tank.name} refilled with ${volume} liters from ${source} ${sourceId}`,
-      user: 'Current User'
-    };
-    
-    addActivityLog(log);
-    
-    return true;
-  }, [tanks, updateTank, addActivityLog]);
-  
-  const startDelivery = useCallback(async (orderId: string): Promise<boolean> => {
-    const order = purchaseOrders.find(o => o.id === orderId);
-    if (!order || !order.deliveryDetails) return false;
-    
-    const updatedOrder = {
-      ...order,
-      updatedAt: new Date(),
-      deliveryDetails: {
-        ...order.deliveryDetails,
-        status: 'in_transit' as const,
-        depotDepartureTime: new Date()
-      }
-    };
-    
-    await updatePurchaseOrder(orderId, updatedOrder);
-    return true;
-  }, [purchaseOrders, updatePurchaseOrder]);
-  
-  const updateDeliveryStatus = useCallback((orderId: string, status: 'pending' | 'delivered' | 'in_transit'): boolean => {
-    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) return false;
-    
-    const order = purchaseOrders[orderIndex];
-    
-    const updatedDeliveryDetails = {
-      ...(order.deliveryDetails || {}),
-      status
-    };
-    
-    const updatedOrder = {
-      ...order,
-      updatedAt: new Date(),
-      deliveryDetails: updatedDeliveryDetails as DeliveryDetails
-    };
-    
-    updatePurchaseOrder(orderId, updatedOrder);
-    
-    // Add log entry
-    const logEntry = {
-      poId: orderId,
-      action: 'update_delivery_status',
-      details: `Delivery status updated to ${status} for order ${orderId}`,
-      entityType: 'delivery',
-      entityId: updatedDeliveryDetails.id || '',
-      user: 'Current User'
-    };
-    
-    addLog(logEntry);
-    
-    return true;
-  }, [purchaseOrders, updatePurchaseOrder, addLog]);
-  
+  }, [purchaseOrders, updatePurchaseOrder, addActivityLog]);
+
   const assignDriverToOrder = useCallback((orderId: string, driverId: string, truckId: string): boolean => {
     const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
     if (orderIndex === -1) return false;
@@ -1135,21 +233,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     updatePurchaseOrder(orderId, updatedOrder);
     
-    // Update driver and truck availability
     updateDriver(driverId, { isAvailable: false });
     updateTruck(truckId, { isAvailable: false, driverId });
     
-    // Add log entry
-    const logEntry = {
+    addLog({
       poId: orderId,
       action: 'assign_driver',
       details: `Driver ${driverData.name} with truck ${truckData.plateNumber} assigned to order ${orderId}`,
       entityType: 'delivery',
       entityId: '',
       user: 'Current User'
-    };
+    });
     
-    addLog(logEntry);
+    addActivityLog({
+      action: 'assign',
+      entityType: 'driver',
+      entityId: driverId,
+      details: `Driver ${driverData.name} assigned to order ${order.poNumber} with truck ${truckData.plateNumber}`,
+      user: 'Current User'
+    });
     
     return true;
   }, [
@@ -1159,8 +261,268 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getTruckById,
     updateDriver,
     updateTruck,
-    addLog
+    addLog,
+    addActivityLog
   ]);
+
+  const logUserLogin = useCallback((userId: string, username: string): void => {
+    addActivityLog({
+      action: 'login',
+      entityType: 'authentication',
+      entityId: userId,
+      details: `User ${username} logged in`,
+      user: username
+    });
+  }, [addActivityLog]);
+
+  const logUserLogout = useCallback((userId: string, username: string): void => {
+    addActivityLog({
+      action: 'logout',
+      entityType: 'authentication',
+      entityId: userId,
+      details: `User ${username} logged out`,
+      user: username
+    });
+  }, [addActivityLog]);
+
+  const addPrice = useCallback((price: Omit<Price, 'id'>): Price => {
+    const newPrice: Price = {
+      ...price,
+      id: uuidv4()
+    };
+    
+    setPrices(prev => [...prev, newPrice]);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, [...prices, newPrice]);
+    
+    addActivityLog({
+      action: 'create',
+      entityType: 'price',
+      entityId: newPrice.id,
+      details: `New price set for ${newPrice.productType}: ₦${newPrice.price}`,
+      user: 'Current User'
+    });
+    
+    return newPrice;
+  }, [prices, addActivityLog]);
+  
+  const updatePrice = useCallback((id: string, priceUpdate: Partial<Price>): Price | null => {
+    const priceIndex = prices.findIndex(p => p.id === id);
+    if (priceIndex === -1) return null;
+    
+    const oldPrice = prices[priceIndex];
+    const updatedPrice = {
+      ...oldPrice,
+      ...priceUpdate
+    };
+    
+    const newPrices = [...prices];
+    newPrices[priceIndex] = updatedPrice;
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
+    
+    if (priceUpdate.price !== undefined && priceUpdate.price !== oldPrice.price) {
+      addActivityLog({
+        action: 'update',
+        entityType: 'price',
+        entityId: id,
+        details: `Price for ${oldPrice.productType} updated from ₦${oldPrice.price} to ₦${priceUpdate.price}`,
+        user: 'Current User'
+      });
+    }
+    
+    return updatedPrice;
+  }, [prices, addActivityLog]);
+
+  const addStaff = useCallback((staffMember: Omit<Staff, 'id'>): Staff => {
+    const now = new Date();
+    const newStaff: Staff = {
+      ...staffMember,
+      id: uuidv4(),
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    const newStaffList = [...staff, newStaff];
+    setStaff(newStaffList);
+    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
+    
+    addActivityLog({
+      action: 'create',
+      entityType: 'staff',
+      entityId: newStaff.id,
+      details: `New staff member ${newStaff.name} added with role ${newStaff.role}`,
+      user: 'Current User'
+    });
+    
+    return newStaff;
+  }, [staff, addActivityLog]);
+  
+  const updateStaff = useCallback((id: string, staffUpdate: Partial<Staff>): Staff | null => {
+    const staffIndex = staff.findIndex(s => s.id === id);
+    if (staffIndex === -1) return null;
+
+    const oldStaff = staff[staffIndex];
+    const updatedStaff = {
+      ...oldStaff,
+      ...staffUpdate,
+      updatedAt: new Date()
+    };
+
+    const newStaffList = [...staff];
+    newStaffList[staffIndex] = updatedStaff;
+    setStaff(newStaffList);
+    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
+    
+    addActivityLog({
+      action: 'update',
+      entityType: 'staff',
+      entityId: id,
+      details: `Staff member ${updatedStaff.name} details updated`,
+      user: 'Current User'
+    });
+    
+    return updatedStaff;
+  }, [staff, addActivityLog]);
+
+  const deleteStaff = useCallback((id: string): boolean => {
+    const staffIndex = staff.findIndex(s => s.id === id);
+    if (staffIndex === -1) return false;
+    
+    const staffMember = staff[staffIndex];
+    
+    const newStaffList = staff.filter(s => s.id !== id);
+    setStaff(newStaffList);
+    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
+    
+    addActivityLog({
+      action: 'delete',
+      entityType: 'staff',
+      entityId: id,
+      details: `Staff member ${staffMember.name} deleted`,
+      user: 'Current User'
+    });
+    
+    return true;
+  }, [staff, addActivityLog]);
+
+  const recordOffloadingToTank = useCallback((tankId: string, volume: number, source: string, sourceId: string): boolean => {
+    const tankIndex = tanks.findIndex(t => t.id === tankId);
+    if (tankIndex === -1) return false;
+    
+    const tank = tanks[tankIndex];
+    const updatedTank = {
+      ...tank,
+      currentVolume: (tank.currentVolume || 0) + volume,
+      currentLevel: ((tank.currentVolume || 0) + volume) / tank.capacity * 100,
+      lastRefillDate: new Date()
+    };
+    
+    updateTank(tankId, updatedTank);
+    
+    addActivityLog({
+      action: 'refill',
+      entityType: 'tank',
+      entityId: tankId,
+      details: `Tank ${tank.name} refilled with ${volume} liters from ${source} ${sourceId}`,
+      user: 'Current User'
+    });
+    
+    return true;
+  }, [tanks, updateTank, addActivityLog]);
+
+  const addSale = useCallback((sale: Omit<Sale, 'id'>): Sale => {
+    const newSale: Sale = {
+      ...sale,
+      id: uuidv4()
+    };
+    
+    const newSales = [...sales, newSale];
+    setSales(newSales);
+    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
+    
+    addActivityLog({
+      action: 'create',
+      entityType: 'sale',
+      entityId: newSale.id,
+      details: `New sale recorded: ${newSale.volume} liters of ${newSale.productType} for ₦${newSale.amount}`,
+      user: 'Current User'
+    });
+    
+    return newSale;
+  }, [sales, addActivityLog]);
+
+  const updateDeliveryStatus = useCallback((orderId: string, status: 'pending' | 'delivered' | 'in_transit'): boolean => {
+    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const order = purchaseOrders[orderIndex];
+    const oldStatus = order.deliveryDetails?.status || 'pending';
+    
+    const updatedDeliveryDetails = {
+      ...(order.deliveryDetails || {}),
+      status
+    };
+    
+    const updatedOrder = {
+      ...order,
+      updatedAt: new Date(),
+      deliveryDetails: updatedDeliveryDetails as DeliveryDetails
+    };
+    
+    updatePurchaseOrder(orderId, updatedOrder);
+    
+    const logEntry = {
+      poId: orderId,
+      action: 'update_delivery_status',
+      details: `Delivery status updated to ${status} for order ${orderId}`,
+      entityType: 'delivery',
+      entityId: updatedDeliveryDetails.id || '',
+      user: 'Current User'
+    };
+    
+    addLog(logEntry);
+    
+    addActivityLog({
+      action: 'update',
+      entityType: 'delivery',
+      entityId: orderId,
+      details: `Delivery status for order ${order.poNumber} changed from ${oldStatus} to ${status}`,
+      user: 'Current User'
+    });
+    
+    return true;
+  }, [purchaseOrders, updatePurchaseOrder, addLog, addActivityLog]);
+
+  const logFraudDetection = useCallback((description: string, severity: 'low' | 'medium' | 'high', entityId?: string): void => {
+    addActivityLog({
+      action: 'detect',
+      entityType: 'fraud',
+      entityId: entityId || 'system',
+      details: `Fraud detection: ${description} (Severity: ${severity})`,
+      user: 'System'
+    });
+    
+    addIncident({
+      type: 'fraud',
+      severity,
+      description,
+      location: 'System',
+      reportedBy: 'Fraud Detection System'
+    });
+  }, [addActivityLog, addIncident]);
+
+  const logGpsActivity = useCallback((truckId: string, description: string): void => {
+    const truck = getTruckById(truckId);
+    if (!truck) return;
+    
+    addActivityLog({
+      action: 'track',
+      entityType: 'gps',
+      entityId: truckId,
+      details: `GPS Activity for truck ${truck.plateNumber}: ${description}`,
+      user: 'System'
+    });
+  }, [getTruckById, addActivityLog]);
 
   const contextValue = {
     purchaseOrders,
@@ -1260,8 +622,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deleteIncident,
     getIncidentById,
     getAllIncidents,
-    addActivityLog,
-    getAllActivityLogs,
     addTank,
     updateTank,
     deleteTank,
@@ -1275,7 +635,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     recordOffloadingToTank,
     startDelivery,
     updateDeliveryStatus,
-    assignDriverToOrder
+    assignDriverToOrder,
+    addActivityLog,
+    getAllActivityLogs,
+    getActivityLogsByEntityType,
+    getActivityLogsByAction,
+    getRecentActivityLogs,
+    logUserLogin,
+    logUserLogout,
+    logFraudDetection,
+    logGpsActivity
   };
 
   return (

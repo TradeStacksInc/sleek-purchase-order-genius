@@ -15,8 +15,8 @@ const Layout = ({ children }: LayoutProps) => {
       <AppHeader />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar open={open} setOpen={setOpen} />
-        <main className="flex-1 overflow-auto p-4 transition-all duration-200">
-          <div className="container mx-auto max-w-7xl">
+        <main className="flex-1 overflow-auto p-6 transition-all duration-200">
+          <div className="container mx-auto max-w-7xl pb-10">
             {children}
           </div>
         </main>
