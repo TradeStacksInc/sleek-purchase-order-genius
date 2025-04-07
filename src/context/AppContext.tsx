@@ -667,4 +667,870 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const newStaffList = staff.filter(s => s.id !== id);
     setStaff(newStaffList);
-    saveTo
+    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
+    return true;
+  }, [staff]);
+
+  const getActiveStaff = useCallback((): Staff[] => {
+    return staff.filter(s => s.isActive);
+  }, [staff]);
+
+  // Dispenser functions
+  const addDispenser = useCallback((dispenser: Omit<Dispenser, 'id' | 'createdAt' | 'updatedAt'>): Dispenser => {
+    const now = new Date();
+    const newDispenser: Dispenser = {
+      ...dispenser,
+      id: uuidv4(),
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    const newDispensers = [...dispensers, newDispenser];
+    setDispensers(newDispensers);
+    saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newDispensers);
+    return newDispenser;
+  }, [dispensers]);
+
+  const updateDispenser = useCallback((id: string, dispenserUpdate: Partial<Dispenser>): Dispenser | null => {
+    const dispenserIndex = dispensers.findIndex(d => d.id === id);
+    if (dispenserIndex === -1) return null;
+
+    const updatedDispenser = {
+      ...dispensers[dispenserIndex],
+      ...dispenserUpdate,
+      updatedAt: new Date()
+    };
+
+    const newDispensers = [...dispensers];
+    newDispensers[dispenserIndex] = updatedDispenser;
+    setDispensers(newDispensers);
+    saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newDispensers);
+    return updatedDispenser;
+  }, [dispensers]);
+
+  const getDispenser = useCallback((id: string): Dispenser | null => {
+    return dispensers.find(d => d.id === id) || null;
+  }, [dispensers]);
+
+  const getAllDispensers = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Dispenser> => {
+    return getPaginatedData(dispensers, params);
+  }, [dispensers]);
+
+  const deleteDispenser = useCallback((id: string): boolean => {
+    const dispenserIndex = dispensers.findIndex(d => d.id === id);
+    if (dispenserIndex === -1) return false;
+
+    const newDispensers = dispensers.filter(d => d.id !== id);
+    setDispensers(newDispensers);
+    saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newDispensers);
+    return true;
+  }, [dispensers]);
+
+  const getActiveDispensers = useCallback((): Dispenser[] => {
+    return dispensers.filter(d => d.isActive);
+  }, [dispensers]);
+
+  // Shift functions
+  const addShift = useCallback((shift: Omit<Shift, 'id'>): Shift => {
+    const newShift: Shift = {
+      ...shift,
+      id: uuidv4()
+    };
+    
+    const newShifts = [...shifts, newShift];
+    setShifts(newShifts);
+    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
+    return newShift;
+  }, [shifts]);
+
+  const updateShift = useCallback((id: string, shiftUpdate: Partial<Shift>): Shift | null => {
+    const shiftIndex = shifts.findIndex(s => s.id === id);
+    if (shiftIndex === -1) return null;
+
+    const updatedShift = {
+      ...shifts[shiftIndex],
+      ...shiftUpdate
+    };
+
+    const newShifts = [...shifts];
+    newShifts[shiftIndex] = updatedShift;
+    setShifts(newShifts);
+    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
+    return updatedShift;
+  }, [shifts]);
+
+  const getShift = useCallback((id: string): Shift | null => {
+    return shifts.find(s => s.id === id) || null;
+  }, [shifts]);
+
+  const getAllShifts = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Shift> => {
+    return getPaginatedData(shifts, params);
+  }, [shifts]);
+
+  const deleteShift = useCallback((id: string): boolean => {
+    const shiftIndex = shifts.findIndex(s => s.id === id);
+    if (shiftIndex === -1) return false;
+
+    const newShifts = shifts.filter(s => s.id !== id);
+    setShifts(newShifts);
+    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
+    return true;
+  }, [shifts]);
+
+  const getCurrentShift = useCallback((): Shift | null => {
+    return shifts.find(s => s.status === 'active') || null;
+  }, [shifts]);
+
+  // Sales functions
+  const addSale = useCallback((sale: Omit<Sale, 'id'>): Sale => {
+    const newSale: Sale = {
+      ...sale,
+      id: uuidv4()
+    };
+    
+    const newSales = [...sales, newSale];
+    setSales(newSales);
+    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
+    return newSale;
+  }, [sales]);
+
+  const updateSale = useCallback((id: string, saleUpdate: Partial<Sale>): Sale | null => {
+    const saleIndex = sales.findIndex(s => s.id === id);
+    if (saleIndex === -1) return null;
+
+    const updatedSale = {
+      ...sales[saleIndex],
+      ...saleUpdate
+    };
+
+    const newSales = [...sales];
+    newSales[saleIndex] = updatedSale;
+    setSales(newSales);
+    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
+    return updatedSale;
+  }, [sales]);
+
+  const getSale = useCallback((id: string): Sale | null => {
+    return sales.find(s => s.id === id) || null;
+  }, [sales]);
+
+  const getAllSales = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Sale> => {
+    return getPaginatedData(sales, params);
+  }, [sales]);
+
+  const deleteSale = useCallback((id: string): boolean => {
+    const saleIndex = sales.findIndex(s => s.id === id);
+    if (saleIndex === -1) return false;
+
+    const newSales = sales.filter(s => s.id !== id);
+    setSales(newSales);
+    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
+    return true;
+  }, [sales]);
+
+  const getSalesForShift = useCallback((shiftId: string): Sale[] => {
+    return sales.filter(s => s.shiftId === shiftId);
+  }, [sales]);
+
+  // Price functions
+  const addPrice = useCallback((price: Omit<PriceRecord, 'id'>): PriceRecord => {
+    const newPrice: PriceRecord = {
+      ...price,
+      id: uuidv4()
+    };
+    
+    const newPrices = [...prices, newPrice];
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
+    return newPrice;
+  }, [prices]);
+
+  const updatePrice = useCallback((id: string, priceUpdate: Partial<PriceRecord>): PriceRecord | null => {
+    const priceIndex = prices.findIndex(p => p.id === id);
+    if (priceIndex === -1) return null;
+
+    const updatedPrice = {
+      ...prices[priceIndex],
+      ...priceUpdate
+    };
+
+    const newPrices = [...prices];
+    newPrices[priceIndex] = updatedPrice;
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
+    return updatedPrice;
+  }, [prices]);
+
+  const getPrice = useCallback((id: string): PriceRecord | null => {
+    return prices.find(p => p.id === id) || null;
+  }, [prices]);
+
+  const getAllPrices = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<PriceRecord> => {
+    return getPaginatedData(prices, params);
+  }, [prices]);
+
+  const deletePrice = useCallback((id: string): boolean => {
+    const priceIndex = prices.findIndex(p => p.id === id);
+    if (priceIndex === -1) return false;
+
+    const newPrices = prices.filter(p => p.id !== id);
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
+    return true;
+  }, [prices]);
+
+  const getCurrentPrices = useCallback((): Record<ProductType, number> => {
+    const currentPrices: Partial<Record<ProductType, number>> = {};
+    
+    // Get the latest active price for each product type
+    const activePrices = prices.filter(p => p.isActive);
+    const productTypes = [...new Set(activePrices.map(p => p.productType))];
+    
+    productTypes.forEach(productType => {
+      const latestPrice = activePrices
+        .filter(p => p.productType === productType)
+        .sort((a, b) => {
+          const aDate = a.effectiveDate ? new Date(a.effectiveDate).getTime() : 0;
+          const bDate = b.effectiveDate ? new Date(b.effectiveDate).getTime() : 0;
+          return bDate - aDate;
+        })[0];
+        
+      if (latestPrice) {
+        currentPrices[productType] = latestPrice.price;
+      }
+    });
+    
+    return currentPrices as Record<ProductType, number>;
+  }, [prices]);
+
+  // Incident functions
+  const addIncident = useCallback((incident: Omit<Incident, 'id'>): Incident => {
+    const newIncident: Incident = {
+      ...incident,
+      id: uuidv4()
+    };
+    
+    const newIncidents = [...incidents, newIncident];
+    setIncidents(newIncidents);
+    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newIncidents);
+    return newIncident;
+  }, [incidents]);
+
+  const updateIncident = useCallback((id: string, incidentUpdate: Partial<Incident>): Incident | null => {
+    const incidentIndex = incidents.findIndex(i => i.id === id);
+    if (incidentIndex === -1) return null;
+
+    const updatedIncident = {
+      ...incidents[incidentIndex],
+      ...incidentUpdate
+    };
+
+    const newIncidents = [...incidents];
+    newIncidents[incidentIndex] = updatedIncident;
+    setIncidents(newIncidents);
+    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newIncidents);
+    return updatedIncident;
+  }, [incidents]);
+
+  const getIncident = useCallback((id: string): Incident | null => {
+    return incidents.find(i => i.id === id) || null;
+  }, [incidents]);
+
+  const getAllIncidents = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Incident> => {
+    return getPaginatedData(incidents, params);
+  }, [incidents]);
+
+  const deleteIncident = useCallback((id: string): boolean => {
+    const incidentIndex = incidents.findIndex(i => i.id === id);
+    if (incidentIndex === -1) return false;
+
+    const newIncidents = incidents.filter(i => i.id !== id);
+    setIncidents(newIncidents);
+    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newIncidents);
+    return true;
+  }, [incidents]);
+
+  // Activity Log functions
+  const addActivityLog = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>): ActivityLog => {
+    const newLog: ActivityLog = {
+      ...log,
+      id: uuidv4(),
+      timestamp: new Date()
+    };
+    
+    const newActivityLogs = [...activityLogs, newLog];
+    setActivityLogs(newActivityLogs);
+    saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, newActivityLogs);
+    return newLog;
+  }, [activityLogs]);
+
+  const getAllActivityLogs = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<ActivityLog> => {
+    return getPaginatedData(activityLogs, params);
+  }, [activityLogs]);
+
+  // Tank functions
+  const addTank = useCallback((tank: Omit<Tank, 'id'>): Tank => {
+    const newTank: Tank = {
+      ...tank,
+      id: uuidv4()
+    };
+    
+    const newTanks = [...tanks, newTank];
+    setTanks(newTanks);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
+    return newTank;
+  }, [tanks]);
+
+  const updateTank = useCallback((id: string, tankUpdate: Partial<Tank>): Tank | null => {
+    const tankIndex = tanks.findIndex(t => t.id === id);
+    if (tankIndex === -1) return null;
+
+    const updatedTank = {
+      ...tanks[tankIndex],
+      ...tankUpdate
+    };
+
+    const newTanks = [...tanks];
+    newTanks[tankIndex] = updatedTank;
+    setTanks(newTanks);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
+    return updatedTank;
+  }, [tanks]);
+
+  const getTank = useCallback((id: string): Tank | null => {
+    return tanks.find(t => t.id === id) || null;
+  }, [tanks]);
+
+  const getAllTanks = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Tank> => {
+    return getPaginatedData(tanks, params);
+  }, [tanks]);
+
+  const deleteTank = useCallback((id: string): boolean => {
+    const tankIndex = tanks.findIndex(t => t.id === id);
+    if (tankIndex === -1) return false;
+
+    const newTanks = tanks.filter(t => t.id !== id);
+    setTanks(newTanks);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
+    return true;
+  }, [tanks]);
+
+  const getTanksByProduct = useCallback((productType: ProductType): Tank[] => {
+    return tanks.filter(t => t.productType === productType);
+  }, [tanks]);
+
+  // Company functions
+  const updateCompany = useCallback((data: Partial<typeof defaultCompany>): void => {
+    setCompany(prev => ({ ...prev, ...data }));
+  }, []);
+
+  // Additional methods required by components
+  const getOrderById = useCallback((id: string): PurchaseOrder | undefined => {
+    return purchaseOrders.find((order) => order.id === id);
+  }, [purchaseOrders]);
+
+  const getLogsByOrderId = useCallback((orderId: string): LogEntry[] => {
+    return logs.filter((log) => log.poId === orderId);
+  }, [logs]);
+
+  const getOrdersWithDeliveryStatus = useCallback((status: string): PurchaseOrder[] => {
+    return purchaseOrders.filter((order) => 
+      order.deliveryDetails && order.deliveryDetails.status === status
+    );
+  }, [purchaseOrders]);
+
+  const getOrdersWithDiscrepancies = useCallback((): PurchaseOrder[] => {
+    // Find orders where there are offloading details with discrepancies
+    return purchaseOrders.filter((order) => {
+      if (!order.offloadingDetails) return false;
+      return order.offloadingDetails.some(detail => detail.isDiscrepancyFlagged);
+    });
+  }, [purchaseOrders]);
+
+  const updateOrderStatus = useCallback(async (id: string, status: OrderStatus): Promise<boolean> => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === id);
+    if (orderIndex === -1) return false;
+
+    const updatedOrder = {
+      ...purchaseOrders[orderIndex],
+      status,
+      updatedAt: new Date()
+    };
+
+    try {
+      // Update in Supabase
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update(toSupabaseFormat.purchaseOrder(updatedOrder))
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      // Update local state
+      const newOrders = [...purchaseOrders];
+      newOrders[orderIndex] = updatedOrder;
+      setPurchaseOrders(newOrders);
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      // Add log entry
+      addLog({
+        poId: id,
+        entityType: 'purchaseOrder',
+        entityId: id,
+        action: 'statusUpdate',
+        details: `Order status updated to ${status}`
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      return false;
+    }
+  }, [purchaseOrders, addLog]);
+
+  const completeDelivery = useCallback(async (orderId: string): Promise<boolean> => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+
+    const updatedOrder = {
+      ...purchaseOrders[orderIndex],
+      status: 'delivered' as OrderStatus,
+      updatedAt: new Date(),
+      deliveryDetails: {
+        ...purchaseOrders[orderIndex].deliveryDetails,
+        status: 'delivered',
+        actualArrivalTime: new Date()
+      }
+    };
+
+    try {
+      // Update in Supabase
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update(toSupabaseFormat.purchaseOrder(updatedOrder))
+        .eq('id', orderId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      const newOrders = [...purchaseOrders];
+      newOrders[orderIndex] = updatedOrder;
+      setPurchaseOrders(newOrders);
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      // Add log entry
+      addLog({
+        poId: orderId,
+        entityType: 'purchaseOrder',
+        entityId: orderId,
+        action: 'deliveryComplete',
+        details: `Delivery completed for order ${orderId}`
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error completing delivery:', error);
+      return false;
+    }
+  }, [purchaseOrders, addLog]);
+
+  const recordOffloadingDetails = useCallback((orderId: string, details: any): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+
+    const updatedOrder = {
+      ...purchaseOrders[orderIndex],
+      offloadingDetails: purchaseOrders[orderIndex].offloadingDetails
+        ? [...purchaseOrders[orderIndex].offloadingDetails, { ...details, id: uuidv4() }]
+        : [{ ...details, id: uuidv4() }]
+    };
+
+    const newOrders = [...purchaseOrders];
+    newOrders[orderIndex] = updatedOrder;
+    setPurchaseOrders(newOrders);
+    saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+    
+    // Add log entry
+    addLog({
+      poId: orderId,
+      entityType: 'purchaseOrder',
+      entityId: orderId,
+      action: 'offloadingRecorded',
+      details: `Offloading details recorded for order ${orderId}`
+    });
+    
+    return true;
+  }, [purchaseOrders, addLog]);
+
+  const recordOffloadingToTank = useCallback((tankId: string, volume: number, source: string, sourceId: string): boolean => {
+    const tankIndex = tanks.findIndex(t => t.id === tankId);
+    if (tankIndex === -1) return false;
+
+    const tank = tanks[tankIndex];
+    const currentVolume = tank.currentVolume || 0;
+    const newVolume = currentVolume + volume;
+
+    const updatedTank = {
+      ...tank,
+      currentVolume: newVolume,
+      currentLevel: (newVolume / tank.capacity) * 100,
+      lastRefillDate: new Date()
+    };
+
+    const newTanks = [...tanks];
+    newTanks[tankIndex] = updatedTank;
+    setTanks(newTanks);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
+    
+    // Add log entry
+    addActivityLog({
+      entityType: 'tank',
+      entityId: tankId,
+      action: 'refill',
+      details: `Tank refilled with ${volume} liters from ${source} (${sourceId})`,
+      user_name: 'System'
+    });
+    
+    return true;
+  }, [tanks, addActivityLog]);
+
+  const startDelivery = useCallback(async (orderId: string): Promise<boolean> => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+
+    // Make sure delivery details and driver/truck are assigned
+    if (!purchaseOrders[orderIndex].deliveryDetails?.driverId || 
+        !purchaseOrders[orderIndex].deliveryDetails?.truckId) {
+      return false;
+    }
+
+    const updatedOrder = {
+      ...purchaseOrders[orderIndex],
+      deliveryDetails: {
+        ...purchaseOrders[orderIndex].deliveryDetails,
+        status: 'in_transit',
+        depotDepartureTime: new Date()
+      }
+    };
+
+    try {
+      // Update in Supabase
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update(toSupabaseFormat.purchaseOrder(updatedOrder))
+        .eq('id', orderId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      const newOrders = [...purchaseOrders];
+      newOrders[orderIndex] = updatedOrder;
+      setPurchaseOrders(newOrders);
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      
+      // Add log entry
+      addLog({
+        poId: orderId,
+        entityType: 'purchaseOrder',
+        entityId: orderId,
+        action: 'deliveryStarted',
+        details: `Delivery started for order ${orderId}`
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error starting delivery:', error);
+      return false;
+    }
+  }, [purchaseOrders, addLog]);
+
+  const updateDeliveryStatus = useCallback((orderId: string, status: any): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+
+    const updatedOrder = {
+      ...purchaseOrders[orderIndex],
+      deliveryDetails: {
+        ...purchaseOrders[orderIndex].deliveryDetails,
+        status
+      }
+    };
+
+    const newOrders = [...purchaseOrders];
+    newOrders[orderIndex] = updatedOrder;
+    setPurchaseOrders(newOrders);
+    saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+    
+    // Add log entry
+    addLog({
+      poId: orderId,
+      entityType: 'purchaseOrder',
+      entityId: orderId,
+      action: 'deliveryStatusUpdate',
+      details: `Delivery status updated to ${status} for order ${orderId}`
+    });
+    
+    return true;
+  }, [purchaseOrders, addLog]);
+
+  const assignDriverToOrder = useCallback((orderId: string, driverId: string, truckId: string): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return false;
+
+    const driverData = getDriver(driverId);
+    if (!driverData) return false;
+
+    const truckData = getTruck(truckId);
+    if (!truckData) return false;
+
+    const updatedOrder = {
+      ...purchaseOrders[orderIndex],
+      deliveryDetails: {
+        ...purchaseOrders[orderIndex].deliveryDetails || {},
+        status: 'assigned',
+        driverId,
+        driverName: driverData.name,
+        truckId,
+        vehicleDetails: `${truckData.model} (${truckData.plateNumber})`
+      }
+    };
+
+    const newOrders = [...purchaseOrders];
+    newOrders[orderIndex] = updatedOrder;
+    setPurchaseOrders(newOrders);
+    saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+    
+    // Update driver availability
+    updateDriver(driverId, { isAvailable: false });
+    
+    // Update truck availability
+    updateTruck(truckId, { isAvailable: false });
+    
+    // Add log entry
+    addLog({
+      poId: orderId,
+      entityType: 'purchaseOrder',
+      entityId: orderId,
+      action: 'driverAssigned',
+      details: `Driver ${driverData.name} assigned to order with ${truckData.model} (${truckData.plateNumber})`
+    });
+    
+    return true;
+  }, [purchaseOrders, getDriver, getTruck, updateDriver, updateTruck, addLog]);
+
+  const generateAIInsights = useCallback((data: any): AIInsight => {
+    const newInsight: AIInsight = {
+      id: uuidv4(),
+      timestamp: new Date(),
+      isRead: false,
+      type: data.type || 'general',
+      severity: data.severity || 'info',
+      description: data.description || 'No description provided',
+      relatedEntityIds: data.relatedEntityIds || [],
+      anomalyType: data.anomalyType
+    };
+    
+    const newInsights = [...aiInsights, newInsight];
+    setAiInsights(newInsights);
+    saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, newInsights);
+    return newInsight;
+  }, [aiInsights]);
+
+  const getInsightsByType = useCallback((type: string): AIInsight[] => {
+    return aiInsights.filter(insight => insight.type === type);
+  }, [aiInsights]);
+
+  const updateGPSData = useCallback((truckId: string, latitude: number, longitude: number, speed: number): void => {
+    const newGpsPoint: GPSData = {
+      id: uuidv4(),
+      truckId,
+      latitude,
+      longitude,
+      speed,
+      location: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+      timestamp: new Date(),
+      fuelLevel: Math.floor(Math.random() * 100) // Mock fuel level data
+    };
+
+    // Update the GPS data
+    const newGpsData = [...gpsData, newGpsPoint];
+    setGpsData(newGpsData);
+    saveToLocalStorage(STORAGE_KEYS.GPS_DATA, newGpsData);
+
+    // Also update the truck's last position
+    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
+    if (truckIndex !== -1) {
+      const updatedTruck = {
+        ...trucks[truckIndex],
+        lastLatitude: latitude,
+        lastLongitude: longitude,
+        lastSpeed: speed,
+        updatedAt: new Date()
+      };
+
+      const newTrucks = [...trucks];
+      newTrucks[truckIndex] = updatedTruck;
+      setTrucks(newTrucks);
+      saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
+    }
+  }, [gpsData, trucks]);
+
+  const logAIInteraction = useCallback((prompt: string, response: string): void => {
+    addActivityLog({
+      entityType: 'aiInteraction',
+      entityId: 'ai_assistant',
+      action: 'conversation',
+      details: `User prompt: ${prompt}\nAI response: ${response}`,
+      user_name: 'User'
+    });
+  }, [addActivityLog]);
+
+  // Create the context value by combining all the functions
+  const contextValue: AppContextType = {
+    purchaseOrders,
+    addPurchaseOrder,
+    updatePurchaseOrder,
+    getPurchaseOrder,
+    getAllPurchaseOrders,
+    deletePurchaseOrder,
+    
+    logs,
+    addLog,
+    getLogsForPO,
+    getAllLogs,
+    
+    suppliers,
+    addSupplier,
+    updateSupplier,
+    getSupplier,
+    getAllSuppliers,
+    deleteSupplier,
+    
+    drivers,
+    addDriver,
+    updateDriver,
+    getDriver,
+    getAllDrivers,
+    deleteDriver,
+    getAvailableDrivers,
+    
+    trucks,
+    addTruck,
+    updateTruck,
+    getTruck,
+    getAllTrucks,
+    deleteTruck,
+    getAvailableTrucks,
+    tagTruckWithGPS,
+    untagTruckGPS,
+    getNonGPSTrucks,
+    
+    gpsData,
+    addGPSData,
+    getGPSDataForTruck,
+    getAllGPSData,
+    
+    aiInsights,
+    addAIInsight,
+    markAIInsightAsRead,
+    getUnreadAIInsights,
+    getAllAIInsights,
+    resetAIInsights,
+    
+    staff,
+    addStaff,
+    updateStaff,
+    getStaff,
+    getAllStaff,
+    deleteStaff,
+    getActiveStaff,
+    
+    dispensers,
+    addDispenser,
+    updateDispenser,
+    getDispenser,
+    getAllDispensers,
+    deleteDispenser,
+    getActiveDispensers,
+    
+    shifts,
+    addShift,
+    updateShift,
+    getShift,
+    getAllShifts,
+    deleteShift,
+    getCurrentShift,
+    
+    sales,
+    addSale,
+    updateSale,
+    getSale,
+    getAllSales,
+    deleteSale,
+    getSalesForShift,
+    
+    prices,
+    addPrice,
+    updatePrice,
+    getPrice,
+    getAllPrices,
+    deletePrice,
+    getCurrentPrices,
+    
+    incidents,
+    addIncident,
+    updateIncident,
+    getIncident,
+    getAllIncidents,
+    deleteIncident,
+    
+    activityLogs,
+    addActivityLog,
+    getAllActivityLogs,
+    
+    tanks,
+    addTank,
+    updateTank,
+    getTank,
+    getAllTanks,
+    deleteTank,
+    getTanksByProduct,
+    
+    company,
+    updateCompany,
+
+    // Additional methods
+    getOrderById,
+    getLogsByOrderId,
+    getOrdersWithDeliveryStatus,
+    getOrdersWithDiscrepancies,
+    updateOrderStatus,
+    completeDelivery,
+    recordOffloadingDetails,
+    recordOffloadingToTank,
+    startDelivery,
+    updateDeliveryStatus,
+    assignDriverToOrder,
+    generateAIInsights,
+    getInsightsByType,
+    updateGPSData,
+    logAIInteraction
+  };
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+// Custom hook for accessing the context
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
+
+export default AppContext;
