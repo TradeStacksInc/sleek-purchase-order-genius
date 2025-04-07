@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useLocation } from 'react-router-dom';
+import { LogEntry, ActivityLog } from '@/types';
 
 interface LogActivityOptions {
   action: string;
@@ -23,7 +24,7 @@ export const useActivityLogger = () => {
    * Log a user activity
    */
   const logActivity = useCallback(
-    ({ action, entityType, entityId, details, user = 'Current User', metadata }: LogActivityOptions) => {
+    ({ action, entityType, entityId, details, user = 'Current User', metadata }: LogActivityOptions): ActivityLog => {
       return addActivityLog({
         action,
         entityType,
@@ -40,7 +41,7 @@ export const useActivityLogger = () => {
    * Log a page visit
    */
   const logPageVisit = useCallback(
-    (pageName: string) => {
+    (pageName: string): ActivityLog => {
       return logActivity({
         action: 'visit',
         entityType: 'page',
@@ -55,7 +56,7 @@ export const useActivityLogger = () => {
    * Log a user action (create, update, delete, etc.)
    */
   const logUserAction = useCallback(
-    (action: string, entityType: string, entityId: string, details: string) => {
+    (action: string, entityType: string, entityId: string, details: string): ActivityLog => {
       return logActivity({
         action,
         entityType,
@@ -70,7 +71,7 @@ export const useActivityLogger = () => {
    * Log a system event
    */
   const logSystemEvent = useCallback(
-    (action: string, entityType: string, entityId: string, details: string) => {
+    (action: string, entityType: string, entityId: string, details: string): ActivityLog => {
       return logActivity({
         action,
         entityType,

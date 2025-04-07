@@ -57,7 +57,7 @@ export interface AppContextType {
   getLogById: (id: string) => LogEntry | undefined;
   getAllLogs: (params?: PaginationParams) => PaginatedResult<LogEntry>;
   getLogsByOrderId: (orderId: string) => LogEntry[];
-  logAIInteraction: (prompt: string, response: string) => void;
+  logAIInteraction: (prompt: string, response: string) => LogEntry;
   
   // Supplier functions
   addSupplier: (supplier: Omit<Supplier, 'id'>) => Supplier;
@@ -89,7 +89,7 @@ export interface AppContextType {
   addGPSData: (data: Omit<GPSData, 'id' | 'timestamp'>) => GPSData;
   getGPSDataForTruck: (truckId: string, limit?: number) => GPSData[];
   getAllGPSData: (params?: PaginationParams) => PaginatedResult<GPSData>;
-  updateGPSData: (truckId: string, latitude: number, longitude: number, speed: number) => void;
+  updateGPSData: (truckId: string, latitude: number, longitude: number, speed: number) => GPSData;
   
   // AI Insights functions
   addAIInsight: (insight: Omit<AIInsight, 'id' | 'isRead'>) => AIInsight;
@@ -159,6 +159,10 @@ export interface AppContextType {
   getAllTanks: (params?: PaginationParams) => PaginatedResult<Tank>;
   getTanksByProduct: (productType: ProductType) => Tank[];
   setTankActive: (id: string, isActive: boolean) => boolean;
+  
+  // User Authentication logging functions
+  logUserLogin: (userId: string, username: string) => void;
+  logUserLogout: (userId: string, username: string) => void;
   
   // Company functions
   updateCompany: (data: Partial<typeof defaultCompany>) => void;
