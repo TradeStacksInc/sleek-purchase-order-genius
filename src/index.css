@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -80,6 +81,16 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Global transition for interactive elements */
+  button, a, input, select, textarea {
+    @apply transition-all duration-200;
+  }
+  
+  /* Improved focus styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-offset-2 ring-primary/50;
+  }
 }
 
 /* Mobile responsiveness */
@@ -159,7 +170,7 @@
 
 /* Improved delivery log card styling */
 .delivery-log-card {
-  @apply p-5 space-y-3 border rounded-lg transition-all duration-200 hover:shadow-md;
+  @apply p-5 space-y-3 border rounded-xl transition-all duration-200 hover:shadow-md;
 }
 
 /* Status badge styling */
@@ -179,4 +190,28 @@
 /* Incident button styling */
 .incident-button {
   @apply flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-md border transition-colors;
+}
+
+/* Global card styling */
+.card, .ui-card {
+  @apply rounded-xl transition-all duration-200 hover:shadow-sm;
+}
+
+/* Animate page transitions */
+.page-enter {
+  @apply opacity-0 transform translate-y-4;
+}
+
+.page-enter-active {
+  @apply opacity-100 transform translate-y-0 transition-all duration-300 ease-in-out;
+}
+
+/* Button hover effects */
+.btn-hover {
+  @apply hover:shadow-md active:scale-95;
+}
+
+/* Form element styling */
+input, select, textarea {
+  @apply rounded-lg;
 }

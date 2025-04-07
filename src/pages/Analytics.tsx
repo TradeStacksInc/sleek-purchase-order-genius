@@ -33,7 +33,6 @@ const Analytics = () => {
   }, [dateRange, purchaseOrders]);
 
   const generateAnalyticsData = () => {
-    // Filter orders by date range
     const filteredOrders = purchaseOrders.filter(order => {
       const orderDate = order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt);
       return (
@@ -42,28 +41,24 @@ const Analytics = () => {
       );
     });
     
-    // Calculate order metrics
     const totalOrders = filteredOrders.length;
     const totalOrderValue = filteredOrders.reduce((sum, order) => sum + (order.grandTotal || 0), 0);
     const completedOrders = filteredOrders.filter(order => order.status === 'completed').length;
     const pendingOrders = filteredOrders.filter(order => order.status === 'pending').length;
     const cancelledOrders = filteredOrders.filter(order => order.status === 'cancelled').length;
     
-    // Order status breakdown for pie chart
     const orderStatusBreakdown = [
       { name: 'Completed', value: completedOrders },
       { name: 'Pending', value: pendingOrders },
       { name: 'Cancelled', value: cancelledOrders },
     ];
     
-    // Calculate delivery metrics
     const deliveries = filteredOrders.filter(order => order.deliveryDetails);
     const completedDeliveries = deliveries.filter(order => order.deliveryDetails?.status === 'delivered').length;
     const inTransitDeliveries = deliveries.filter(order => order.deliveryDetails?.status === 'in_transit').length;
     const pendingDeliveries = deliveries.filter(order => order.deliveryDetails?.status === 'pending').length;
     const flaggedDeliveries = deliveries.filter(order => order.offloadingDetails?.isDiscrepancyFlagged).length;
     
-    // Calculate on-time deliveries
     const onTimeDeliveries = deliveries.filter(order => {
       if (order.deliveryDetails?.actualArrivalTime && order.deliveryDetails?.expectedArrivalTime) {
         const actual = new Date(order.deliveryDetails.actualArrivalTime);
@@ -75,7 +70,6 @@ const Analytics = () => {
     
     const onTimeRate = deliveries.length > 0 ? (onTimeDeliveries / completedDeliveries) * 100 : 0;
     
-    // Calculate average delivery time
     const avgDeliveryTime = deliveries
       .filter(order => order.deliveryDetails?.actualArrivalTime && order.deliveryDetails?.depotDepartureTime)
       .reduce((sum, order) => {
@@ -84,21 +78,18 @@ const Analytics = () => {
         return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Hours
       }, 0) / completedDeliveries || 0;
     
-    // Delivery status breakdown for pie chart
     const deliveryStatusBreakdown = [
       { name: 'Completed', value: completedDeliveries },
       { name: 'In Transit', value: inTransitDeliveries },
       { name: 'Pending', value: pendingDeliveries },
     ];
     
-    // Discrepancy analysis
     const ordersWithDiscrepancies = filteredOrders.filter(order => order.offloadingDetails?.isDiscrepancyFlagged);
     const discrepancyRate = filteredOrders.length > 0 ? (ordersWithDiscrepancies.length / filteredOrders.length) * 100 : 0;
     const averageDiscrepancyPercentage = ordersWithDiscrepancies.reduce((sum, order) => {
       return sum + (order.offloadingDetails?.discrepancyPercentage || 0);
     }, 0) / ordersWithDiscrepancies.length || 0;
     
-    // Monthly trend for time series
     const montlyTrend = Array.from({ length: 6 }).map((_, i) => {
       const month = new Date();
       month.setMonth(month.getMonth() - 5 + i);
@@ -142,7 +133,6 @@ const Analytics = () => {
     
     setAnalyticsData(data);
     
-    // Generate AI insights based on the analytics data
     generateAIInsights(data);
   };
 
@@ -150,7 +140,7 @@ const Analytics = () => {
 
   if (!analyticsData) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="py-6">
         <h1 className="text-2xl font-bold mb-6">Analytics</h1>
         <p>Loading analytics data...</p>
       </div>
@@ -158,13 +148,13 @@ const Analytics = () => {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="py-6 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-2xl font-bold mb-4 md:mb-0">Analytics</h1>
         <DateRangePicker 
           date={dateRange}
           onDateChange={(date) => {
-            if (date && date.from) {
+            if (date?.from) {
               setDateRange({
                 from: date.from,
                 to: date.to || new Date()
@@ -175,7 +165,7 @@ const Analytics = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card>
+        <Card className="transition-all duration-200 rounded-xl">
           <CardHeader className="p-4">
             <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
           </CardHeader>
@@ -184,7 +174,7 @@ const Analytics = () => {
             <p className="text-xs text-muted-foreground">Period: {analyticsData.period}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-all duration-200 rounded-xl">
           <CardHeader className="p-4">
             <CardTitle className="text-sm font-medium">Order Value</CardTitle>
           </CardHeader>
@@ -193,7 +183,7 @@ const Analytics = () => {
             <p className="text-xs text-muted-foreground">Total value of all orders</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-all duration-200 rounded-xl">
           <CardHeader className="p-4">
             <CardTitle className="text-sm font-medium">Completed Orders</CardTitle>
           </CardHeader>
@@ -206,7 +196,7 @@ const Analytics = () => {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-all duration-200 rounded-xl">
           <CardHeader className="p-4">
             <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
           </CardHeader>
@@ -223,14 +213,14 @@ const Analytics = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <TabsList className="grid grid-cols-3 mb-4">
-          <TabsTrigger value="orders">Order Analytics</TabsTrigger>
-          <TabsTrigger value="delivery">Delivery Analytics</TabsTrigger>
-          <TabsTrigger value="financial">Financial Analytics</TabsTrigger>
+          <TabsTrigger value="orders" className="transition-all duration-200">Order Analytics</TabsTrigger>
+          <TabsTrigger value="delivery" className="transition-all duration-200">Delivery Analytics</TabsTrigger>
+          <TabsTrigger value="financial" className="transition-all duration-200">Financial Analytics</TabsTrigger>
         </TabsList>
         
         <TabsContent value="orders">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            <Card className="transition-all duration-200 rounded-xl">
               <CardHeader>
                 <CardTitle>Order Status Distribution</CardTitle>
               </CardHeader>
@@ -257,7 +247,7 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="transition-all duration-200 rounded-xl">
               <CardHeader>
                 <CardTitle>Monthly Order Trends</CardTitle>
               </CardHeader>
@@ -281,7 +271,7 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 transition-all duration-200 rounded-xl">
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
               </CardHeader>
@@ -311,7 +301,7 @@ const Analytics = () => {
         
         <TabsContent value="delivery">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            <Card className="transition-all duration-200 rounded-xl">
               <CardHeader>
                 <CardTitle>Delivery Status Distribution</CardTitle>
               </CardHeader>
@@ -338,7 +328,7 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="transition-all duration-200 rounded-xl">
               <CardHeader>
                 <CardTitle>Monthly Delivery Trends</CardTitle>
               </CardHeader>
@@ -362,7 +352,7 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="transition-all duration-200 rounded-xl">
               <CardHeader>
                 <CardTitle>Delivery Performance</CardTitle>
               </CardHeader>
@@ -380,7 +370,7 @@ const Analytics = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="transition-all duration-200 rounded-xl">
               <CardHeader>
                 <CardTitle>Discrepancy Analysis</CardTitle>
               </CardHeader>
@@ -403,7 +393,7 @@ const Analytics = () => {
         
         <TabsContent value="financial">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            <Card className="transition-all duration-200 rounded-xl">
               <CardHeader>
                 <CardTitle>Monthly Revenue Trend</CardTitle>
               </CardHeader>
@@ -427,7 +417,7 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="transition-all duration-200 rounded-xl">
               <CardHeader>
                 <CardTitle>Financial Summary</CardTitle>
               </CardHeader>
@@ -450,7 +440,7 @@ const Analytics = () => {
         </TabsContent>
       </Tabs>
       
-      <Card>
+      <Card className="transition-all duration-200 rounded-xl">
         <CardHeader>
           <CardTitle>Analysis Period: {analyticsData.period}</CardTitle>
         </CardHeader>

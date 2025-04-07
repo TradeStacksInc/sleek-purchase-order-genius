@@ -9,14 +9,14 @@ const Index = () => {
   const navigate = useNavigate();
   
   return (
-    <div className="container mx-auto p-6">
+    <div className="py-6">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold tracking-tight">Filling Station Management System</h1>
         <p className="text-muted-foreground mt-2">Complete solution for managing your filling station operations</p>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="transition-all hover:shadow-md">
+        <Card className="transition-all duration-200 hover:shadow-md rounded-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart2 className="h-5 w-5 text-primary" />
@@ -26,13 +26,13 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <p className="mb-4">Get a comprehensive overview of your station's performance, inventory levels, and sales.</p>
-            <Button onClick={() => navigate('/dashboard')} className="w-full">
+            <Button onClick={() => navigate('/dashboard')} className="w-full transition-all duration-200">
               Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardContent>
         </Card>
         
-        <Card className="transition-all hover:shadow-md">
+        <Card className="transition-all duration-200 hover:shadow-md rounded-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-primary" />
@@ -42,13 +42,13 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <p className="mb-4">Create and track purchase orders, assign drivers, and manage delivery logistics.</p>
-            <Button onClick={() => navigate('/orders')} className="w-full">
+            <Button onClick={() => navigate('/orders')} className="w-full transition-all duration-200">
               Manage Orders <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardContent>
         </Card>
         
-        <Card className="transition-all hover:shadow-md">
+        <Card className="transition-all duration-200 hover:shadow-md rounded-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Droplet className="h-5 w-5 text-primary" />
@@ -58,7 +58,7 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <p className="mb-4">Track fuel levels, schedule refills, and analyze consumption patterns.</p>
-            <Button onClick={() => navigate('/tank-management')} className="w-full">
+            <Button onClick={() => navigate('/tank-management')} className="w-full transition-all duration-200">
               View Tanks <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardContent>

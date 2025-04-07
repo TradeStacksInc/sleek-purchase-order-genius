@@ -47,7 +47,7 @@ const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md rounded-xl transition-all duration-200">
         <DialogHeader>
           <DialogTitle>Update Order Status</DialogTitle>
         </DialogHeader>
@@ -58,10 +58,10 @@ const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({
               value={status} 
               onValueChange={(value) => setStatus(value as OrderStatus)}
             >
-              <SelectTrigger className="col-span-3">
+              <SelectTrigger className="col-span-3 transition-all duration-200 rounded-lg">
                 <SelectValue placeholder="Select new status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-lg">
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
@@ -77,17 +77,26 @@ const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({
             <label className="text-right text-sm">Note</label>
             <Textarea 
               placeholder="Add a note about this status change" 
-              className="col-span-3" 
+              className="col-span-3 transition-all duration-200 rounded-lg" 
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            className="transition-all duration-200 rounded-lg"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>Update Status</Button>
+          <Button 
+            onClick={handleSubmit}
+            className="transition-all duration-200 rounded-lg"
+          >
+            Update Status
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
