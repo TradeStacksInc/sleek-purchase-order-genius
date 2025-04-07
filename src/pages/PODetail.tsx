@@ -18,7 +18,8 @@ const PODetail: React.FC = () => {
   const { getOrderById, getLogsByOrderId, updateOrderStatus } = useApp();
   
   const order = getOrderById(id!);
-  const logs = getLogsByOrderId(id!);
+  const logsResult = getLogsByOrderId(id!);
+  const logs = Array.isArray(logsResult) ? logsResult : (logsResult?.data || []);
   
   if (!order) {
     return (
@@ -65,7 +66,7 @@ const PODetail: React.FC = () => {
         return (
           <Button 
             className="mt-4" 
-            onClick={() => updateOrderStatus(order.id, 'active', 'Order marked as active')}
+            onClick={() => updateOrderStatus(order.id, 'active')}
           >
             Mark as Paid
           </Button>
@@ -74,7 +75,7 @@ const PODetail: React.FC = () => {
         return (
           <Button 
             className="mt-4" 
-            onClick={() => updateOrderStatus(order.id, 'fulfilled', 'Order marked as fulfilled')}
+            onClick={() => updateOrderStatus(order.id, 'fulfilled')}
           >
             Mark as Delivered
           </Button>

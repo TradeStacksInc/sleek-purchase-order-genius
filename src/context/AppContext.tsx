@@ -38,7 +38,6 @@ export const useApp = () => {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   
-  // State initialization
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -56,13 +55,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [tanks, setTanks] = useState<Tank[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load data from Supabase on component mount
   useEffect(() => {
     const fetchInitialData = async () => {
       setLoading(true);
       
       try {
-        // Fetch purchase orders
         const { data: poData, error: poError } = await supabase
           .from('purchase_orders')
           .select('*');
@@ -70,7 +67,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (poError) throw poError;
         setPurchaseOrders(poData.map(po => fromSupabaseFormat.purchaseOrder(po)));
         
-        // Fetch suppliers
         const { data: supplierData, error: supplierError } = await supabase
           .from('suppliers')
           .select('*');
@@ -78,7 +74,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (supplierError) throw supplierError;
         setSuppliers(supplierData.map(supplier => fromSupabaseFormat.supplier(supplier)));
         
-        // Fetch drivers
         const { data: driverData, error: driverError } = await supabase
           .from('drivers')
           .select('*');
@@ -86,7 +81,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (driverError) throw driverError;
         setDrivers(driverData.map(driver => fromSupabaseFormat.driver(driver)));
         
-        // Fetch trucks
         const { data: truckData, error: truckError } = await supabase
           .from('trucks')
           .select('*');
@@ -94,7 +88,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (truckError) throw truckError;
         setTrucks(truckData.map(truck => fromSupabaseFormat.truck(truck)));
         
-        // Fetch tanks
         const { data: tankData, error: tankError } = await supabase
           .from('tanks')
           .select('*');
@@ -102,7 +95,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (tankError) throw tankError;
         setTanks(tankData.map(tank => fromSupabaseFormat.tank(tank)));
         
-        // Fetch incidents
         const { data: incidentData, error: incidentError } = await supabase
           .from('incidents')
           .select('*');
@@ -1011,33 +1003,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     activityLogs,
     tanks,
     
-    // Add individual methods from purchaseOrderActions
     addPurchaseOrder: purchaseOrderActions.addPurchaseOrder,
     updatePurchaseOrder: purchaseOrderActions.updatePurchaseOrder,
     deletePurchaseOrder: purchaseOrderActions.deletePurchaseOrder,
     getPurchaseOrderById: purchaseOrderActions.getPurchaseOrderById,
     getAllPurchaseOrders: purchaseOrderActions.getAllPurchaseOrders,
-    updateOrderStatus: purchaseOrderActions.updateOrderStatus,
+    updateOrderStatus: updateOrderStatusWrapper,
     getOrderById,
     getOrdersWithDeliveryStatus,
     getOrdersWithDiscrepancies,
     
-    // Add individual methods from logActions
     addLog: logActions.addLog,
     deleteLog: logActions.deleteLog,
     getLogById: logActions.getLogById,
     getAllLogs: logActions.getAllLogs,
-    getLogsByOrderId: logActions.getLogsByOrderId,
+    getLogsByOrderId: getLogsByOrderIdWrapper,
     logAIInteraction,
     
-    // Add individual methods from supplierActions
     addSupplier: supplierActions.addSupplier,
     updateSupplier: supplierActions.updateSupplier,
     deleteSupplier: supplierActions.deleteSupplier,
     getSupplierById: supplierActions.getSupplierById,
     getAllSuppliers: supplierActions.getAllSuppliers,
     
-    // Add individual methods from driverTruckActions
     addDriver: driverTruckActions.addDriver,
     updateDriver: driverTruckActions.updateDriver,
     deleteDriver: driverTruckActions.deleteDriver, 
@@ -1056,7 +1044,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getGPSDataForTruck,
     updateGPSData,
     
-    // Add individual methods from deliveryActions
     updateDeliveryDetails,
     markOrderAsDelivered,
     startDelivery,
@@ -1066,18 +1053,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     recordOffloadingToTank: handleTankOffloading,
     assignDriverToOrder,
     
-    // Add individual methods from aiActions
-    generateAIInsights: aiActions.generateAIInsights,
+    generateAIInsights: generateAIInsightsWrapper,
     getInsightsByType: aiActions.getInsightsByType,
     
-    // Add individual methods from staffActions
     addStaff: staffActions.addStaff,
     updateStaff: staffActions.updateStaff,
     deleteStaff,
     getStaffById: staffActions.getStaffById,
     getAllStaff: staffActions.getAllStaff,
     
-    // Add individual methods for dispensers
     addDispenser,
     updateDispenser,
     deleteDispenser,
@@ -1088,39 +1072,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getDispenserSalesStats,
     recordDispensing,
     
-    // Add individual methods for shifts
     addShift,
     updateShift,
     deleteShift,
     getShiftById,
     getAllShifts,
     startShift: shiftActions.startShift,
-    endShift: shiftActions.endShift,
+    endShift: endShiftWrapper,
     getShiftsByStaffId,
     getCurrentStaffShift,
     
-    // Add individual methods for sales
     addSale,
     updateSale,
     deleteSale,
     getSaleById,
     getAllSales,
     
-    // Add individual methods for prices
-    addPrice: priceActions.addPrice,
-    updatePrice: priceActions.updatePrice,
-    deletePrice: priceActions.deletePrice,
-    getPriceById: priceActions.getPriceById,
-    getAllPrices: priceActions.getAllPrices,
+    addPrice: addPriceWrapper,
+    updatePrice: updatePriceWrapper,
+    deletePrice: deletePriceWrapper,
+    getPriceById: getPriceByIdWrapper,
+    getAllPrices: getAllPricesWrapper,
     
-    // Add individual methods for tanks
-    getTankByProductType: tankActionsMethods.getTankByProductType,
-    getActiveDispensersByTankId: tankActionsMethods.getActiveDispensersByTankId,
-    getActiveTanksByProductType: tankActionsMethods.getActiveTanksByProductType,
+    getTankByProductType: getTankByProductTypeWrapper,
+    getActiveDispensersByTankId: getActiveDispensersByTankIdWrapper,
+    getActiveTanksByProductType: getActiveTanksByProductTypeWrapper,
     addTank: tankActionsMethods.addTank,
-    updateTank: tankActionsMethods.updateTank,
-    deleteTank: tankActionsMethods.deleteTank,
-    getAllTanks: tankActionsMethods.getAllTanks,
+    updateTank: updateTankWrapper,
+    deleteTank: deleteTankWrapper,
+    getAllTanks: getAllTanksWrapper,
     connectTankToDispenser: tankActionsMethods.connectTankToDispenser,
     disconnectTankFromDispenser: tankActionsMethods.disconnectTankFromDispenser,
     setTankActive,

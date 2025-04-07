@@ -52,8 +52,8 @@ export interface Company {
   registrationNumber?: string;
 }
 
-// Order Status
-export type OrderStatus = 'draft' | 'pending' | 'active' | 'completed' | 'cancelled' | 'approved' | 'rejected' | 'delivered' | 'fulfilled';
+// Order Status - extended to include all used values
+export type OrderStatus = 'draft' | 'pending' | 'active' | 'completed' | 'cancelled' | 'approved' | 'rejected' | 'delivered' | 'fulfilled' | string;
 export type PaymentTerm = 'net_7' | 'net_15' | 'net_30' | 'net_60' | 'cod' | '50% Advance' | '100% Advance' | 'Credit';
 
 export interface StatusHistoryEntry {

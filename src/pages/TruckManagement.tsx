@@ -17,9 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 const TruckManagement: React.FC = () => {
   const { 
     trucks, 
-    getGPSTaggedTrucks, 
-    getNonTaggedTrucks, 
-    getNonGPSTrucks,
+    getAllTrucks,
     tagTruckWithGPS,
     untagTruckGPS,
     addTruck 
@@ -45,6 +43,18 @@ const TruckManagement: React.FC = () => {
     longitude: '3.3792'
   });
 
+  const getGPSTaggedTrucks = () => {
+    return trucks.filter(truck => truck.hasGPS && truck.isGPSTagged);
+  };
+  
+  const getNonTaggedTrucks = () => {
+    return trucks.filter(truck => truck.hasGPS && !truck.isGPSTagged);
+  };
+  
+  const getNonGPSTrucks = () => {
+    return trucks.filter(truck => !truck.hasGPS);
+  };
+
   const filteredTrucks = useMemo(() => {
     let filtered: TruckType[] = [];
     
@@ -67,7 +77,7 @@ const TruckManagement: React.FC = () => {
     }
     
     return filtered;
-  }, [trucks, activeTab, searchTerm, getGPSTaggedTrucks, getNonTaggedTrucks, getNonGPSTrucks]);
+  }, [trucks, activeTab, searchTerm]);
 
   const handleAddTruck = () => {
     if (!newTruck.plateNumber || !newTruck.model || !newTruck.capacity) {
