@@ -34,12 +34,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { fromSupabaseFormat, toSupabaseFormat } from '@/utils/supabaseAdapters';
 import { AppContextType } from './appContextTypes';
 
-// Create the context with undefined as default value
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Provider component
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // State for all our data
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -57,7 +54,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [tanks, setTanks] = useState<Tank[]>([]);
   const [company, setCompany] = useState(defaultCompany);
 
-  // Load data from localStorage on initial render
   useEffect(() => {
     setPurchaseOrders(getFromLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, []));
     setLogs(getFromLocalStorage(STORAGE_KEYS.LOGS, []));
@@ -76,7 +72,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTanks(getFromLocalStorage(STORAGE_KEYS.TANKS, []));
   }, []);
 
-  // Purchase Order functions
   const addPurchaseOrder = useCallback(async (order: Omit<PurchaseOrder, 'id'>): Promise<PurchaseOrder> => {
     const now = new Date();
     const newOrder: PurchaseOrder = {
@@ -86,7 +81,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: now
     };
     
-    // Try to save to Supabase first
     try {
       const { data, error } = await supabase
         .from('purchase_orders')
@@ -96,7 +90,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
       if (error) throw error;
       
-      // If successful, use the returned data with its database ID
       const savedOrder = fromSupabaseFormat.purchaseOrder(data);
       setPurchaseOrders(prev => [...prev, savedOrder]);
       saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, [...purchaseOrders, savedOrder]);
@@ -104,7 +97,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) {
       console.error('Error saving purchase order to Supabase:', error);
       
-      // Fall back to local storage only
       setPurchaseOrders(prev => [...prev, newOrder]);
       saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, [...purchaseOrders, newOrder]);
       return newOrder;
@@ -122,7 +114,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     try {
-      // Update in Supabase
       const { error } = await supabase
         .from('purchase_orders')
         .update(toSupabaseFormat.purchaseOrder(updatedOrder))
@@ -130,7 +121,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
       if (error) throw error;
       
-      // Update local state
       const newOrders = [...purchaseOrders];
       newOrders[orderIndex] = updatedOrder;
       setPurchaseOrders(newOrders);
@@ -139,7 +129,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) {
       console.error('Error updating purchase order in Supabase:', error);
       
-      // Fall back to local storage only
       const newOrders = [...purchaseOrders];
       newOrders[orderIndex] = updatedOrder;
       setPurchaseOrders(newOrders);
@@ -165,7 +154,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (orderIndex === -1) return false;
 
     try {
-      // Delete from Supabase
       supabase
         .from('purchase_orders')
         .delete()
@@ -174,7 +162,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (error) throw error;
         });
       
-      // Update local state
       const newOrders = purchaseOrders.filter(order => order.id !== id);
       setPurchaseOrders(newOrders);
       saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
@@ -182,7 +169,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) {
       console.error('Error deleting purchase order:', error);
       
-      // Fall back to local storage only
       const newOrders = purchaseOrders.filter(order => order.id !== id);
       setPurchaseOrders(newOrders);
       saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
@@ -190,7 +176,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [purchaseOrders]);
 
-  // Log functions
   const addLog = useCallback((log: Omit<LogEntry, 'id' | 'timestamp'>): LogEntry => {
     const newLog: LogEntry = {
       ...log,
@@ -226,7 +211,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(logs, params);
   }, [logs]);
 
-  // Supplier functions
   const addSupplier = useCallback((supplier: Omit<Supplier, 'id'>): Supplier => {
     const newSupplier: Supplier = {
       ...supplier,
@@ -273,7 +257,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   }, [suppliers]);
 
-  // Driver functions
   const addDriver = useCallback((driver: Omit<Driver, 'id'>): Driver => {
     const now = new Date();
     const newDriver: Driver = {
@@ -328,7 +311,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return drivers.filter(driver => driver.isAvailable);
   }, [drivers]);
 
-  // Truck functions
   const addTruck = useCallback((truck: Omit<Truck, 'id'>): Truck => {
     const now = new Date();
     const newTruck: Truck = {
@@ -425,7 +407,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return trucks.filter(truck => !truck.isGPSTagged);
   }, [trucks]);
 
-  // GPS Data functions
   const addGPSData = useCallback((data: Omit<GPSData, 'id' | 'timestamp'>): GPSData => {
     const newData: GPSData = {
       ...data,
@@ -465,7 +446,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     setGpsData(prev => [...prev, newGPSData]);
     
-    // Also update the truck's last known position
     const truckIndex = trucks.findIndex(truck => truck.id === truckId);
     if (truckIndex !== -1) {
       const updatedTruck = {
@@ -482,7 +462,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [gpsData, trucks]);
 
-  // AI Insights functions
   const addAIInsight = useCallback((insight: Omit<AIInsight, 'id' | 'isRead'>): AIInsight => {
     const newInsight: AIInsight = {
       ...insight,
@@ -531,13 +510,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [aiInsights]);
   
   const generateAIInsights = useCallback((data: any): AIInsight => {
-    // This would usually call an AI service, but for now we'll create a simple insight
     const newInsight: AIInsight = {
       id: uuidv4(),
       type: "system_generated",
       description: `AI insight generated based on system data: ${JSON.stringify(data).substring(0, 50)}...`,
       timestamp: new Date(),
-      severity: "low", // Fixed to a valid severity type
+      severity: "low",
       isRead: false,
       generatedAt: new Date()
     };
@@ -546,7 +524,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newInsight;
   }, []);
 
-  // Staff functions
   const addStaff = useCallback((staffMember: Omit<Staff, 'id'>): Staff => {
     const now = new Date();
     const newStaff: Staff = {
@@ -601,7 +578,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return staff.filter(s => s.isActive);
   }, [staff]);
 
-  // Dispenser functions
   const addDispenser = useCallback((dispenser: Omit<Dispenser, 'id'>): Dispenser => {
     const newDispenser: Dispenser = {
       ...dispenser,
@@ -655,7 +631,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return dispensers.filter(d => d.isActive);
   }, [dispensers]);
 
-  // Shift functions
   const addShift = useCallback((shift: Omit<Shift, 'id'>): Shift => {
     const newShift: Shift = {
       ...shift,
@@ -706,7 +681,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return shifts.find(s => s.status === 'active') || null;
   }, [shifts]);
 
-  // Sale functions
   const addSale = useCallback((sale: Omit<Sale, 'id'>): Sale => {
     const newSale: Sale = {
       ...sale,
@@ -746,3 +720,108 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteSale = useCallback((id: string): boolean => {
     const saleIndex = sales.findIndex(s => s.id === id);
     if (saleIndex === -1) return false;
+
+    const newSales = sales.filter(s => s.id !== id);
+    setSales(newSales);
+    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
+    return true;
+  }, [sales]);
+
+  const contextValue: AppContextType = {
+    purchaseOrders,
+    logs,
+    suppliers,
+    drivers,
+    trucks,
+    gpsData,
+    aiInsights,
+    staff,
+    dispensers,
+    shifts,
+    sales,
+    prices,
+    incidents,
+    activityLogs,
+    tanks,
+    company,
+    addPurchaseOrder,
+    updatePurchaseOrder,
+    getPurchaseOrderById,
+    getOrderById,
+    getAllPurchaseOrders,
+    deletePurchaseOrder,
+    addLog,
+    getLogsByOrderId,
+    getLogById,
+    deleteLog,
+    getAllLogs,
+    addSupplier,
+    updateSupplier,
+    getSupplierById,
+    getAllSuppliers,
+    deleteSupplier,
+    addDriver,
+    updateDriver,
+    getDriverById,
+    getAllDrivers,
+    deleteDriver,
+    getAvailableDrivers,
+    addTruck,
+    updateTruck,
+    getTruckById,
+    getAllTrucks,
+    deleteTruck,
+    getAvailableTrucks,
+    tagTruckWithGPS,
+    untagTruckGPS,
+    getNonGPSTrucks,
+    addGPSData,
+    getGPSDataForTruck,
+    getAllGPSData,
+    updateGPSData,
+    addAIInsight,
+    markAIInsightAsRead,
+    getUnreadAIInsights,
+    getAllAIInsights,
+    resetAIInsights,
+    getInsightsByType,
+    generateAIInsights,
+    addStaff,
+    updateStaff,
+    getStaffById,
+    getAllStaff,
+    deleteStaff,
+    getActiveStaff,
+    addDispenser,
+    updateDispenser,
+    getDispenserById,
+    getAllDispensers,
+    deleteDispenser,
+    getActiveDispensers,
+    addShift,
+    updateShift,
+    getShiftById,
+    getAllShifts,
+    deleteShift,
+    getCurrentShift,
+    addSale,
+    updateSale,
+    getSaleById,
+    getAllSales,
+    deleteSale
+  };
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
