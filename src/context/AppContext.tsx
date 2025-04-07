@@ -332,7 +332,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return tank;
       });
-      return updatedTank;
+      return updatedTanks;
     });
     return updatedTank;
   }, []);
@@ -971,7 +971,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return currentPrices as Record<ProductType, number>;
   }, [prices]);
 
-  const contextValue = {
+  const updateCompany = useCallback((data: Partial<typeof defaultCompany>): void => {
+    setCompany(prev => ({ ...prev, ...data }));
+  }, []);
+
+  const startDelivery = useCallback(async (orderId: string): Promise<boolean> => {
+    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const order = purchaseOrders[orderIndex];
+    const deliveryDetails = order.deliveryDetails;
+    
+    if (!deliveryDetails) return false;
+    
+    const updatedDeliveryDetails: DeliveryDetails = {
+      ...deliveryDetails,
+      status: "in_transit",
+      depotDepartureTime: new Date()
+    };
+    
+    const updatedOrder = {
+      ...order,
+      updatedAt: new Date(),
+      deliveryDetails: updatedDeliveryDetails
+    };
+    
+    await updatePurchaseOrder(orderId, updatedOrder);
+    
+    addActivityLog({
+      action: 'start',
+      entityType: 'delivery',
+      entityId: orderId,
+      details: `Delivery for order ${order.poNumber} started`,
+      user: 'Current User'
+    });
+    
+    return true;
+  }, [purchaseOrders, updatePurchaseOrder, addActivityLog]);
+
+  const contextValue: AppContextType = {
     purchaseOrders,
     setPurchaseOrders,
     logs,
@@ -1070,7 +1108,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logGpsActivity,
     
     company,
-    setCompany
+    setCompany,
+    
+    startDelivery
   };
 
   return (
