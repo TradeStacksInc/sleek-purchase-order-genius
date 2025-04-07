@@ -3,12 +3,28 @@
 import { STORAGE_KEYS } from './constants';
 import { PaginationParams, PaginatedResult } from './types';
 import { saveToLocalStorage, getFromLocalStorage, dateReviver } from './core';
-import { getAppStateFromLocalStorage, saveAppStateToLocalStorage } from './appState';
-import { exportDataToJson } from './export';
+import { getAppStateFromLocalStorage, saveAppStateToLocalStorage, StoredAppData, clearAppState } from './appState';
+import { exportDataToJson, exportDataToFile } from './export';
 import { supabase } from '@/integrations/supabase/client';
 
 // Function to determine Supabase table name from storage key
 const getSupabaseTableName = (key: string): string => {
+  // Remove prefix if present
+  const tableName = key.startsWith('po_system_') ? key.replace('po_system_', '') : key;
+  
+  // Make sure the table name matches one of the valid Supabase tables
+  const validTableNames = [
+    'purchase_orders', 'logs', 'suppliers', 'drivers', 'trucks',
+    'gps_data', 'ai_insights', 'staff', 'dispensers', 'shifts',
+    'sales', 'prices', 'incidents', 'activity_logs', 'tanks',
+    'delivery_details', 'offloading_details', 'purchase_order_items'
+  ];
+  
+  if (validTableNames.includes(tableName)) {
+    return tableName;
+  }
+  
+  // Fall back to mapping based on key name
   switch(key) {
     case STORAGE_KEYS.PURCHASE_ORDERS:
       return 'purchase_orders';
@@ -41,7 +57,8 @@ const getSupabaseTableName = (key: string): string => {
     case STORAGE_KEYS.TANKS:
       return 'tanks';
     default:
-      return key.replace('po_system_', '');
+      console.warn(`No Supabase table defined for key: ${key}`);
+      return '';
   }
 };
 
@@ -72,8 +89,15 @@ export const syncToSupabase = async <T extends any[]>(key: string, data: T) => {
 // Function to fetch data from Supabase
 export const fetchFromSupabase = async <T>(tableName: string): Promise<T[]> => {
   try {
+    const validTableName = getSupabaseTableName(tableName);
+    
+    if (!validTableName) {
+      console.warn(`Invalid table name: ${tableName}`);
+      return [];
+    }
+    
     const { data, error } = await supabase
-      .from(getSupabaseTableName(tableName))
+      .from(validTableName)
       .select('*');
       
     if (error) throw error;
@@ -96,12 +120,10 @@ export const getPaginatedData = <T>(data: T[], params: PaginationParams = { page
   
   return {
     data: paginatedData,
-    pagination: {
-      page,
-      limit,
-      totalItems: data.length,
-      totalPages
-    }
+    page,
+    pageSize: limit,
+    totalItems: data.length,
+    totalPages
   };
 };
 
@@ -112,8 +134,11 @@ export {
   getFromLocalStorage,
   getAppStateFromLocalStorage,
   saveAppStateToLocalStorage,
+  clearAppState,
   exportDataToJson,
-  dateReviver
+  exportDataToFile,
+  dateReviver,
+  StoredAppData
 };
 
 // Export types

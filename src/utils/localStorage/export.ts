@@ -1,58 +1,71 @@
 
-// Export data to file functionality
-export const exportDataToFile = (data: any, filename: string = 'export.json', type: 'json' | 'csv' = 'json'): void => {
+/**
+ * Export data to a JSON file or other formats
+ */
+export const exportDataToJson = <T>(data: T[], filename: string): boolean => {
   try {
-    let content: string;
-    let mimeType: string;
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     
-    if (type === 'json') {
-      content = JSON.stringify(data, null, 2);
-      mimeType = 'application/json';
-      if (!filename.endsWith('.json')) filename += '.json';
-    } else {
-      // Simple CSV conversion for array of objects
-      if (!Array.isArray(data)) {
-        throw new Error('CSV export only supports arrays of objects');
-      }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    return true;
+  } catch (error) {
+    console.error('Error exporting data to JSON:', error);
+    return false;
+  }
+};
+
+/**
+ * Export data to CSV or other formats
+ */
+export const exportDataToFile = <T>(data: T[], filename: string, format: 'csv' | 'json' = 'json'): boolean => {
+  try {
+    if (format === 'json') {
+      return exportDataToJson(data, filename);
+    } else if (format === 'csv') {
+      // Basic CSV conversion - expand as needed
+      if (!data.length) return false;
       
-      // Get headers from first object
-      const headers = Object.keys(data[0] || {});
-      // Convert each object to CSV row
-      const rows = data.map(obj => 
-        headers.map(header => {
-          const value = obj[header];
-          // Handle special cases
-          if (value instanceof Date) return value.toISOString();
-          if (typeof value === 'object') return JSON.stringify(value);
-          return String(value);
-        }).join(',')
-      );
+      const headers = Object.keys(data[0] as object).join(',');
+      const rows = data.map(item => {
+        return Object.values(item as object)
+          .map(val => {
+            // Handle different data types appropriately
+            if (typeof val === 'string') return `"${val.replace(/"/g, '""')}"`;
+            if (val instanceof Date) return `"${val.toISOString()}"`;
+            if (val === null || val === undefined) return '';
+            if (typeof val === 'object') return `"${JSON.stringify(val).replace(/"/g, '""')}"`;
+            return val;
+          })
+          .join(',');
+      });
       
-      content = [headers.join(','), ...rows].join('\n');
-      mimeType = 'text/csv';
-      if (!filename.endsWith('.csv')) filename += '.csv';
+      const csv = [headers, ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      return true;
     }
     
-    // Create download link
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    
-    // Trigger download
-    document.body.appendChild(link);
-    link.click();
-    
-    // Cleanup
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }, 100);
-    
-    console.info(`Successfully exported data as ${filename}`);
+    return false;
   } catch (error) {
-    console.error('Error exporting data:', error);
-    throw error;
+    console.error(`Error exporting data to ${format}:`, error);
+    return false;
   }
 };

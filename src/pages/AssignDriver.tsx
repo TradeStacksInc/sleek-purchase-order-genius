@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,36 +68,28 @@ const AssignDriver: React.FC = () => {
     getTruckById
   } = useApp();
   
-  // State for the assign tab
   const [selectedOrderId, setSelectedOrderId] = useState('');
   const [selectedDriverId, setSelectedDriverId] = useState('');
   const [selectedTruckId, setSelectedTruckId] = useState('');
   
-  // State for the add driver tab
   const [newDriverName, setNewDriverName] = useState('');
   const [newDriverContact, setNewDriverContact] = useState('');
   const [newDriverLicense, setNewDriverLicense] = useState('');
   
-  // State for the add truck tab
   const [newTruckPlate, setNewTruckPlate] = useState('');
   const [newTruckCapacity, setNewTruckCapacity] = useState('');
   const [newTruckModel, setNewTruckModel] = useState('');
   const [newTruckHasGPS, setNewTruckHasGPS] = useState('true');
-
-  // State for GPS tagging dialog
+  
   const [isGPSDialogOpen, setIsGPSDialogOpen] = useState(false);
   
-  // Get only active (paid) orders that don't have a driver assigned
   const eligibleOrders = purchaseOrders.filter(
     order => order.status === 'active' && !order.deliveryDetails?.driverId
   );
   
-  // Get available drivers and trucks 
-  // Fixed: Instead of calling getAvailableDrivers(), we filter the drivers array directly
   const availableDrivers = drivers.filter(driver => driver.isAvailable);
   const availableTrucks = trucks.filter(truck => truck.isAvailable);
   
-  // Handle assignment
   const handleAssign = () => {
     if (!selectedOrderId || !selectedDriverId || !selectedTruckId) {
       toast({
@@ -112,7 +103,6 @@ const AssignDriver: React.FC = () => {
     const selectedTruck = trucks.find(truck => truck.id === selectedTruckId);
     
     if (selectedTruck && selectedTruck.hasGPS && !selectedTruck.isGPSTagged) {
-      // If truck has GPS capability but isn't tagged yet, open the GPS tagging dialog
       setIsGPSDialogOpen(true);
       return;
     }
@@ -123,7 +113,6 @@ const AssignDriver: React.FC = () => {
   const completeAssignment = () => {
     assignDriverToOrder(selectedOrderId, selectedDriverId, selectedTruckId);
     
-    // Reset form
     setSelectedOrderId('');
     setSelectedDriverId('');
     setSelectedTruckId('');
@@ -135,7 +124,6 @@ const AssignDriver: React.FC = () => {
     });
   };
   
-  // Handle add driver
   const handleAddDriver = () => {
     if (!newDriverName || !newDriverContact || !newDriverLicense) {
       toast({
@@ -153,7 +141,6 @@ const AssignDriver: React.FC = () => {
       isAvailable: true
     });
     
-    // Reset form
     setNewDriverName('');
     setNewDriverContact('');
     setNewDriverLicense('');
@@ -164,7 +151,6 @@ const AssignDriver: React.FC = () => {
     });
   };
   
-  // Handle add truck
   const handleAddTruck = () => {
     if (!newTruckPlate || !newTruckCapacity || !newTruckModel) {
       toast({
@@ -184,7 +170,6 @@ const AssignDriver: React.FC = () => {
       isGPSTagged: false
     });
     
-    // Reset form
     setNewTruckPlate('');
     setNewTruckCapacity('');
     setNewTruckModel('');
@@ -602,7 +587,6 @@ const AssignDriver: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* GPS Tagging Dialog */}
       <GPSTaggingDialog 
         isOpen={isGPSDialogOpen} 
         setIsOpen={setIsGPSDialogOpen} 
@@ -612,13 +596,6 @@ const AssignDriver: React.FC = () => {
     </div>
   );
 };
-
-// GPS Tagging Dialog Component
-const gpsFormSchema = z.object({
-  gpsDeviceId: z.string().min(3, "Please enter a valid GPS device ID"),
-  latitude: z.coerce.number().min(-90).max(90, "Latitude must be between -90 and 90"),
-  longitude: z.coerce.number().min(-180).max(180, "Longitude must be between -180 and 180"),
-});
 
 const GPSTaggingDialog = ({ 
   isOpen, 

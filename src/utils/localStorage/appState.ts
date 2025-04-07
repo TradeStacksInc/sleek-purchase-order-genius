@@ -1,220 +1,106 @@
 
-import { StoredAppData, PaginationParams, PaginatedResult } from './types';
-import { STORAGE_KEYS, DB_VERSION } from './constants';
-import { saveToLocalStorage, getFromLocalStorage } from './core';
-import { broadcastStorageUpdate } from '../storageSync';
+import { getFromLocalStorage, saveToLocalStorage, STORAGE_KEYS } from './core';
 
-// Save entire app state to local storage
-export const saveAppState = (state: StoredAppData): boolean => {
-  let success = true;
-  let anySuccess = false;
-  
-  // Validate data before saving
-  if (!state || Object.keys(state).length === 0) {
-    console.error('Cannot save empty app state');
+export interface StoredAppData {
+  purchaseOrders: any[];
+  logs: any[];
+  suppliers: any[];
+  drivers: any[];
+  trucks: any[];
+  gpsData: any[];
+  aiInsights: any[];
+  staff: any[];
+  dispensers: any[];
+  shifts: any[];
+  sales: any[];
+  prices: any[];
+  incidents: any[];
+  activityLogs: any[];
+  tanks: any[];
+}
+
+/**
+ * Load all application data from localStorage
+ */
+export const loadAppState = (defaultState: Partial<StoredAppData>): StoredAppData => {
+  return {
+    purchaseOrders: getFromLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, defaultState.purchaseOrders || []),
+    logs: getFromLocalStorage(STORAGE_KEYS.LOGS, defaultState.logs || []),
+    suppliers: getFromLocalStorage(STORAGE_KEYS.SUPPLIERS, defaultState.suppliers || []),
+    drivers: getFromLocalStorage(STORAGE_KEYS.DRIVERS, defaultState.drivers || []),
+    trucks: getFromLocalStorage(STORAGE_KEYS.TRUCKS, defaultState.trucks || []),
+    gpsData: getFromLocalStorage(STORAGE_KEYS.GPS_DATA, defaultState.gpsData || []),
+    aiInsights: getFromLocalStorage(STORAGE_KEYS.AI_INSIGHTS, defaultState.aiInsights || []),
+    staff: getFromLocalStorage(STORAGE_KEYS.STAFF, defaultState.staff || []),
+    dispensers: getFromLocalStorage(STORAGE_KEYS.DISPENSERS, defaultState.dispensers || []),
+    shifts: getFromLocalStorage(STORAGE_KEYS.SHIFTS, defaultState.shifts || []),
+    sales: getFromLocalStorage(STORAGE_KEYS.SALES, defaultState.sales || []),
+    prices: getFromLocalStorage(STORAGE_KEYS.PRICES, defaultState.prices || []),
+    incidents: getFromLocalStorage(STORAGE_KEYS.INCIDENTS, defaultState.incidents || []),
+    activityLogs: getFromLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, defaultState.activityLogs || []),
+    tanks: getFromLocalStorage(STORAGE_KEYS.TANKS, defaultState.tanks || [])
+  };
+};
+
+/**
+ * Save all application data to localStorage
+ */
+export const saveAppStateToLocalStorage = (state: StoredAppData): boolean => {
+  try {
+    saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, state.purchaseOrders);
+    saveToLocalStorage(STORAGE_KEYS.LOGS, state.logs);
+    saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, state.suppliers);
+    saveToLocalStorage(STORAGE_KEYS.DRIVERS, state.drivers);
+    saveToLocalStorage(STORAGE_KEYS.TRUCKS, state.trucks);
+    saveToLocalStorage(STORAGE_KEYS.GPS_DATA, state.gpsData);
+    saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, state.aiInsights);
+    saveToLocalStorage(STORAGE_KEYS.STAFF, state.staff);
+    saveToLocalStorage(STORAGE_KEYS.DISPENSERS, state.dispensers);
+    saveToLocalStorage(STORAGE_KEYS.SHIFTS, state.shifts);
+    saveToLocalStorage(STORAGE_KEYS.SALES, state.sales);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, state.prices);
+    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, state.incidents);
+    saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, state.activityLogs);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, state.tanks);
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving app state:', error);
     return false;
   }
-  
-  Object.entries(STORAGE_KEYS).forEach(([key, storageKey]) => {
-    const stateKey = key.toLowerCase() as keyof typeof STORAGE_KEYS;
-    const stateValue = state[stateKey as keyof StoredAppData];
+};
+
+/**
+ * Clear all application data from localStorage
+ */
+export const clearAppState = (): boolean => {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.PURCHASE_ORDERS);
+    localStorage.removeItem(STORAGE_KEYS.LOGS);
+    localStorage.removeItem(STORAGE_KEYS.SUPPLIERS);
+    localStorage.removeItem(STORAGE_KEYS.DRIVERS);
+    localStorage.removeItem(STORAGE_KEYS.TRUCKS);
+    localStorage.removeItem(STORAGE_KEYS.GPS_DATA);
+    localStorage.removeItem(STORAGE_KEYS.AI_INSIGHTS);
+    localStorage.removeItem(STORAGE_KEYS.STAFF);
+    localStorage.removeItem(STORAGE_KEYS.DISPENSERS);
+    localStorage.removeItem(STORAGE_KEYS.SHIFTS);
+    localStorage.removeItem(STORAGE_KEYS.SALES);
+    localStorage.removeItem(STORAGE_KEYS.PRICES);
+    localStorage.removeItem(STORAGE_KEYS.INCIDENTS);
+    localStorage.removeItem(STORAGE_KEYS.ACTIVITY_LOGS);
+    localStorage.removeItem(STORAGE_KEYS.TANKS);
     
-    if (Array.isArray(stateValue)) {
-      const saveSuccess = saveToLocalStorage(storageKey, stateValue);
-      if (saveSuccess) anySuccess = true;
-      else success = false;
-    }
-  });
-  
-  if (!anySuccess) {
-    console.error(`Failed to auto-save app state ${new Date().toLocaleTimeString()}`);
+    return true;
+  } catch (error) {
+    console.error('Error clearing app state:', error);
+    return false;
   }
-  
-  return success;
 };
 
-// Load entire app state from local storage
-export const loadAppState = (defaultState: Partial<StoredAppData>): StoredAppData => {
-  // Create a complete default state with empty arrays for any missing properties
-  const completeDefaultState: StoredAppData = {
-    purchaseOrders: [],
-    logs: [],
-    suppliers: [],
-    drivers: [],
-    trucks: [],
-    gpsData: [],
-    aiInsights: [],
-    staff: [],
-    dispensers: [],
-    shifts: [],
-    sales: [],
-    prices: [],
-    incidents: [],
-    activityLogs: [],
-    tanks: [],
-    ...defaultState
-  };
-  
-  const loadedState: StoredAppData = {
-    purchaseOrders: getFromLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, completeDefaultState.purchaseOrders),
-    logs: getFromLocalStorage(STORAGE_KEYS.LOGS, completeDefaultState.logs),
-    suppliers: getFromLocalStorage(STORAGE_KEYS.SUPPLIERS, completeDefaultState.suppliers),
-    drivers: getFromLocalStorage(STORAGE_KEYS.DRIVERS, completeDefaultState.drivers),
-    trucks: getFromLocalStorage(STORAGE_KEYS.TRUCKS, completeDefaultState.trucks),
-    gpsData: getFromLocalStorage(STORAGE_KEYS.GPS_DATA, completeDefaultState.gpsData),
-    aiInsights: getFromLocalStorage(STORAGE_KEYS.AI_INSIGHTS, completeDefaultState.aiInsights),
-    staff: getFromLocalStorage(STORAGE_KEYS.STAFF, completeDefaultState.staff),
-    dispensers: getFromLocalStorage(STORAGE_KEYS.DISPENSERS, completeDefaultState.dispensers),
-    shifts: getFromLocalStorage(STORAGE_KEYS.SHIFTS, completeDefaultState.shifts),
-    sales: getFromLocalStorage(STORAGE_KEYS.SALES, completeDefaultState.sales),
-    prices: getFromLocalStorage(STORAGE_KEYS.PRICES, completeDefaultState.prices),
-    incidents: getFromLocalStorage(STORAGE_KEYS.INCIDENTS, completeDefaultState.incidents),
-    activityLogs: getFromLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, completeDefaultState.activityLogs),
-    tanks: getFromLocalStorage(STORAGE_KEYS.TANKS, completeDefaultState.tanks)
-  };
-  
-  // Print stored data for debugging
-  console.log('Loaded app state from localStorage:', {
-    purchaseOrders: loadedState.purchaseOrders.length,
-    logs: loadedState.logs.length,
-    suppliers: loadedState.suppliers.length,
-    // Add more key counts as needed for debugging
-  });
-  
-  // Check if we're using all defaults, which means no saved data was found
-  const usingAllDefaults = Object.keys(loadedState).every(key => 
-    JSON.stringify(loadedState[key as keyof StoredAppData]) === 
-    JSON.stringify(completeDefaultState[key as keyof StoredAppData])
-  );
-  
-  if (usingAllDefaults) {
-    console.info('Using all default data - no saved data found in local storage');
-  }
-  
-  return loadedState;
-};
-
-// Clear all stored app data (for testing or reset)
-export const clearAppState = (): void => {
-  Object.values(STORAGE_KEYS).forEach(key => {
-    localStorage.removeItem(key);
-    broadcastStorageUpdate(key);
-  });
-  console.log('All app data cleared from local storage');
-};
-
-// Get paginated data from a collection
-export const getPaginatedData = <T>(
-  collection: T[],
-  params: PaginationParams
-): PaginatedResult<T> => {
-  let filteredData = [...collection];
-  
-  // Apply filters if provided
-  if (params.filter) {
-    filteredData = filteredData.filter(item => {
-      return Object.entries(params.filter || {}).every(([key, value]) => {
-        if (value === undefined || value === null) return true;
-        
-        const itemValue = (item as any)[key];
-        
-        // Handle different filter types
-        if (typeof value === 'string' && typeof itemValue === 'string') {
-          return itemValue.toLowerCase().includes(value.toLowerCase());
-        }
-        
-        // Date range filtering
-        if (value.start && value.end && itemValue instanceof Date) {
-          const start = new Date(value.start);
-          const end = new Date(value.end);
-          return itemValue >= start && itemValue <= end;
-        }
-        
-        // Exact match
-        return itemValue === value;
-      });
-    });
-  }
-  
-  // Apply sorting if provided
-  if (params.sort) {
-    filteredData.sort((a, b) => {
-      const aValue = (a as any)[params.sort?.field || ''];
-      const bValue = (b as any)[params.sort?.field || ''];
-      
-      // Handle different value types
-      if (aValue instanceof Date && bValue instanceof Date) {
-        return params.sort?.direction === 'asc' 
-          ? aValue.getTime() - bValue.getTime() 
-          : bValue.getTime() - aValue.getTime();
-      }
-      
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return params.sort?.direction === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-      
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return params.sort?.direction === 'asc' ? aValue - bValue : bValue - aValue;
-      }
-      
-      return 0;
-    });
-  }
-  
-  // Calculate pagination values
-  const totalCount = filteredData.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / params.limit));
-  const currentPage = Math.min(Math.max(1, params.page), totalPages);
-  const startIndex = (currentPage - 1) * params.limit;
-  const endIndex = Math.min(startIndex + params.limit, totalCount);
-  
-  // Get the page of data
-  const paginatedData = filteredData.slice(startIndex, endIndex);
-  
-  return {
-    data: paginatedData,
-    totalCount,
-    totalPages,
-    currentPage
-  };
-};
-
-// Get database metadata
-export const getDatabaseMetadata = (): { version: string, lastReset: Date | null } => {
-  const metadata = localStorage.getItem('db_metadata');
-  if (metadata) {
-    return JSON.parse(metadata);
-  }
-  return { version: DB_VERSION, lastReset: null };
-};
-
-// Set database metadata
-export const setDatabaseMetadata = (metadata: { version: string, lastReset: Date | null }): void => {
-  localStorage.setItem('db_metadata', JSON.stringify(metadata));
-};
-
-// Initialize database with default data
-export const initializeDatabase = (defaultData: Partial<StoredAppData>): void => {
-  clearAppState();
-  saveAppState({
-    purchaseOrders: [],
-    logs: [],
-    suppliers: [],
-    drivers: [],
-    trucks: [],
-    gpsData: [],
-    aiInsights: [],
-    staff: [],
-    dispensers: [],
-    shifts: [],
-    sales: [],
-    prices: [],
-    incidents: [],
-    activityLogs: [],
-    tanks: [],
-    ...defaultData
-  });
-  setDatabaseMetadata({ version: DB_VERSION, lastReset: new Date() });
+/**
+ * Get the application state from localStorage
+ */
+export const getAppStateFromLocalStorage = (): StoredAppData => {
+  return loadAppState({});
 };

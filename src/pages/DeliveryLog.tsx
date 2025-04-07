@@ -10,7 +10,7 @@ import { AIInsightsPanel } from '@/components/AIInsightsPanel';
 import DeliveryTable from '@/components/DeliveryLog/DeliveryTable';
 import { useToast } from '@/hooks/use-toast';
 import { DateFilter } from '@/types/filters';
-import { exportDataToFile } from '@/utils/localStorage';
+import { exportDataToFile } from '@/utils/localStorage/export';
 import MapView from '@/components/DeliveryLog/MapView';
 import DeliveryLogHeader from '@/components/DeliveryLog/DeliveryLogHeader';
 import DeliveryLogPagination from '@/components/DeliveryLog/DeliveryLogPagination';
