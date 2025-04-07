@@ -729,21 +729,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newShift;
   };
 
-  const updateShift = (id: string, updates: Partial<Shift>): Shift => {
+  const updateShift = (id: string, updates: Partial<Shift>): boolean => {
+    let updated = false;
     const shiftIndex = shifts.findIndex(shift => shift.id === id);
-    if (shiftIndex === -1) return null;
+    if (shiftIndex === -1) return false;
 
-    const updatedShift = { ...shifts[shiftIndex] };
-    if (updates.startTime) updatedShift.startTime = updates.startTime;
-    if (updates.endTime) updatedShift.endTime = updates.endTime;
+    const updatedShift = { ...shifts[shiftIndex], ...updates };
 
     setShifts(prev => {
       const newShifts = [...prev];
       newShifts[shiftIndex] = updatedShift;
+      updated = true;
       return newShifts;
     });
 
-    return updatedShift;
+    return updated;
   };
 
   const deleteShift = (id: string): boolean => {
@@ -764,33 +764,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newSale = {
       ...sale,
       id: `sale-${uuidv4().substring(0, 8)}`,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      timestamp: new Date()
     };
     
     setSales(prev => [...prev, newSale]);
     return newSale;
   };
 
-  const updateSale = (id: string, updates: Partial<Sale>): Sale => {
+  const updateSale = (id: string, updates: Partial<Sale>): boolean => {
+    let updated = false;
     const saleIndex = sales.findIndex(sale => sale.id === id);
-    if (saleIndex === -1) return null;
+    if (saleIndex === -1) return false;
 
     const updatedSale = { ...sales[saleIndex] };
     if (updates.amount) updatedSale.amount = updates.amount;
-    if (updates.quantity) updatedSale.quantity = updates.quantity;
+    if (updates.volume) updatedSale.volume = updates.volume;
     if (updates.staffId) updatedSale.staffId = updates.staffId;
     if (updates.shiftId) updatedSale.shiftId = updates.shiftId;
     if (updates.dispenserId) updatedSale.dispenserId = updates.dispenserId;
-    if (updates.deliveryDetails) updatedSale.deliveryDetails = updates.deliveryDetails;
-
+    
     setSales(prev => {
       const newSales = [...prev];
       newSales[saleIndex] = updatedSale;
+      updated = true;
       return newSales;
     });
 
-    return updatedSale;
+    return updated;
   };
 
   const deleteSale = (id: string): boolean => {
@@ -807,8 +807,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return sales.find(sale => sale.id === id) || null;
   };
 
-  const getAllSales = (): Sale[] => {
-    return sales;
+  const getAllSales = (params?: PaginationParams): PaginatedResult<Sale> => {
+    return getPaginatedData(sales, params || { page: 1, limit: 10 });
   };
 
   const contextValue: AppContextType = {
