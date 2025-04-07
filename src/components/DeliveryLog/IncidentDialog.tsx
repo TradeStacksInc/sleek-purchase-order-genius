@@ -47,10 +47,10 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       ...data,
       orderId,
       reportedAt: new Date(),
-      status: 'open' as const, // Explicitly use union literal type
+      status: 'open' as const, 
       reportedBy: 'Current User',
-      staffInvolved: [], // Empty array for staff involved
-      type: data.type, // Explicitly include type to ensure it's not optional
+      staffInvolved: [], 
+      description: data.description, // Explicitly include description to satisfy type requirements
     };
     
     addIncident(incident);
@@ -159,7 +159,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
             />
             {form.formState.errors.type && (
               <p className="text-sm text-red-500 mt-1">{form.formState.errors.type.message}</p>
-            )}
+              )}
           </div>
           
           <div>

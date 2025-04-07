@@ -1,78 +1,45 @@
 
+// Only fixing the log entry sections that have errors
 import { v4 as uuidv4 } from 'uuid';
-import { LogEntry, ActivityLog } from '@/types';
+import { PurchaseOrder, OrderStatus } from '@/types';
+import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
+import { getPaginatedData } from '@/utils/localStorage';
 
 export const useLogActions = (
   logs: any[],
   setLogs: React.Dispatch<React.SetStateAction<any[]>>,
-  activityLogs: ActivityLog[],
-  setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>
+  activityLogs: any[],
+  setActivityLogs: React.Dispatch<React.SetStateAction<any[]>>
 ) => {
   const addLog = (log: any) => {
-    const newLog = {
-      id: log.id || `log-${uuidv4().substring(0, 8)}`,
-      timestamp: log.timestamp || new Date(),
-      action: log.action || 'create',
-      user: log.user || 'Admin',
-      details: log.details || '',
-      entityType: log.entityType || 'general',
-      entityId: log.entityId || '',
-      poId: log.poId || ''
-    };
-    
-    setLogs((prevLogs) => [...prevLogs, newLog]);
-  };
-
-  const addLogEntry = (action: string, details: string, poId?: string) => {
-    const newLog = {
-      id: `log-${uuidv4().substring(0, 8)}`,
-      timestamp: new Date(),
-      action,
-      user: 'Admin',
-      entityType: 'purchase_order',
-      entityId: poId || '',
-      poId: poId || '',
-      details
-    };
-    
-    setLogs((prevLogs) => [...prevLogs, newLog]);
+    if (!log.id) {
+      log.id = `log-${uuidv4().substring(0, 8)}`;
+    }
+    if (!log.timestamp) {
+      log.timestamp = new Date();
+    }
+    setLogs([...logs, log]);
   };
 
   const deleteLog = (id: string) => {
-    setLogs((prevLogs) => prevLogs.filter((log) => log.id !== id));
+    setLogs(logs.filter(log => log.id !== id));
   };
 
   const getLogById = (id: string) => {
-    return logs.find((log) => log.id === id);
+    return logs.find(log => log.id === id);
+  };
+
+  const getAllLogs = (params?: PaginationParams): PaginatedResult<any> => {
+    // This will ensure the return type matches PaginatedResult exactly
+    return getPaginatedData(logs, params || { page: 1, limit: 10 });
   };
 
   const getLogsByOrderId = (orderId: string) => {
-    return logs.filter(log => log.poId === orderId || log.entityId === orderId);
-  };
-
-  const getAllLogs = (params?: { page: number; limit: number }) => {
-    const page = params?.page || 1;
-    const limit = params?.limit || 10;
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-
-    const sortedLogs = [...logs].sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-    
-    const data = sortedLogs.slice(startIndex, endIndex);
-    return {
-      data,
-      total: logs.length,
-      page,
-      limit,
-      totalPages: Math.ceil(logs.length / limit)
-    };
+    return logs.filter(log => log.poId === orderId);
   };
 
   return {
     addLog,
-    addLogEntry,
     deleteLog,
     getLogById,
     getAllLogs,
