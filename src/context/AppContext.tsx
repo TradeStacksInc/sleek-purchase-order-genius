@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -469,6 +470,637 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     dispensers, setDispensers
   );
 
+  // Implement missing functions
+  const getOrdersWithDeliveryStatus = (status: string): PurchaseOrder[] => {
+    return purchaseOrders.filter(order => 
+      order.deliveryDetails?.status === status
+    );
+  };
+
+  const getOrdersWithDiscrepancies = (): PurchaseOrder[] => {
+    return purchaseOrders.filter(order => 
+      order.offloadingDetails?.isDiscrepancyFlagged === true
+    );
+  };
+
+  const logAIInteraction = (prompt: string, response: string): void => {
+    const newLog = {
+      id: `log-${uuidv4()}`,
+      type: 'ai_interaction',
+      timestamp: new Date(),
+      details: { prompt, response }
+    };
+    setLogs(prev => [newLog, ...prev]);
+  };
+
+  const getNonGPSTrucks = (): Truck[] => {
+    return trucks.filter(truck => !truck.isGPSTagged);
+  };
+
+  const tagTruckWithGPS = (truckId: string, deviceId: string, initialLatitude: number, initialLongitude: number): boolean => {
+    try {
+      const truck = trucks.find(t => t.id === truckId);
+      if (!truck) return false;
+
+      setTrucks(prev => prev.map(t => 
+        t.id === truckId 
+          ? { 
+              ...t, 
+              isGPSTagged: true, 
+              hasGPS: true,
+              gpsDeviceId: deviceId,
+              lastLatitude: initialLatitude,
+              lastLongitude: initialLongitude
+            } 
+          : t
+      ));
+
+      // Add initial GPS data
+      recordGPSData(truckId, initialLatitude, initialLongitude);
+      return true;
+    } catch (error) {
+      console.error("Error tagging truck with GPS:", error);
+      return false;
+    }
+  };
+
+  const untagTruckGPS = (truckId: string): boolean => {
+    try {
+      setTrucks(prev => prev.map(t => 
+        t.id === truckId 
+          ? { 
+              ...t, 
+              isGPSTagged: false,
+              gpsDeviceId: undefined
+            } 
+          : t
+      ));
+      return true;
+    } catch (error) {
+      console.error("Error untagging truck GPS:", error);
+      return false;
+    }
+  };
+
+  const recordGPSData = (truckId: string, latitude: number, longitude: number): GPSData => {
+    const newGPSData: GPSData = {
+      id: `gps-${uuidv4()}`,
+      truckId,
+      latitude,
+      longitude,
+      timestamp: new Date(),
+      location: `${latitude},${longitude}`,
+      speed: Math.floor(Math.random() * 80) + 20, // Random speed between 20-100 km/h
+      fuelLevel: Math.floor(Math.random() * 100) + 1, // Random fuel level 1-100%
+    };
+    
+    setGPSData(prev => [newGPSData, ...prev]);
+    
+    // Update truck's last known position
+    setTrucks(prev => prev.map(truck =>
+      truck.id === truckId 
+        ? { 
+            ...truck, 
+            lastLatitude: latitude,
+            lastLongitude: longitude,
+            lastSpeed: newGPSData.speed
+          }
+        : truck
+    ));
+    
+    return newGPSData;
+  };
+
+  const getGPSDataForTruck = (truckId: string, params?: PaginationParams): PaginatedResult<GPSData> => {
+    const truckGPSData = gpsData.filter(data => data.truckId === truckId);
+    return getPaginatedData(truckGPSData, params);
+  };
+
+  const updateGPSData = (truckId: string, latitude: number, longitude: number, speed: number): void => {
+    const newGPSData: GPSData = {
+      id: `gps-${uuidv4()}`,
+      truckId,
+      latitude,
+      longitude,
+      timestamp: new Date(),
+      location: `${latitude},${longitude}`,
+      speed,
+      fuelLevel: Math.floor(Math.random() * 100) + 1, // Random fuel level 1-100%
+    };
+    
+    setGPSData(prev => [newGPSData, ...prev]);
+    
+    // Update truck's last known position
+    setTrucks(prev => prev.map(truck =>
+      truck.id === truckId 
+        ? { 
+            ...truck, 
+            lastLatitude: latitude,
+            lastLongitude: longitude,
+            lastSpeed: speed
+          }
+        : truck
+    ));
+
+    // Update delivery progress for any active deliveries with this truck
+    setPurchaseOrders(prev => prev.map(order => {
+      if (order.deliveryDetails?.truckId === truckId && order.deliveryDetails?.status === 'in_transit') {
+        const totalDistance = order.deliveryDetails.totalDistance || 100;
+        const currentDistance = order.deliveryDetails.distanceCovered || 0;
+        
+        // Simulate progress based on speed (faster trucks make more progress)
+        const progressIncrement = Math.min((speed / 100) * 5, 10); // 0-10% progress based on speed
+        const newDistance = Math.min(currentDistance + progressIncrement, totalDistance);
+        
+        return {
+          ...order,
+          deliveryDetails: {
+            ...order.deliveryDetails,
+            distanceCovered: newDistance
+          }
+        };
+      }
+      return order;
+    }));
+  };
+
+  const updateDeliveryDetails = (orderId: string, driverId: string, truckId: string, deliveryDate: Date): boolean => {
+    try {
+      setPurchaseOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            deliveryDetails: {
+              ...order.deliveryDetails,
+              driverId,
+              truckId,
+              status: 'pending',
+            },
+            deliveryDate
+          };
+        }
+        return order;
+      }));
+      return true;
+    } catch (error) {
+      console.error("Error updating delivery details:", error);
+      return false;
+    }
+  };
+
+  const markOrderAsDelivered = (orderId: string): boolean => {
+    try {
+      setPurchaseOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            deliveryDetails: {
+              ...order.deliveryDetails,
+              status: 'delivered',
+              destinationArrivalTime: new Date()
+            },
+            status: 'delivered'
+          };
+        }
+        return order;
+      }));
+      return true;
+    } catch (error) {
+      console.error("Error marking order as delivered:", error);
+      return false;
+    }
+  };
+
+  const startDelivery = (orderId: string): boolean => {
+    try {
+      const order = purchaseOrders.find(o => o.id === orderId);
+      if (!order?.deliveryDetails?.truckId) return false;
+      
+      // Update purchase order
+      setPurchaseOrders(prev => prev.map(o => {
+        if (o.id === orderId) {
+          return {
+            ...o,
+            deliveryDetails: {
+              ...o.deliveryDetails,
+              status: 'in_transit',
+              depotDepartureTime: new Date(),
+              distanceCovered: 0,
+              totalDistance: o.deliveryDetails?.totalDistance || Math.floor(Math.random() * 100) + 50, // 50-150 km
+              expectedArrivalTime: new Date(Date.now() + 3600000 + Math.random() * 7200000) // 1-3 hours from now
+            }
+          };
+        }
+        return o;
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error("Error starting delivery:", error);
+      return false;
+    }
+  };
+
+  const completeDelivery = (orderId: string): boolean => {
+    try {
+      setPurchaseOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          const totalDistance = order.deliveryDetails?.totalDistance || 100;
+          return {
+            ...order,
+            deliveryDetails: {
+              ...order.deliveryDetails,
+              status: 'delivered',
+              destinationArrivalTime: new Date(),
+              distanceCovered: totalDistance // Complete the journey
+            }
+          };
+        }
+        return order;
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error("Error completing delivery:", error);
+      return false;
+    }
+  };
+
+  const updateDeliveryStatus = (orderId: string, updates: Partial<DeliveryDetails> | string): boolean => {
+    try {
+      setPurchaseOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          if (typeof updates === 'string') {
+            return {
+              ...order,
+              deliveryDetails: {
+                ...order.deliveryDetails,
+                status: updates as 'pending' | 'in_transit' | 'delivered'
+              }
+            };
+          } else {
+            return {
+              ...order,
+              deliveryDetails: {
+                ...order.deliveryDetails,
+                ...updates
+              }
+            };
+          }
+        }
+        return order;
+      }));
+      return true;
+    } catch (error) {
+      console.error("Error updating delivery status:", error);
+      return false;
+    }
+  };
+
+  const recordOffloadingDetails = (orderId: string, details: any): boolean => {
+    try {
+      setPurchaseOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          // Calculate discrepancy percentage
+          const loadedVolume = details.loadedVolume || 0;
+          const deliveredVolume = details.deliveredVolume || 0;
+          const discrepancy = loadedVolume > 0 ? Math.abs((loadedVolume - deliveredVolume) / loadedVolume * 100) : 0;
+          const isDiscrepancyFlagged = discrepancy > 2; // Flag if more than 2% difference
+          
+          return {
+            ...order,
+            offloadingDetails: {
+              ...details,
+              discrepancyPercentage: discrepancy,
+              isDiscrepancyFlagged
+            }
+          };
+        }
+        return order;
+      }));
+      return true;
+    } catch (error) {
+      console.error("Error recording offloading details:", error);
+      return false;
+    }
+  };
+
+  const recordOffloadingToTank = (tankId: string, volume: number, source: string, sourceId: string): boolean => {
+    try {
+      // Update tank volume
+      setTanks(prev => prev.map(tank => {
+        if (tank.id === tankId) {
+          const currentVolume = tank.currentVolume || 0;
+          return {
+            ...tank,
+            currentVolume: currentVolume + volume,
+            lastRefillDate: new Date()
+          };
+        }
+        return tank;
+      }));
+      
+      // Log the activity
+      const tank = tanks.find(t => t.id === tankId);
+      const activityLog: ActivityLog = {
+        id: `activity-${uuidv4()}`,
+        entityType: 'tank',
+        entityId: tankId,
+        action: 'refill',
+        details: `Tank ${tank?.name} refilled with ${volume.toLocaleString()} liters from ${source} (ID: ${sourceId})`,
+        user: 'System',
+        timestamp: new Date()
+      };
+      setActivityLogs(prev => [activityLog, ...prev]);
+      
+      return true;
+    } catch (error) {
+      console.error("Error recording offloading to tank:", error);
+      return false;
+    }
+  };
+
+  const assignDriverToOrder = (orderId: string, driverId: string, truckId: string): boolean => {
+    try {
+      // Check if driver and truck exist
+      const driver = drivers.find(d => d.id === driverId);
+      const truck = trucks.find(t => t.id === truckId);
+      
+      if (!driver || !truck) {
+        toast({
+          title: "Error",
+          description: "Driver or truck not found.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      // Update purchase order
+      setPurchaseOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            deliveryDetails: {
+              ...order.deliveryDetails,
+              driverId,
+              truckId,
+              status: 'pending'
+            }
+          };
+        }
+        return order;
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error("Error assigning driver to order:", error);
+      return false;
+    }
+  };
+
+  const deleteStaff = (id: string): boolean => {
+    try {
+      const staffExists = staff.some(s => s.id === id);
+      if (!staffExists) return false;
+      
+      setStaff(prev => prev.filter(s => s.id !== id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting staff:", error);
+      return false;
+    }
+  };
+
+  const addDispenser = (dispenserData: Omit<Dispenser, 'id'>): Dispenser => {
+    const newDispenser: Dispenser = {
+      ...dispenserData,
+      id: `dispenser-${uuidv4()}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isActive: true,
+      totalSales: 0,
+      totalVolume: 0,
+      totalVolumeSold: 0,
+      currentShiftSales: 0,
+      currentShiftVolume: 0
+    };
+    
+    setDispensers(prev => [...prev, newDispenser]);
+    return newDispenser;
+  };
+
+  const deleteDispenser = (id: string): boolean => {
+    const exists = dispensers.some(d => d.id === id);
+    if (!exists) return false;
+    
+    setDispensers(prev => prev.filter(d => d.id !== id));
+    return true;
+  };
+
+  const getDispenserById = (id: string): Dispenser | undefined => {
+    return dispensers.find(d => d.id === id);
+  };
+
+  const getAllDispensers = (params?: PaginationParams): PaginatedResult<Dispenser> => {
+    return getPaginatedData(dispensers, params);
+  };
+
+  const setDispenserActive = (id: string, isActive: boolean): Dispenser | undefined => {
+    let updatedDispenser: Dispenser | undefined;
+    
+    setDispensers(prev => prev.map(d => {
+      if (d.id === id) {
+        updatedDispenser = { ...d, isActive };
+        return updatedDispenser;
+      }
+      return d;
+    }));
+    
+    return updatedDispenser;
+  };
+
+  const getDispenserSalesStats = (id: string, dateRange?: { start: Date, end: Date }): { volume: number, amount: number, transactions: number } => {
+    const dispenserSales = sales.filter(sale => {
+      const matchesDispenser = sale.dispenserId === id;
+      if (!dateRange) return matchesDispenser;
+      
+      const saleDate = new Date(sale.timestamp);
+      return matchesDispenser && 
+        saleDate >= dateRange.start && 
+        saleDate <= dateRange.end;
+    });
+    
+    return {
+      volume: dispenserSales.reduce((sum, sale) => sum + sale.volume, 0),
+      amount: dispenserSales.reduce((sum, sale) => sum + sale.amount, 0),
+      transactions: dispenserSales.length
+    };
+  };
+
+  const recordDispensing = (id: string, volume: number, staffId: string, shiftId: string): boolean => {
+    try {
+      const dispenser = dispensers.find(d => d.id === id);
+      if (!dispenser) return false;
+      
+      const unitPrice = dispenser.unitPrice || 0;
+      const amount = unitPrice * volume;
+      
+      // Update dispenser totals
+      setDispensers(prev => prev.map(d => {
+        if (d.id === id) {
+          return {
+            ...d,
+            totalVolumeSold: (d.totalVolumeSold || 0) + volume,
+            totalSales: (d.totalSales || 0) + amount,
+            currentShiftVolume: (d.currentShiftVolume || 0) + volume,
+            currentShiftSales: (d.currentShiftSales || 0) + amount,
+            lastActivity: new Date()
+          };
+        }
+        return d;
+      }));
+      
+      // Record sale
+      const newSale: Sale = {
+        id: `sale-${uuidv4()}`,
+        dispenserId: id,
+        staffId,
+        shiftId,
+        volume,
+        amount,
+        unitPrice,
+        timestamp: new Date(),
+        productType: dispenser.productType || 'unknown',
+        isManualEntry: false,
+        totalAmount: amount,
+        paymentMethod: 'cash', // Default payment method
+        dispenserNumber: dispenser.number || 'unknown'
+      };
+      
+      setSales(prev => [newSale, ...prev]);
+      return true;
+    } catch (error) {
+      console.error("Error recording dispensing:", error);
+      return false;
+    }
+  };
+
+  const addShift = (shiftData: Omit<Shift, 'id'>): Shift => {
+    const newShift: Shift = {
+      ...shiftData,
+      id: `shift-${uuidv4()}`,
+      salesAmount: 0,
+      salesVolume: 0,
+      status: 'active'
+    };
+    
+    setShifts(prev => [...prev, newShift]);
+    return newShift;
+  };
+
+  const updateShift = (id: string, updates: Partial<Shift>): boolean => {
+    let updated = false;
+    
+    setShifts(prev => {
+      const newShifts = prev.map(shift => {
+        if (shift.id === id) {
+          updated = true;
+          return { ...shift, ...updates };
+        }
+        return shift;
+      });
+      return newShifts;
+    });
+    
+    return updated;
+  };
+
+  const deleteShift = (id: string): boolean => {
+    let deleted = false;
+    
+    setShifts(prev => {
+      const filtered = prev.filter(shift => {
+        if (shift.id === id) {
+          deleted = true;
+          return false;
+        }
+        return true;
+      });
+      return filtered;
+    });
+    
+    return deleted;
+  };
+
+  const getShiftById = (id: string): Shift | null => {
+    return shifts.find(shift => shift.id === id) || null;
+  };
+
+  const getAllShifts = (params?: PaginationParams): PaginatedResult<Shift> => {
+    return getPaginatedData(shifts, params);
+  };
+
+  const getShiftsByStaffId = (staffId: string): Shift[] => {
+    return shifts.filter(shift => shift.staffId === staffId);
+  };
+
+  const getCurrentStaffShift = (staffId: string): Shift | null => {
+    return shifts.find(shift => shift.staffId === staffId && !shift.endTime) || null;
+  };
+
+  const addSale = (saleData: Omit<Sale, 'id'>): Sale => {
+    const newSale: Sale = {
+      ...saleData,
+      id: `sale-${uuidv4()}`,
+      timestamp: new Date()
+    };
+    
+    setSales(prev => [...prev, newSale]);
+    return newSale;
+  };
+
+  const updateSale = (id: string, updates: Partial<Sale>): boolean => {
+    let updated = false;
+    
+    setSales(prev => {
+      const newSales = prev.map(sale => {
+        if (sale.id === id) {
+          updated = true;
+          return { ...sale, ...updates };
+        }
+        return sale;
+      });
+      return newSales;
+    });
+    
+    return updated;
+  };
+
+  const deleteSale = (id: string): boolean => {
+    let deleted = false;
+    
+    setSales(prev => {
+      const filtered = prev.filter(sale => {
+        if (sale.id === id) {
+          deleted = true;
+          return false;
+        }
+        return true;
+      });
+      return filtered;
+    });
+    
+    return deleted;
+  };
+
+  const getSaleById = (id: string): Sale | undefined => {
+    return sales.find(sale => sale.id === id);
+  };
+
+  const getAllSales = (params?: PaginationParams): PaginatedResult<Sale> => {
+    return getPaginatedData(sales, params);
+  };
+
   const updateOrderStatusWrapper = (orderId: string, status: OrderStatus): boolean => {
     return purchaseOrderActions.updateOrderStatus(orderId, status, `Status updated to ${status}`);
   };
@@ -587,6 +1219,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(allTanks, params || { page: 1, limit: 10 });
   };
 
+  const resetDatabase = async (includeSeedData?: boolean): Promise<void> => {
+    try {
+      // Call the Supabase function to reset the database
+      const { error } = await supabase.rpc('reset_database');
+      if (error) throw error;
+      
+      // Reload data
+      window.location.reload();
+    } catch (error) {
+      console.error("Error resetting database:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reset the database. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const exportDatabase = (): string => {
+    try {
+      const data = {
+        purchaseOrders,
+        logs,
+        suppliers,
+        drivers,
+        trucks,
+        gpsData,
+        aiInsights,
+        staff,
+        dispensers,
+        shifts,
+        sales,
+        prices,
+        incidents,
+        activityLogs,
+        tanks
+      };
+      
+      return JSON.stringify(data, null, 2);
+    } catch (error) {
+      console.error("Error exporting database:", error);
+      toast({
+        title: "Error",
+        description: "Failed to export database. Please try again.",
+        variant: "destructive",
+      });
+      return '{}';
+    }
+  };
+  
+  const importDatabase = (jsonData: string): boolean => {
+    try {
+      const data = JSON.parse(jsonData);
+      
+      if (data.purchaseOrders) setPurchaseOrders(data.purchaseOrders);
+      if (data.logs) setLogs(data.logs);
+      if (data.suppliers) setSuppliers(data.suppliers);
+      if (data.drivers) setDrivers(data.drivers);
+      if (data.trucks) setTrucks(data.trucks);
+      if (data.gpsData) setGPSData(data.gpsData);
+      if (data.aiInsights) setAIInsights(data.aiInsights);
+      if (data.staff) setStaff(data.staff);
+      if (data.dispensers) setDispensers(data.dispensers);
+      if (data.shifts) setShifts(data.shifts);
+      if (data.sales) setSales(data.sales);
+      if (data.prices) setPrices(data.prices);
+      if (data.incidents) setIncidents(data.incidents);
+      if (data.activityLogs) setActivityLogs(data.activityLogs);
+      if (data.tanks) setTanks(data.tanks);
+      
+      return true;
+    } catch (error) {
+      console.error("Error importing database:", error);
+      toast({
+        title: "Error",
+        description: "Failed to import database. Please check the JSON format and try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   const contextValue: AppContextType = {
     purchaseOrders,
     logs,
@@ -651,7 +1365,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     completeDelivery,
     updateDeliveryStatus,
     recordOffloadingDetails,
-    recordOffloadingToTank: handleTankOffloading,
+    recordOffloadingToTank,
     assignDriverToOrder,
     
     generateAIInsights: generateAIInsightsWrapper,
