@@ -23,12 +23,12 @@ export const useTankActions = (
           capacity: tankData.capacity,
           product_type: tankData.productType,
           current_level: tankData.currentLevel || 0,
-          last_refill_date: tankData.lastRefillDate,
-          next_inspection_date: tankData.nextInspectionDate,
+          last_refill_date: tankData.lastRefillDate?.toISOString(),
+          next_inspection_date: tankData.nextInspectionDate?.toISOString(),
           current_volume: tankData.currentVolume || 0,
-          min_volume: tankData.minVolume,
+          min_volume: tankData.minVolume || 0,
           status: tankData.status || 'operational',
-          is_active: tankData.isActive || false,
+          is_active: tankData.isActive !== undefined ? tankData.isActive : false,
           connected_dispensers: tankData.connectedDispensers || []
         })
         .select()
@@ -47,7 +47,7 @@ export const useTankActions = (
         nextInspectionDate: data.next_inspection_date ? new Date(data.next_inspection_date) : undefined,
         currentVolume: data.current_volume,
         minVolume: data.min_volume,
-        status: data.status,
+        status: data.status as 'operational' | 'maintenance' | 'offline',
         isActive: data.is_active,
         connectedDispensers: data.connected_dispensers || []
       };
@@ -57,7 +57,7 @@ export const useTankActions = (
       // Log the action
       const newActivityLog: ActivityLog = {
         id: `log-${uuidv4()}`,
-        entityType: 'tank' as 'tank',
+        entityType: 'tank',
         entityId: newTank.id,
         action: 'create',
         details: `Added new tank: ${newTank.name} for ${newTank.productType}`,
@@ -71,7 +71,7 @@ export const useTankActions = (
         action: newActivityLog.action,
         details: newActivityLog.details,
         user_name: newActivityLog.user,
-        timestamp: newActivityLog.timestamp
+        timestamp: newActivityLog.timestamp.toISOString()
       });
       
       toast({
@@ -100,8 +100,8 @@ export const useTankActions = (
       if (data.capacity !== undefined) dbData.capacity = data.capacity;
       if (data.productType !== undefined) dbData.product_type = data.productType;
       if (data.currentLevel !== undefined) dbData.current_level = data.currentLevel;
-      if (data.lastRefillDate !== undefined) dbData.last_refill_date = data.lastRefillDate;
-      if (data.nextInspectionDate !== undefined) dbData.next_inspection_date = data.nextInspectionDate;
+      if (data.lastRefillDate !== undefined) dbData.last_refill_date = data.lastRefillDate.toISOString();
+      if (data.nextInspectionDate !== undefined) dbData.next_inspection_date = data.nextInspectionDate.toISOString();
       if (data.currentVolume !== undefined) dbData.current_volume = data.currentVolume;
       if (data.minVolume !== undefined) dbData.min_volume = data.minVolume;
       if (data.status !== undefined) dbData.status = data.status;
@@ -129,7 +129,7 @@ export const useTankActions = (
       const tank = tanks.find(t => t.id === id);
       const newActivityLog: ActivityLog = {
         id: `log-${uuidv4()}`,
-        entityType: 'tank' as 'tank',
+        entityType: 'tank',
         entityId: id,
         action: 'update',
         details: `Updated tank: ${tank?.name || id}`,
@@ -143,7 +143,7 @@ export const useTankActions = (
         action: newActivityLog.action,
         details: newActivityLog.details,
         user_name: newActivityLog.user,
-        timestamp: newActivityLog.timestamp
+        timestamp: newActivityLog.timestamp.toISOString()
       });
       
       setActivityLogs(prev => [newActivityLog, ...prev]);
@@ -223,7 +223,7 @@ export const useTankActions = (
         action: newActivityLog.action,
         details: newActivityLog.details,
         user_name: newActivityLog.user,
-        timestamp: newActivityLog.timestamp
+        timestamp: newActivityLog.timestamp.toISOString()
       });
       
       setActivityLogs(prev => [newActivityLog, ...prev]);
@@ -254,25 +254,13 @@ export const useTankActions = (
     return tanks;
   };
 
-  const recordOffloadingToTank = (tankId: string, volume: number, productType: ProductType): Tank | null => {
+  const recordOffloadingToTank = (tankId: string, volume: number, source: string, sourceId: string): boolean => {
     try {
       // Find the tank
       const tank = tanks.find(t => t.id === tankId);
       if (!tank) {
         console.error(`Tank with ID ${tankId} not found`);
-        return null;
-      }
-      
-      // Make sure the product type matches
-      if (String(tank.productType) !== String(productType)) {
-        console.error(`Product type mismatch: Tank is for ${tank.productType}, trying to offload ${productType}`);
-        return null;
-      }
-      
-      // Check if tank has capacity
-      if (tank.currentVolume !== undefined && (tank.currentVolume + volume) > tank.capacity) {
-        console.error(`Tank ${tank.name} does not have enough capacity. Current: ${tank.currentVolume}, Adding: ${volume}, Capacity: ${tank.capacity}`);
-        return null;
+        return false;
       }
       
       // Update the tank
@@ -290,17 +278,17 @@ export const useTankActions = (
         entityType: 'tank',
         entityId: tankId,
         action: 'update',
-        details: `${volume.toLocaleString()} liters of ${String(productType)} offloaded to tank ${tank.name}. New volume: ${updatedTank.currentVolume?.toLocaleString()} / ${tank.capacity.toLocaleString()} liters.`,
+        details: `${volume.toLocaleString()} liters from ${source} (${sourceId}) offloaded to tank ${tank.name}. New volume: ${updatedTank.currentVolume?.toLocaleString()} / ${tank.capacity.toLocaleString()} liters.`,
         user: 'System',
         timestamp: new Date()
       };
       
       setActivityLogs(prev => [newActivityLog, ...prev]);
       
-      return updatedTank;
+      return true;
     } catch (error) {
       console.error("Error recording offloading to tank:", error);
-      return null;
+      return false;
     }
   };
 

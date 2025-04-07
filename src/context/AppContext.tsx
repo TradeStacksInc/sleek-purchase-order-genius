@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -110,9 +109,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           
         if (incidentError) throw incidentError;
         setIncidents(incidentData.map(incident => fromSupabaseFormat.incident(incident)));
-        
-        // Continue with other data fetching (logs, gpsData, etc.)
-        // ...
         
         console.log('Initial data loaded from Supabase');
       } catch (error) {
@@ -261,7 +257,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Fix the updateTank and setTankActive functions to return boolean instead of Tank
   const setTankActive = (tankId: string, isActive: boolean): boolean => {
     try {
       const tank = tanks.find(t => t.id === tankId);
@@ -275,7 +270,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
       
-      // Return boolean from the updateTank method
       return !!tankActionsMethods.updateTank(tankId, { isActive });
     } catch (error) {
       console.error("Error setting tank active state:", error);
@@ -288,30 +282,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Use Supabase for all database operations
-  const addIncident = async (incident: Omit<Incident, 'id'>): Promise<Incident> => {
+  const recordOffloadingToTank = (tankId: string, volume: number, source: string, sourceId: string): boolean => {
+    return !!tankActionsMethods.recordOffloadingToTank(tankId, volume, source, sourceId);
+  };
+
+  const updateDispenser = (id: string, updates: Partial<Dispenser>): boolean => {
+    const result = dispenserActions.updateDispenser?.(id, updates);
+    return result !== undefined;
+  };
+
+  const addIncident = (incidentData: Omit<Incident, 'id'>): Incident => {
     try {
-      const dbIncident = toSupabaseFormat.incident(incident);
-      
-      const { data, error } = await supabase
-        .from('incidents')
-        .insert(dbIncident)
-        .select()
-        .single();
-        
-      if (error) throw error;
-      
-      const newIncident = fromSupabaseFormat.incident(data);
+      const tempId = `temp-incident-${uuidv4()}`;
+      const newIncident: Incident = {
+        ...incidentData,
+        id: tempId
+      };
       
       setIncidents(prev => [newIncident, ...prev]);
+      
+      (async () => {
+        try {
+          const dbIncident = toSupabaseFormat.incident(incidentData);
+          const { data, error } = await supabase
+            .from('incidents')
+            .insert(dbIncident)
+            .select()
+            .single();
+            
+          if (error) throw error;
+          
+          const finalIncident = fromSupabaseFormat.incident(data);
+          setIncidents(prev => prev.map(inc => 
+            inc.id === tempId ? finalIncident : inc
+          ));
+        } catch (err) {
+          console.error("Error in background save:", err);
+          setIncidents(prev => prev.filter(inc => inc.id !== tempId));
+          toast({
+            title: "Error",
+            description: "Failed to save incident to database.",
+            variant: "destructive",
+          });
+        }
+      })();
+      
       return newIncident;
     } catch (error) {
       console.error("Error adding incident:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add incident. Please try again.",
-        variant: "destructive",
-      });
       throw error;
     }
   };
@@ -393,15 +411,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     dispensers, setDispensers
   );
 
-  // Helper function to get paginated data
-  // Using extends syntax to avoid TypeScript mistaking generic syntax for JSX
   function getPaginatedData<T extends {}>(
     collection: T[],
     params: PaginationParams
   ): PaginatedResult<T> {
     let filteredData = [...collection];
     
-    // Apply filters if provided
     if (params.filter) {
       filteredData = filteredData.filter(item => {
         return Object.entries(params.filter || {}).every(([key, value]) => {
@@ -409,31 +424,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           
           const itemValue = (item as any)[key];
           
-          // Handle different filter types
           if (typeof value === 'string' && typeof itemValue === 'string') {
             return itemValue.toLowerCase().includes(value.toLowerCase());
           }
           
-          // Date range filtering
           if (value.start && value.end && itemValue instanceof Date) {
             const start = new Date(value.start);
             const end = new Date(value.end);
             return itemValue >= start && itemValue <= end;
           }
           
-          // Exact match
           return itemValue === value;
         });
       });
     }
     
-    // Apply sorting if provided
     if (params.sort) {
       filteredData.sort((a, b) => {
         const aValue = (a as any)[params.sort?.field || ''];
         const bValue = (b as any)[params.sort?.field || ''];
         
-        // Handle different value types
         if (aValue instanceof Date && bValue instanceof Date) {
           return params.sort?.direction === 'asc' 
             ? aValue.getTime() - bValue.getTime() 
@@ -454,14 +464,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
     
-    // Calculate pagination values
     const totalCount = filteredData.length;
     const totalPages = Math.max(1, Math.ceil(totalCount / params.limit));
     const currentPage = Math.min(Math.max(1, params.page), totalPages);
     const startIndex = (currentPage - 1) * params.limit;
     const endIndex = Math.min(startIndex + params.limit, totalCount);
     
-    // Get the page of data
     const paginatedData = filteredData.slice(startIndex, endIndex);
     
     return {
@@ -472,15 +480,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }
 
-  // Database management functions
   const resetDatabase = async (includeSeedData: boolean = true) => {
     try {
-      // Call the reset_database function in Supabase
       const { error } = await supabase.rpc('reset_database');
       
       if (error) throw error;
       
-      // Reset all state variables
       setPurchaseOrders([]);
       setLogs([]);
       setSuppliers([]);
@@ -993,7 +998,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(sales, params || { page: 1, limit: 10 });
   };
 
-  // Create context value
   const contextValue: AppContextType = {
     purchaseOrders,
     logs,
@@ -1011,32 +1015,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     activityLogs,
     tanks,
     
-    // Purchase Order methods
-    ...purchaseOrderActions,
+    purchaseOrderActions,
     getOrderById,
     getOrdersWithDeliveryStatus,
     getOrdersWithDiscrepancies,
     
-    // Log methods
-    ...logActions,
+    logActions,
     logAIInteraction,
     
-    // Supplier methods
-    ...supplierActions,
+    supplierActions,
     
-    // Driver & Truck methods
-    ...driverTruckActions,
+    driverTruckActions,
     getNonGPSTrucks,
     tagTruckWithGPS,
     untagTruckGPS,
     
-    // GPS data methods  
     recordGPSData,
     getGPSDataForTruck,
     updateGPSData,
     
-    // Delivery methods
-    ...deliveryActions,
+    deliveryActions,
     updateDeliveryDetails,
     markOrderAsDelivered,
     startDelivery,
@@ -1046,16 +1044,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     recordOffloadingToTank,
     assignDriverToOrder,
     
-    // AI methods
-    ...aiActions,
+    aiActions,
     
-    // Staff methods
-    ...staffActions,
+    staffActions,
     deleteStaff,
     
-    // Dispenser methods
+    dispenserActions,
     addDispenser,
-    updateDispenser: dispenserActions.updateDispenser,
+    updateDispenser,
     deleteDispenser,
     getDispenserById,
     getAllDispensers,
@@ -1064,7 +1060,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getDispenserSalesStats,
     recordDispensing,
     
-    // Shift methods
+    shiftActions,
     addShift,
     updateShift,
     deleteShift,
@@ -1075,24 +1071,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getShiftsByStaffId,
     getCurrentStaffShift,
     
-    // Sale methods
+    saleActions,
     addSale,
     updateSale,
     deleteSale,
     getSaleById,
     getAllSales,
     
-    // Price methods
-    ...priceActions,
+    priceActions,
     
-    // Tank methods
-    ...tankActionsMethods,
+    tankActionsMethods,
     setTankActive,
     
-    // Incident methods
     addIncident,
     
-    // Database management
     resetDatabase,
     exportDatabase,
     importDatabase,

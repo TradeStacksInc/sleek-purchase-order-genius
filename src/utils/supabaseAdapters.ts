@@ -5,7 +5,7 @@
 import type { 
   PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight, 
   Staff, Dispenser, Shift, Sale, Incident, ActivityLog, Tank, 
-  Price, OffloadingDetails, DeliveryDetails 
+  Price, OffloadingDetails, DeliveryDetails, OrderStatus, PaymentTerm
 } from '@/types';
 import type {
   DbPurchaseOrder, DbSupplier, DbDriver, DbTruck, DbGPSData,
@@ -20,15 +20,16 @@ export const fromSupabaseFormat = {
     return {
       id: dbPurchaseOrder.id,
       poNumber: dbPurchaseOrder.po_number || '',
-      status: dbPurchaseOrder.status,
+      status: dbPurchaseOrder.status as OrderStatus,
       supplier: dbPurchaseOrder.supplier_id || '',
       deliveryDate: dbPurchaseOrder.delivery_date ? new Date(dbPurchaseOrder.delivery_date) : new Date(),
       notes: dbPurchaseOrder.notes || '',
-      paymentStatus: dbPurchaseOrder.payment_status || 'pending',
+      paymentStatus: (dbPurchaseOrder.payment_status || 'pending') as 'pending' | 'paid' | 'partial',
       paymentTerm: dbPurchaseOrder.payment_term || '',
       createdAt: dbPurchaseOrder.created_at ? new Date(dbPurchaseOrder.created_at) : new Date(),
       updatedAt: dbPurchaseOrder.updated_at ? new Date(dbPurchaseOrder.updated_at) : new Date(),
-      grandTotal: dbPurchaseOrder.grand_total || 0
+      grandTotal: dbPurchaseOrder.grand_total || 0,
+      items: [] // Default empty array for items
     };
   },
   
@@ -45,7 +46,7 @@ export const fromSupabaseFormat = {
       bankName: dbSupplier.bank_name || '',
       products: dbSupplier.products || [],
       depotName: dbSupplier.depot_name || '',
-      supplierType: dbSupplier.supplier_type || '',
+      supplierType: (dbSupplier.supplier_type || 'Independent') as 'Major' | 'Independent' | 'Government',
       createdAt: dbSupplier.created_at ? new Date(dbSupplier.created_at) : new Date(),
       updatedAt: dbSupplier.updated_at ? new Date(dbSupplier.updated_at) : new Date()
     };
@@ -94,7 +95,7 @@ export const fromSupabaseFormat = {
       currentVolume: dbTank.current_volume || 0,
       minVolume: dbTank.min_volume || 0,
       productType: dbTank.product_type,
-      status: dbTank.status || 'active',
+      status: (dbTank.status || 'operational') as 'operational' | 'maintenance' | 'offline',
       isActive: dbTank.is_active !== false, // Default to true if undefined
       currentLevel: dbTank.current_level || 0,
       lastRefillDate: dbTank.last_refill_date ? new Date(dbTank.last_refill_date) : undefined,
@@ -106,18 +107,18 @@ export const fromSupabaseFormat = {
   incident: (dbIncident: DbIncident): Incident => {
     return {
       id: dbIncident.id,
-      type: dbIncident.type || 'general',
+      type: (dbIncident.type || 'general') as 'delay' | 'mechanical' | 'accident' | 'feedback' | 'other',
       description: dbIncident.description,
       location: dbIncident.location,
       timestamp: dbIncident.timestamp ? new Date(dbIncident.timestamp) : new Date(),
-      status: dbIncident.status || 'reported',
-      severity: dbIncident.severity || 'medium',
+      status: (dbIncident.status || 'reported') as 'open' | 'closed' | 'in_progress',
+      severity: (dbIncident.severity || 'medium') as 'low' | 'medium' | 'high',
       orderId: dbIncident.order_id || undefined,
       deliveryId: dbIncident.delivery_id || undefined,
       staffInvolved: dbIncident.staff_involved || [],
       reportedBy: dbIncident.reported_by || '',
       resolution: dbIncident.resolution || '',
-      impact: dbIncident.impact || ''
+      impact: (dbIncident.impact || 'neutral') as 'positive' | 'negative' | 'neutral'
     };
   }
 };
@@ -126,18 +127,18 @@ export const toSupabaseFormat = {
   // Convert from application format to Supabase format
   incident: (incident: Omit<Incident, 'id'>): Omit<DbIncident, 'id'> => {
     return {
-      type: incident.type || 'general',
+      type: incident.type,
       description: incident.description,
       location: incident.location,
-      timestamp: incident.timestamp.toISOString(),
-      status: incident.status || 'reported',
+      timestamp: incident.timestamp?.toISOString() || new Date().toISOString(),
+      status: incident.status,
       severity: incident.severity || 'medium',
       order_id: incident.orderId,
       delivery_id: incident.deliveryId,
       staff_involved: incident.staffInvolved || [],
       reported_by: incident.reportedBy || '',
       resolution: incident.resolution || '',
-      impact: incident.impact || ''
+      impact: incident.impact || 'neutral'
     };
   },
   

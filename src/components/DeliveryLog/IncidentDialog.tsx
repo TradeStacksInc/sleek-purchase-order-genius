@@ -13,6 +13,7 @@ import { useApp } from '@/context/AppContext';
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Incident } from '@/types';
 
 // Make sure the schema matches the Incident type definition from src/types/index.ts
 const incidentSchema = z.object({
@@ -46,27 +47,29 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
 
   const onSubmit = async (data: z.infer<typeof incidentSchema>) => {
     try {
-      const incident = {
-        ...data,
-        orderId,
-        reportedAt: new Date(),
-        status: 'open' as const, 
+      const incidentData: Omit<Incident, 'id'> = {
+        type: data.type,
+        description: data.description,
+        location: data.location,
+        severity: data.severity,
+        orderId: orderId,
+        timestamp: new Date(),
+        status: 'open',
         reportedBy: 'Current User',
-        staffInvolved: [], 
-        // Make sure all required fields from Incident type are included
+        staffInvolved: []
       };
       
       // Use Supabase to store the incident
       const { data: newIncident, error } = await supabase
         .from('incidents')
         .insert({
-          type: incident.type,
-          description: incident.description,
-          reported_by: incident.reportedBy,
-          severity: incident.severity,
-          status: incident.status,
-          location: incident.location, // Ensure location is always included
-          staff_involved: incident.staffInvolved,
+          type: incidentData.type,
+          description: incidentData.description,
+          reported_by: incidentData.reportedBy,
+          severity: incidentData.severity,
+          status: incidentData.status,
+          location: incidentData.location, // Ensure location is always included
+          staff_involved: incidentData.staffInvolved,
           order_id: orderId
         })
         .select()
@@ -76,7 +79,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       
       // Call the context method to update the local state
       addIncident({
-        ...incident,
+        ...incidentData,
         id: newIncident.id
       });
       
