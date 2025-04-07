@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -729,7 +728,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   }, [sales]);
 
-  // Add missing functions required by AppContextType
   const updateOrderStatus = useCallback(async (id: string, status: OrderStatus): Promise<boolean> => {
     const orderIndex = purchaseOrders.findIndex(order => order.id === id);
     if (orderIndex === -1) return false;
@@ -826,7 +824,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return currentPrices as Record<ProductType, number>;
   }, [prices]);
   
-  // Incident functions
   const addIncident = useCallback((incident: Omit<Incident, 'id'>): Incident => {
     const newIncident: Incident = {
       ...incident,
@@ -872,7 +869,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(incidents, params);
   }, [incidents]);
   
-  // Activity Log functions
   const addActivityLog = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>): ActivityLog => {
     const newLog: ActivityLog = {
       ...log,
@@ -889,7 +885,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(activityLogs, params);
   }, [activityLogs]);
   
-  // Tank functions
   const addTank = useCallback((tank: Omit<Tank, 'id'>): Tank => {
     const newTank: Tank = {
       ...tank,
@@ -955,12 +950,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   }, [tanks]);
   
-  // Company functions
   const updateCompany = useCallback((data: Partial<typeof defaultCompany>): void => {
     setCompany(prev => ({ ...prev, ...data }));
   }, []);
   
-  // Delivery functions
   const completeDelivery = useCallback(async (orderId: string): Promise<boolean> => {
     const order = purchaseOrders.find(o => o.id === orderId);
     if (!order) return false;
@@ -984,7 +977,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (orderIndex === -1) return false;
     
     const offloadingDetails: OffloadingDetails = {
-      id: uuidv4(),
       poId: orderId,
       tankId: details.tankId,
       initialTankVolume: details.initialTankVolume,
@@ -1013,7 +1005,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'record_offloading',
       details: `Offloading details recorded for order ${orderId}`,
       entityType: 'offloading',
-      entityId: offloadingDetails.id,
+      entityId: orderId,
       user: 'Current User'
     };
     

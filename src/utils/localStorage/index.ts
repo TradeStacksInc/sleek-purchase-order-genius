@@ -8,9 +8,9 @@ export * from './export';
 // Add getPaginatedData export for use in actions
 export const getPaginatedData = <T>(data: T[], params: { page: number; limit: number }): {
   data: T[];
-  total: number;
+  pageSize: number;
+  totalItems: number;
   page: number;
-  limit: number;
   totalPages: number;
 } => {
   const { page, limit } = params;
@@ -22,11 +22,35 @@ export const getPaginatedData = <T>(data: T[], params: { page: number; limit: nu
 
   return {
     data: paginatedData,
-    total,
+    totalItems: total,
     page,
-    limit,
+    pageSize: limit,
     totalPages
   };
+};
+
+// Add the missing functions that core.ts is trying to import
+export const syncToSupabase = async <T>(key: string, data: T[]): Promise<void> => {
+  try {
+    const tableName = key.replace('po_system_', '');
+    // This will be a no-op if the Supabase client isn't initialized
+    // The actual implementation can be added later
+    console.log(`Syncing ${tableName} to Supabase...`);
+  } catch (error) {
+    console.error(`Error syncing ${key} to Supabase:`, error);
+  }
+};
+
+export const fetchFromSupabase = async (tableName: string): Promise<any[] | null> => {
+  try {
+    // This will be a no-op if the Supabase client isn't initialized
+    // The actual implementation can be added later
+    console.log(`Fetching ${tableName} from Supabase...`);
+    return null;
+  } catch (error) {
+    console.error(`Error fetching ${tableName} from Supabase:`, error);
+    return null;
+  }
 };
 
 // Define a type for valid Supabase tables

@@ -1,7 +1,7 @@
 
 export interface PaginationParams {
-  page?: number;
-  limit?: number;
+  page: number;
+  limit: number;
 }
 
 export interface PaginatedResult<T> {
