@@ -62,10 +62,10 @@ const AssignDriver: React.FC = () => {
     trucks, 
     addDriver, 
     addTruck, 
-    assignDriverToOrder, 
-    getAvailableDrivers, 
-    getAvailableTrucks,
-    tagTruckWithGPS
+    assignDriverToOrder,
+    tagTruckWithGPS,
+    getAllDrivers,
+    getAllTrucks
   } = useApp();
   
   // State for the assign tab
@@ -93,8 +93,8 @@ const AssignDriver: React.FC = () => {
   );
   
   // Get available drivers and trucks
-  const availableDrivers = getAvailableDrivers();
-  const availableTrucks = getAvailableTrucks();
+  const availableDrivers = drivers.filter(driver => driver.isAvailable);
+  const availableTrucks = trucks.filter(truck => truck.isAvailable);
   
   // Handle assignment
   const handleAssign = () => {

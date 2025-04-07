@@ -1,179 +1,366 @@
-
-/**
- * Helper functions to convert between application types and Supabase database types
- */
-import type { 
-  PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight, 
-  Staff, Dispenser, Shift, Sale, Incident, ActivityLog, Tank, 
-  Price, OffloadingDetails, DeliveryDetails, OrderStatus, PaymentTerm
-} from '@/types';
-import type {
-  DbPurchaseOrder, DbSupplier, DbDriver, DbTruck, DbGPSData,
-  DbIncident, DbTank, DbDispenser, DbStaff, DbShift, DbSale,
-  DbPrice, DbDeliveryDetails, DbOffloadingDetails, DbActivityLog,
-  DbAIInsight
-} from '@/types/supabase-custom';
+import { PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight, Staff, Dispenser, Shift, Sale, Incident, ActivityLog, Tank, Price, ProductType, DeliveryDetails, OrderStatus } from '@/types';
 
 export const fromSupabaseFormat = {
-  // Convert from Supabase format to application format
-  purchaseOrder: (dbPurchaseOrder: DbPurchaseOrder): PurchaseOrder => {
+  purchaseOrder: (data: any): PurchaseOrder => {
     return {
-      id: dbPurchaseOrder.id,
-      poNumber: dbPurchaseOrder.po_number || '',
-      status: (dbPurchaseOrder.status as OrderStatus) || 'pending',
-      supplier: dbPurchaseOrder.supplier_id || '',
-      deliveryDate: dbPurchaseOrder.delivery_date ? new Date(dbPurchaseOrder.delivery_date) : new Date(),
-      notes: dbPurchaseOrder.notes || '',
-      paymentStatus: (dbPurchaseOrder.payment_status as 'pending' | 'paid' | 'partial') || 'pending',
-      paymentTerm: dbPurchaseOrder.payment_term || '',
-      createdAt: dbPurchaseOrder.created_at ? new Date(dbPurchaseOrder.created_at) : new Date(),
-      updatedAt: dbPurchaseOrder.updated_at ? new Date(dbPurchaseOrder.updated_at) : new Date(),
-      grandTotal: dbPurchaseOrder.grand_total || 0,
-      items: [] // Default empty array for items
+      id: data.id,
+      poNumber: data.po_number,
+      status: data.status as OrderStatus,
+      supplier: {
+        name: data.supplier_name || 'Unknown Supplier',
+        id: data.supplier_id || 'unknown',
+        address: data.supplier_address,
+        contact: data.supplier_contact
+      },
+      grandTotal: data.grand_total,
+      deliveryDetails: data.delivery_details,
+      offloadingDetails: data.offloading_details,
+      paymentStatus: data.payment_status,
+      paymentTerm: data.payment_term,
+      notes: data.notes,
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
     };
   },
-  
-  supplier: (dbSupplier: DbSupplier): Supplier => {
+  driver: (data: any): Driver => {
     return {
-      id: dbSupplier.id,
-      name: dbSupplier.name,
-      address: dbSupplier.address,
-      contact: dbSupplier.contact || dbSupplier.contact_name || '',
-      contactPhone: dbSupplier.contact_phone || '',
-      contactEmail: dbSupplier.contact_email || dbSupplier.email || '',
-      taxId: dbSupplier.tax_id || '',
-      accountNumber: dbSupplier.account_number || '',
-      bankName: dbSupplier.bank_name || '',
-      products: dbSupplier.products || [],
-      depotName: dbSupplier.depot_name || '',
-      supplierType: (dbSupplier.supplier_type as 'Major' | 'Independent' | 'Government') || 'Independent',
-      createdAt: dbSupplier.created_at ? new Date(dbSupplier.created_at) : new Date(),
-      updatedAt: dbSupplier.updated_at ? new Date(dbSupplier.updated_at) : new Date()
+      id: data.id,
+      name: data.name,
+      contact: data.contact,
+      licenseNumber: data.license_number,
+      isAvailable: data.is_available,
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
     };
   },
-  
-  driver: (dbDriver: DbDriver): Driver => {
+  truck: (data: any): Truck => {
     return {
-      id: dbDriver.id,
-      name: dbDriver.name,
-      licenseNumber: dbDriver.license_number,
-      contact: dbDriver.contact || dbDriver.contact_phone || '',
-      address: dbDriver.address || '',
-      isAvailable: dbDriver.is_available !== false, // Default to true if undefined
-      currentTruckId: dbDriver.current_truck_id || undefined,
-      createdAt: dbDriver.created_at ? new Date(dbDriver.created_at) : new Date(),
-      updatedAt: dbDriver.updated_at ? new Date(dbDriver.updated_at) : new Date()
+      id: data.id,
+      plateNumber: data.plate_number,
+      model: data.model,
+      capacity: data.capacity,
+      hasGPS: data.has_gps,
+      isAvailable: data.is_available,
+      isGPSTagged: data.is_gps_tagged,
+	  driverId: data.driver_id,
+      gpsDeviceId: data.gps_device_id,
+      lastLatitude: data.last_latitude,
+      lastLongitude: data.last_longitude,
+      lastSpeed: data.last_speed,
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
     };
   },
-  
-  truck: (dbTruck: DbTruck): Truck => {
+  tank: (data: any): Tank => {
     return {
-      id: dbTruck.id,
-      plateNumber: dbTruck.plate_number,
-      model: dbTruck.model,
-      capacity: dbTruck.capacity,
-      isAvailable: dbTruck.is_available !== false, // Default to true if undefined
-      driverId: dbTruck.driver_id || undefined,
-      driverName: dbTruck.driver_name || '',
-      hasGPS: dbTruck.has_gps || false,
-      isGPSTagged: dbTruck.is_gps_tagged || false,
-      gpsDeviceId: dbTruck.gps_device_id || undefined,
-      lastLatitude: dbTruck.last_latitude || 0,
-      lastLongitude: dbTruck.last_longitude || 0,
-      lastSpeed: dbTruck.last_speed || 0,
-      year: dbTruck.year || 0,
-      createdAt: dbTruck.created_at ? new Date(dbTruck.created_at) : new Date(),
-      updatedAt: dbTruck.updated_at ? new Date(dbTruck.updated_at) : new Date()
+      id: data.id,
+      name: data.name,
+      capacity: data.capacity,
+      currentVolume: data.current_volume,
+      productType: data.product_type as ProductType,
+      minVolume: data.min_volume,
+      status: data.status,
+      isActive: data.is_active,
+      connectedDispensers: data.connected_dispensers,
+      lastRefillDate: data.last_refill_date && new Date(data.last_refill_date),
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
     };
   },
-  
-  tank: (dbTank: DbTank): Tank => {
+  incident: (data: any): Incident => {
     return {
-      id: dbTank.id,
-      name: dbTank.name,
-      capacity: dbTank.capacity,
-      currentVolume: dbTank.current_volume || 0,
-      minVolume: dbTank.min_volume || 0,
-      productType: dbTank.product_type,
-      status: (dbTank.status as 'operational' | 'maintenance' | 'offline') || 'operational',
-      isActive: dbTank.is_active !== false, // Default to true if undefined
-      currentLevel: dbTank.current_level || 0,
-      lastRefillDate: dbTank.last_refill_date ? new Date(dbTank.last_refill_date) : undefined,
-      connectedDispensers: dbTank.connected_dispensers || [],
-      nextInspectionDate: dbTank.next_inspection_date ? new Date(dbTank.next_inspection_date) : undefined
+      id: data.id,
+      type: data.type,
+      description: data.description,
+      severity: data.severity,
+      location: data.location,
+      timestamp: data.timestamp && new Date(data.timestamp),
+      status: data.status,
+      orderid: data.order_id,
+      impact: data.impact,
+      staffInvolved: data.staff_involved,
+      resolution: data.resolution,
+      reportedBy: data.reported_by,
+      deliveryId: data.delivery_id
     };
   },
-  
-  incident: (dbIncident: DbIncident): Incident => {
+  staff: (data: any): Staff => {
     return {
-      id: dbIncident.id,
-      type: (dbIncident.type as 'delay' | 'mechanical' | 'accident' | 'feedback' | 'other') || 'other',
-      description: dbIncident.description,
-      location: dbIncident.location,
-      timestamp: dbIncident.timestamp ? new Date(dbIncident.timestamp) : new Date(),
-      status: (dbIncident.status as 'open' | 'closed' | 'in_progress') || 'open',
-      severity: (dbIncident.severity as 'low' | 'medium' | 'high') || 'medium',
-      orderId: dbIncident.order_id,
-      deliveryId: dbIncident.delivery_id || undefined,
-      staffInvolved: dbIncident.staff_involved || [],
-      reportedBy: dbIncident.reported_by || '',
-      resolution: dbIncident.resolution || '',
-      impact: (dbIncident.impact as 'positive' | 'negative' | 'neutral') || 'neutral'
+      id: data.id,
+      name: data.name,
+      role: data.role,
+      contact: data.contact,
+      email: data.email,
+      address: data.address,
+      hireDate: data.hire_date && new Date(data.hire_date),
+      salary: data.salary,
+      isActive: data.is_active,
+      permissions: data.permissions,
+      notes: data.notes,
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
     };
-  }
+  },
+  dispenser: (data: any): Dispenser => {
+    return {
+      id: data.id,
+      name: data.name,
+      productType: data.product_type as ProductType,
+      tankId: data.tank_id,
+      unitPrice: data.unit_price,
+      isActive: data.is_active,
+      location: data.location,
+      model: data.model,
+      capacity: data.capacity,
+      installationDate: data.installation_date && new Date(data.installation_date),
+      lastMaintenanceDate: data.last_maintenance_date && new Date(data.last_maintenance_date),
+      notes: data.notes,
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
+    };
+  },
+  shift: (data: any): Shift => {
+    return {
+      id: data.id,
+      staffId: data.staff_id,
+      startTime: data.start_time && new Date(data.start_time),
+      endTime: data.end_time && new Date(data.end_time),
+      notes: data.notes,
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
+    };
+  },
+  sale: (data: any): Sale => {
+    return {
+      id: data.id,
+      dispenserId: data.dispenser_id,
+      shiftId: data.shift_id,
+      staffId: data.staff_id,
+      volume: data.volume,
+      amount: data.amount,
+      paymentMethod: data.payment_method,
+      timestamp: data.timestamp && new Date(data.timestamp),
+      notes: data.notes,
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
+    };
+  },
+  price: (data: any): Price => {
+    return {
+      id: data.id,
+      productType: data.product_type as ProductType,
+      price: data.price,
+      effectiveDate: data.effective_date && new Date(data.effective_date),
+      notes: data.notes,
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
+    };
+  },
+  activityLog: (data: any): ActivityLog => {
+    return {
+      id: data.id,
+      timestamp: data.timestamp && new Date(data.timestamp),
+      user: data.user,
+      action: data.action,
+      entityType: data.entity_type,
+      entityId: data.entity_id,
+      details: data.details,
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
+    };
+  },
+  supplier: (data: any): Supplier => {
+    return {
+      id: data.id,
+      name: data.name,
+      address: data.address,
+      contact: data.contact || data.contact_phone,
+      email: data.email || data.contact_email,
+      contactName: data.contact_name,
+      contactPhone: data.contact_phone,
+      contactEmail: data.contact_email,
+      taxId: data.tax_id,
+      accountNumber: data.account_number,
+      bankName: data.bank_name,
+      products: data.products || [],
+      depotName: data.depot_name,
+      supplierType: data.supplier_type,
+      createdAt: data.created_at && new Date(data.created_at),
+      updatedAt: data.updated_at && new Date(data.updated_at)
+    };
+  },
 };
 
 export const toSupabaseFormat = {
-  // Convert from application format to Supabase format
-  incident: (incident: Omit<Incident, 'id'>): Omit<DbIncident, 'id'> => {
+  purchaseOrder: (data: Omit<PurchaseOrder, 'id'>): any => {
     return {
-      type: incident.type,
-      description: incident.description,
-      location: incident.location,
-      timestamp: incident.timestamp?.toISOString() || new Date().toISOString(),
-      status: incident.status,
-      severity: incident.severity || 'medium',
-      order_id: incident.orderId,
-      delivery_id: incident.deliveryId,
-      staff_involved: incident.staffInvolved || [],
-      reported_by: incident.reportedBy || '',
-      resolution: incident.resolution || '',
-      impact: incident.impact || 'neutral'
+      po_number: data.poNumber,
+      status: data.status,
+      supplier_name: data.supplier.name,
+      supplier_id: data.supplier.id,
+      supplier_address: data.supplier.address,
+      supplier_contact: data.supplier.contact,
+      grand_total: data.grandTotal,
+      delivery_details: data.deliveryDetails,
+      offloading_details: data.offloadingDetails,
+      payment_status: data.paymentStatus,
+      payment_term: data.paymentTerm,
+      notes: data.notes,
+      created_at: data.createdAt?.toISOString(),
+      updated_at: data.updatedAt?.toISOString()
     };
   },
-  
-  purchaseOrder: (order: Omit<PurchaseOrder, 'id'>): Omit<DbPurchaseOrder, 'id'> => {
+  driver: (data: Omit<Driver, 'id'>): any => {
     return {
-      po_number: order.poNumber,
-      status: order.status,
-      supplier_id: order.supplier,
-      delivery_date: order.deliveryDate?.toISOString(),
-      notes: order.notes,
-      payment_status: order.paymentStatus,
-      payment_term: order.paymentTerm,
-      created_at: order.createdAt?.toISOString(),
-      updated_at: new Date().toISOString(),
-      grand_total: order.grandTotal
+      name: data.name,
+      contact: data.contact,
+      license_number: data.licenseNumber,
+      is_available: data.isAvailable,
+      created_at: data.createdAt?.toISOString(),
+      updated_at: data.updatedAt?.toISOString()
     };
   },
-  
-  supplier: (supplier: Omit<Supplier, 'id'>): Omit<DbSupplier, 'id'> => {
+  truck: (data: Omit<Truck, 'id'>): any => {
     return {
-      name: supplier.name,
-      address: supplier.address,
-      contact: supplier.contact,
-      contact_phone: supplier.contactPhone,
-      contact_email: supplier.contactEmail,
-      email: supplier.contactEmail,
-      tax_id: supplier.taxId,
-      account_number: supplier.accountNumber,
-      bank_name: supplier.bankName,
-      products: supplier.products,
-      depot_name: supplier.depotName,
-      supplier_type: supplier.supplierType,
-      created_at: supplier.createdAt?.toISOString(),
-      updated_at: new Date().toISOString(),
-      contact_name: supplier.contact
+      plate_number: data.plateNumber,
+      model: data.model,
+      capacity: data.capacity,
+      has_gps: data.hasGPS,
+      is_available: data.isAvailable,
+      is_gps_tagged: data.isGPSTagged,
+	  driver_id: data.driverId,
+      gps_device_id: data.gpsDeviceId,
+      last_latitude: data.lastLatitude,
+      last_longitude: data.lastLongitude,
+      last_speed: data.lastSpeed,
+      created_at: data.createdAt?.toISOString(),
+      updated_at: data.updatedAt?.toISOString()
     };
-  }
+  },
+  tank: (data: Omit<Tank, 'id'>): any => {
+    return {
+      name: data.name,
+      capacity: data.capacity,
+      current_volume: data.currentVolume,
+      product_type: data.productType,
+      min_volume: data.minVolume,
+      status: data.status,
+      is_active: data.isActive,
+      connected_dispensers: data.connectedDispensers,
+      last_refill_date: data.lastRefillDate?.toISOString(),
+      created_at: data.createdAt?.toISOString(),
+      updated_at: data.updatedAt?.toISOString()
+    };
+  },
+  incident: (data: Omit<Incident, 'id'>): any => {
+    return {
+      type: data.type,
+      description: data.description,
+      severity: data.severity,
+      location: data.location,
+      timestamp: data.timestamp?.toISOString(),
+      status: data.status,
+      order_id: data.orderid,
+      impact: data.impact,
+      staff_involved: data.staffInvolved,
+      resolution: data.resolution,
+      reported_by: data.reportedBy,
+      delivery_id: data.deliveryId
+    };
+  },
+  staff: (data: Omit<Staff, 'id'>): any => {
+    return {
+      name: data.name,
+      role: data.role,
+      contact: data.contact,
+      email: data.email,
+      address: data.address,
+      hire_date: data.hireDate?.toISOString(),
+      salary: data.salary,
+      is_active: data.isActive,
+      permissions: data.permissions,
+      notes: data.notes,
+      created_at: data.createdAt?.toISOString(),
+      updated_at: data.updatedAt?.toISOString()
+    };
+  },
+  dispenser: (data: Omit<Dispenser, 'id'>): any => {
+    return {
+      name: data.name,
+      product_type: data.productType,
+      tank_id: data.tankId,
+      unit_price: data.unitPrice,
+      is_active: data.isActive,
+      location: data.location,
+      model: data.model,
+      capacity: data.capacity,
+      installation_date: data.installationDate?.toISOString(),
+      last_maintenance_date: data.lastMaintenanceDate?.toISOString(),
+      notes: data.notes,
+      created_at: data.createdAt?.toISOString(),
+      updated_at: data.updatedAt?.toISOString()
+    };
+  },
+  shift: (data: Omit<Shift, 'id'>): any => {
+    return {
+      staff_id: data.staffId,
+      start_time: data.startTime?.toISOString(),
+      end_time: data.endTime?.toISOString(),
+      notes: data.notes,
+      created_at: data.createdAt?.toISOString(),
+      updated_at: data.updatedAt?.toISOString()
+    };
+  },
+  sale: (data: Omit<Sale, 'id'>): any => {
+    return {
+      dispenser_id: data.dispenserId,
+      shift_id: data.shiftId,
+      staff_id: data.staffId,
+      volume: data.volume,
+      amount: data.amount,
+      payment_method: data.paymentMethod,
+      timestamp: data.timestamp?.toISOString(),
+      notes: data.notes,
+      created_at: data.createdAt?.toISOString(),
+      updated_at: data.updatedAt?.toISOString()
+    };
+  },
+  price: (data: Omit<Price, 'id' | 'effectiveDate'>): any => {
+    return {
+      product_type: data.productType,
+      price: data.price,
+      notes: data.notes,
+      created_at: data.createdAt?.toISOString(),
+      updated_at: data.updatedAt?.toISOString()
+    };
+  },
+  activityLog: (data: Omit<ActivityLog, 'id'>): any => {
+    return {
+      timestamp: data.timestamp?.toISOString(),
+      user: data.user,
+      action: data.action,
+      entity_type: data.entityType,
+      entity_id: data.entityId,
+      details: data.details,
+      created_at: data.createdAt?.toISOString(),
+      updated_at: data.updatedAt?.toISOString()
+    };
+  },
+  supplier: (data: Supplier): any => {
+    return {
+      name: data.name,
+      address: data.address,
+      contact: data.contact,
+      email: data.email,
+      contact_name: data.contactName,
+      contact_phone: data.contactPhone,
+      contact_email: data.contactEmail,
+      tax_id: data.taxId,
+      account_number: data.accountNumber,
+      bank_name: data.bankName,
+      products: data.products,
+      depot_name: data.depotName,
+      supplier_type: data.supplierType
+    };
+  },
 };

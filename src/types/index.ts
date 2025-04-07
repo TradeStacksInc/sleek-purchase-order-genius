@@ -52,7 +52,7 @@ export interface Company {
 }
 
 // Order Status
-export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled' | 'draft';
+export type OrderStatus = 'draft' | 'pending' | 'active' | 'completed' | 'cancelled';
 export type PaymentTerm = 'net_7' | 'net_15' | 'net_30' | 'net_60' | 'cod' | '50% Advance' | '100% Advance' | 'Credit';
 
 export interface StatusHistoryEntry {
@@ -302,18 +302,18 @@ export interface Tank {
 // Incident
 export interface Incident {
   id: string;
-  type: 'delay' | 'mechanical' | 'accident' | 'feedback' | 'other';
+  type?: string;
   description: string;
-  timestamp?: Date;
-  reportedBy?: string;
-  severity?: 'low' | 'medium' | 'high';
-  status: 'open' | 'closed' | 'in_progress';
-  resolution?: string;
+  severity?: string;
   location: string;
-  staffInvolved: string[];
+  timestamp?: Date;
+  status?: string;
+  orderid?: string;
+  impact?: string;
+  staffInvolved?: string[];
+  resolution?: string;
+  reportedBy?: string;
   deliveryId?: string;
-  impact?: 'positive' | 'negative' | 'neutral';
-  orderId?: string;
 }
 
 // Activity Log
