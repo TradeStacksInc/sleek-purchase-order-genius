@@ -18,7 +18,7 @@ const incidentSchema = z.object({
   description: z.string().min(10, { message: 'Description is required and must be at least 10 characters' }),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
   location: z.string().min(3, { message: 'Location is required' }),
-  type: z.string().min(3, { message: 'Incident type is required' }),
+  type: z.enum(['delay', 'mechanical', 'accident', 'feedback', 'other']),
 });
 
 export interface IncidentDialogProps {
@@ -38,7 +38,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       description: '',
       severity: 'medium',
       location: '',
-      type: 'delivery-issue',
+      type: 'delay',
     },
   });
 
@@ -49,8 +49,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       reportedAt: new Date(),
       status: 'open',
       reportedBy: 'Current User',
-      staffInvolved: [], // Add empty array for staff involved
-      type: data.type,
+      staffInvolved: [], // Empty array for staff involved
     };
     
     addIncident(incident);
@@ -148,11 +147,10 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
                     <SelectValue placeholder="Select incident type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="delivery-issue">Delivery Issue</SelectItem>
-                    <SelectItem value="product-damage">Product Damage</SelectItem>
-                    <SelectItem value="documentation-error">Documentation Error</SelectItem>
-                    <SelectItem value="vehicle-issue">Vehicle Issue</SelectItem>
-                    <SelectItem value="safety-concern">Safety Concern</SelectItem>
+                    <SelectItem value="delay">Delivery Delay</SelectItem>
+                    <SelectItem value="mechanical">Mechanical Issue</SelectItem>
+                    <SelectItem value="accident">Accident</SelectItem>
+                    <SelectItem value="feedback">Customer Feedback</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>

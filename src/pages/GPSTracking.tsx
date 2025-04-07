@@ -133,7 +133,7 @@ interface DeliveryTrackingCardProps {
   order: PurchaseOrder;
   getDriverById: (id: string) => any;
   getTruckById: (id: string) => any;
-  updateDeliveryStatus: (orderId: string, updates: Partial<DeliveryDetails>) => void;
+  updateDeliveryStatus: (orderId: string, updates: Partial<DeliveryDetails> | string) => boolean;
   updateTimestamp: number;
 }
 
@@ -288,7 +288,7 @@ interface PendingDeliveryCardProps {
   order: PurchaseOrder;
   getDriverById: (id: string) => any;
   getTruckById: (id: string) => any;
-  updateDeliveryStatus: (orderId: string, updates: Partial<DeliveryDetails>) => void;
+  updateDeliveryStatus: (orderId: string, updates: Partial<DeliveryDetails> | string) => boolean;
 }
 
 const PendingDeliveryCard: React.FC<PendingDeliveryCardProps> = ({ 
