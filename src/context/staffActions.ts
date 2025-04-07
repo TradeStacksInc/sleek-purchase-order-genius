@@ -53,33 +53,34 @@ export const useStaffActions = (
     }
   };
 
-  const updateStaff = (id: string, data: Partial<Staff>): Staff | undefined => {
+  const updateStaff = (id: string, data: Partial<Staff>): boolean => {
     try {
-      let updatedStaff: Staff | undefined;
+      let updated = false;
       
       setStaff(prev => {
         const updatedStaffList = prev.map(s => {
           if (s.id === id) {
-            updatedStaff = { ...s, ...data };
-            return updatedStaff;
+            updated = true;
+            return { ...s, ...data };
           }
           return s;
         });
         
         // If staff not found, return unmodified list
-        if (!updatedStaff) return prev;
+        if (!updated) return prev;
         
         return updatedStaffList;
       });
       
-      if (updatedStaff) {
+      if (updated) {
         // Log the action
+        const staffMember = staff.find(s => s.id === id);
         const newActivityLog: ActivityLog = {
           id: `log-${uuidv4()}`,
           entityType: 'staff',
-          entityId: updatedStaff.id,
+          entityId: id,
           action: 'update',
-          details: `Updated staff member: ${updatedStaff.name}`,
+          details: `Updated staff member: ${staffMember?.name || id}`,
           user: 'Current User',
           timestamp: new Date()
         };
@@ -88,11 +89,11 @@ export const useStaffActions = (
         
         toast({
           title: "Staff Updated",
-          description: `${updatedStaff.name} has been updated successfully.`,
+          description: `Staff member has been updated successfully.`,
         });
       }
       
-      return updatedStaff;
+      return updated;
     } catch (error) {
       console.error("Error updating staff:", error);
       toast({
@@ -100,7 +101,7 @@ export const useStaffActions = (
         description: "Failed to update staff. Please try again.",
         variant: "destructive",
       });
-      return undefined;
+      return false;
     }
   };
 

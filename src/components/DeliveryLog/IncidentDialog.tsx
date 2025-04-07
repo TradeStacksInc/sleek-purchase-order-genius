@@ -13,10 +13,11 @@ import { useApp } from '@/context/AppContext';
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle } from 'lucide-react';
 
+// Make sure the schema matches the Incident type definition from src/types/index.ts
 const incidentSchema = z.object({
   title: z.string().min(5, { message: 'Title is required and must be at least 5 characters' }),
   description: z.string().min(10, { message: 'Description is required and must be at least 10 characters' }),
-  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  severity: z.enum(['low', 'medium', 'high']), // Remove 'critical' to match the Incident type
   location: z.string().min(3, { message: 'Location is required' }),
   type: z.enum(['delay', 'mechanical', 'accident', 'feedback', 'other']),
 });
@@ -51,6 +52,8 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       reportedBy: 'Current User',
       staffInvolved: [], 
       description: data.description, // Explicitly include description to satisfy type requirements
+      // Make sure all required fields from Incident type are included
+      type: data.type,
     };
     
     addIncident(incident);
@@ -111,7 +114,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
                       <SelectItem value="low">Low</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
                       <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
+                      {/* Removed 'critical' option as it doesn't match the Incident type */}
                     </SelectContent>
                   </Select>
                 )}
@@ -159,7 +162,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
             />
             {form.formState.errors.type && (
               <p className="text-sm text-red-500 mt-1">{form.formState.errors.type.message}</p>
-              )}
+            )}
           </div>
           
           <div>
