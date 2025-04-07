@@ -852,6 +852,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(prices, params || { page: 1, limit: 10 });
   };
 
+  const getAvailableDrivers = (): Driver[] => {
+    return drivers.filter(driver => driver.isAvailable);
+  };
+
+  const getAvailableTrucks = (): Truck[] => {
+    return trucks.filter(truck => truck.isAvailable);
+  };
+
+  const getGPSTaggedTrucks = (): Truck[] => {
+    return trucks.filter(truck => truck.isGPSTagged);
+  };
+
+  const getNonTaggedTrucks = (): Truck[] => {
+    return trucks.filter(truck => !truck.isGPSTagged);
+  };
+
   const contextValue: AppContextType = {
     purchaseOrders,
     logs,
@@ -930,7 +946,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updatePrice,
     deletePrice,
     getPriceById,
-    getAllPrices
+    getAllPrices,
+    getAvailableDrivers,
+    getAvailableTrucks,
+    getGPSTaggedTrucks,
+    getNonTaggedTrucks
   };
 
   return (

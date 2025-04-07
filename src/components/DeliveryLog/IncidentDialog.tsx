@@ -50,6 +50,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       status: 'open',
       reportedBy: 'Current User',
       staffInvolved: [], // Empty array for staff involved
+      type: data.type, // Explicitly include type to ensure it's not optional
     };
     
     addIncident(incident);
