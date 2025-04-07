@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { 
   PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight, Staff, 
   Dispenser, Shift, Sale, Incident, ActivityLog, Tank, Price, 
-  Product, ProductType, DeliveryDetails
+  ProductType, DeliveryDetails
 } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -394,10 +394,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   // Helper function to get paginated data
-  const getPaginatedData = <T>(
+  // Using extends syntax to avoid TypeScript mistaking generic syntax for JSX
+  function getPaginatedData<T extends {}>(
     collection: T[],
     params: PaginationParams
-  ): PaginatedResult<T> => {
+  ): PaginatedResult<T> {
     let filteredData = [...collection];
     
     // Apply filters if provided
@@ -469,7 +470,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       totalPages,
       currentPage
     };
-  };
+  }
 
   // Database management functions
   const resetDatabase = async (includeSeedData: boolean = true) => {
