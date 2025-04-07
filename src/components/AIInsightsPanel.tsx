@@ -8,28 +8,30 @@ import { useApp } from '@/context/AppContext';
 import { AIInsight } from '@/types';
 
 export const AIInsightsPanel: React.FC = () => {
-  const { aiInsights, getInsightsByType, generateAIInsights } = useApp();
+  const appContext = useApp();
   const [expanded, setExpanded] = useState(false);
   const [currentInsight, setCurrentInsight] = useState<AIInsight | null>(null);
   const [insightType, setInsightType] = useState<'efficiency_recommendation' | 'discrepancy_pattern' | 'driver_analysis'>('efficiency_recommendation');
 
   // Generate insights on initial load
   useEffect(() => {
-    if (aiInsights.length === 0) {
-      // Pass empty object as parameter
-      generateAIInsights({});
+    if (appContext.aiInsights.length === 0 && appContext.generateAIInsights) {
+      // Generate an AI insight
+      appContext.generateAIInsights({});
     }
-  }, [aiInsights.length, generateAIInsights]);
+  }, [appContext.aiInsights.length, appContext.generateAIInsights]);
 
   // Update current insight when insights change
   useEffect(() => {
-    const insights = getInsightsByType(insightType);
-    if (insights && insights.length > 0) {
-      setCurrentInsight(insights[0]);
-    } else {
-      setCurrentInsight(null);
+    if (appContext.getInsightsByType) {
+      const insights = appContext.getInsightsByType(insightType);
+      if (insights && insights.length > 0) {
+        setCurrentInsight(insights[0]);
+      } else {
+        setCurrentInsight(null);
+      }
     }
-  }, [insightType, getInsightsByType, aiInsights]);
+  }, [insightType, appContext.getInsightsByType, appContext.aiInsights]);
 
   const getInsightIcon = (type: string) => {
     switch (type) {
@@ -105,7 +107,7 @@ export const AIInsightsPanel: React.FC = () => {
                 <div>
                   <p className="text-sm">{currentInsight.description}</p>
                   <p className="text-xs mt-1 opacity-70">
-                    Generated {new Date(currentInsight.generatedAt).toLocaleDateString()}
+                    Generated {new Date(currentInsight.timestamp || currentInsight.generatedAt || '').toLocaleDateString()}
                   </p>
                 </div>
               </div>

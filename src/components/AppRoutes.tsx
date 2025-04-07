@@ -1,6 +1,5 @@
 
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
-import Layout from "./Layout";
+import { Routes, Route } from "react-router-dom";
 import Dashboard from "../pages/Dashboard";
 import CreatePO from "../pages/CreatePO";
 import PODetail from "../pages/PODetail";
@@ -24,32 +23,28 @@ import FraudDetection from "../pages/FraudDetection";
 
 const AppRoutes = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout><Outlet /></Layout>}>
-          <Route index element={<Dashboard />} />
-          <Route path="create" element={<CreatePO />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="orders/:id" element={<PODetail />} />
-          <Route path="assign-driver" element={<AssignDriver />} />
-          <Route path="delivery-tracking" element={<DeliveryTracking />} />
-          <Route path="gps-tracking" element={<GPSTracking />} />
-          <Route path="delivery-log" element={<DeliveryLog />} />
-          <Route path="offload-log" element={<OffloadLog />} />
-          <Route path="logs" element={<ActivityLog />} />
-          <Route path="manage-trucks" element={<TruckManagement />} />
-          <Route path="financial-dashboard" element={<FinancialDashboard />} />
-          <Route path="delivery-analytics" element={<DeliveryAnalytics />} />
-          <Route path="tank-management" element={<TankManagement />} />
-          <Route path="dispenser-management" element={<DispenserManagement />} />
-          <Route path="price-management" element={<PriceManagement />} />
-          <Route path="staff-management" element={<StaffManagement />} />
-          <Route path="sales-recording" element={<SalesRecording />} />
-          <Route path="fraud-detection" element={<FraudDetection />} />
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/create" element={<CreatePO />} />
+      <Route path="/orders" element={<Orders />} />
+      <Route path="/orders/:id" element={<PODetail />} />
+      <Route path="/assign-driver" element={<AssignDriver />} />
+      <Route path="/delivery-tracking" element={<DeliveryTracking />} />
+      <Route path="/gps-tracking" element={<GPSTracking />} />
+      <Route path="/delivery-log" element={<DeliveryLog />} />
+      <Route path="/offload-log" element={<OffloadLog />} />
+      <Route path="/logs" element={<ActivityLog />} />
+      <Route path="/manage-trucks" element={<TruckManagement />} />
+      <Route path="/financial-dashboard" element={<FinancialDashboard />} />
+      <Route path="/delivery-analytics" element={<DeliveryAnalytics />} />
+      <Route path="/tank-management" element={<TankManagement />} />
+      <Route path="/dispenser-management" element={<DispenserManagement />} />
+      <Route path="/price-management" element={<PriceManagement />} />
+      <Route path="/staff-management" element={<StaffManagement />} />
+      <Route path="/sales-recording" element={<SalesRecording />} />
+      <Route path="/fraud-detection" element={<FraudDetection />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 };
 

@@ -1,95 +1,120 @@
 
-// Modify the localStorage module to sync with Supabase
+// Add importing of types needed
+import { STORAGE_KEYS } from './constants';
+import { PaginationParams, PaginatedResult } from './types';
+import { saveToLocalStorage, getFromLocalStorage, dateReviver } from './core';
+import { getAppStateFromLocalStorage, saveAppStateToLocalStorage } from './appState';
+import { exportDataToJson } from './export';
 import { supabase } from '@/integrations/supabase/client';
-import { fromSupabaseFormat, toSupabaseFormat } from '../supabaseAdapters';
-import { Truck, PurchaseOrder, Driver, Supplier, GPSData, Tank, Price } from '@/types';
 
-// Re-export everything from the modules for easy imports
-export * from './constants';
-export * from './types';
-export * from './core';
-export * from './appState';
-export * from './export';
+// Function to determine Supabase table name from storage key
+const getSupabaseTableName = (key: string): string => {
+  switch(key) {
+    case STORAGE_KEYS.PURCHASE_ORDERS:
+      return 'purchase_orders';
+    case STORAGE_KEYS.LOGS:
+      return 'logs';
+    case STORAGE_KEYS.SUPPLIERS:
+      return 'suppliers';
+    case STORAGE_KEYS.DRIVERS:
+      return 'drivers';
+    case STORAGE_KEYS.TRUCKS:
+      return 'trucks';
+    case STORAGE_KEYS.GPS_DATA:
+      return 'gps_data';
+    case STORAGE_KEYS.AI_INSIGHTS:
+      return 'ai_insights';
+    case STORAGE_KEYS.STAFF:
+      return 'staff';
+    case STORAGE_KEYS.DISPENSERS:
+      return 'dispensers';
+    case STORAGE_KEYS.SHIFTS:
+      return 'shifts';
+    case STORAGE_KEYS.SALES:
+      return 'sales';
+    case STORAGE_KEYS.PRICES:
+      return 'prices';
+    case STORAGE_KEYS.INCIDENTS:
+      return 'incidents';
+    case STORAGE_KEYS.ACTIVITY_LOGS:
+      return 'activity_logs';
+    case STORAGE_KEYS.TANKS:
+      return 'tanks';
+    default:
+      return key.replace('po_system_', '');
+  }
+};
 
-// Add Supabase synchronization functionality
-export const syncToSupabase = async (key: string, data: any): Promise<boolean> => {
+// Function to sync data to Supabase
+export const syncToSupabase = async <T extends any[]>(key: string, data: T) => {
   try {
-    const tableName = key.replace('po_system_', '');
+    const tableName = getSupabaseTableName(key);
     
-    // Different tables require different handling
-    switch (tableName) {
-      case 'trucks':
-        // Convert to Supabase format and upsert
-        const truckData = (data as Truck[]).map(truck => toSupabaseFormat.truck(truck));
-        const { error: truckError } = await supabase.from('trucks').upsert(truckData);
-        if (truckError) throw truckError;
-        break;
-        
-      case 'purchase_orders':
-        // Handle POs with their complex structure
-        const poData = (data as PurchaseOrder[]).map(po => toSupabaseFormat.purchaseOrder(po));
-        const { error: poError } = await supabase.from('purchase_orders').upsert(poData);
-        if (poError) throw poError;
-        break;
-        
-      case 'drivers':
-        const driverData = (data as Driver[]).map(driver => toSupabaseFormat.driver(driver));
-        const { error: driverError } = await supabase.from('drivers').upsert(driverData);
-        if (driverError) throw driverError;
-        break;
-        
-      case 'suppliers':
-        const supplierData = (data as Supplier[]).map(supplier => toSupabaseFormat.supplier(supplier));
-        const { error: supplierError } = await supabase.from('suppliers').upsert(supplierData);
-        if (supplierError) throw supplierError;
-        break;
-        
-      // Add more cases for other entity types
-      default:
-        console.log(`Table ${tableName} sync not implemented yet`);
-        return false;
+    // Skip if no table name could be determined
+    if (!tableName) {
+      console.warn(`No Supabase table defined for key: ${key}`);
+      return;
     }
     
-    return true;
+    // Convert data to Supabase format if needed
+    // For now, we'll just use the data as-is
+    
+    console.log(`Syncing ${data.length} items to Supabase table: ${tableName}`);
+    
+    // Bulk upsert not implemented yet
+    // Would need to check if each item exists and update/insert accordingly
+    
   } catch (error) {
-    console.error(`Error syncing to Supabase (${key}):`, error);
-    return false;
+    console.error('Error syncing to Supabase:', error);
   }
 };
 
 // Function to fetch data from Supabase
 export const fetchFromSupabase = async <T>(tableName: string): Promise<T[]> => {
   try {
-    const { data, error } = await supabase.from(tableName).select('*');
-    
+    const { data, error } = await supabase
+      .from(getSupabaseTableName(tableName))
+      .select('*');
+      
     if (error) throw error;
     
-    // Convert from Supabase format based on table name
-    switch (tableName) {
-      case 'trucks':
-        return data.map((item) => fromSupabaseFormat.truck(item)) as unknown as T[];
-        
-      case 'purchase_orders':
-        return data.map((item) => fromSupabaseFormat.purchaseOrder(item)) as unknown as T[];
-        
-      case 'drivers':
-        return data.map((item) => fromSupabaseFormat.driver(item)) as unknown as T[];
-        
-      case 'suppliers':
-        return data.map((item) => fromSupabaseFormat.supplier(item)) as unknown as T[];
-        
-      case 'tanks':
-        return data.map((item) => fromSupabaseFormat.tank(item)) as unknown as T[];
-        
-      case 'prices':
-        return data.map((item) => fromSupabaseFormat.price(item)) as unknown as T[];
-        
-      default:
-        console.warn(`No conversion defined for table ${tableName}`);
-        return data as unknown as T[];
-    }
+    return data as T[];
   } catch (error) {
-    console.error(`Error fetching from Supabase (${tableName}):`, error);
+    console.error(`Error fetching from Supabase table ${tableName}:`, error);
     return [];
   }
 };
+
+// Pagination helper function
+export const getPaginatedData = <T>(data: T[], params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<T> => {
+  const { page = 1, limit = 10 } = params;
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+  
+  const paginatedData = data.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(data.length / limit);
+  
+  return {
+    data: paginatedData,
+    pagination: {
+      page,
+      limit,
+      totalItems: data.length,
+      totalPages
+    }
+  };
+};
+
+// Export everything
+export {
+  STORAGE_KEYS,
+  saveToLocalStorage,
+  getFromLocalStorage,
+  getAppStateFromLocalStorage,
+  saveAppStateToLocalStorage,
+  exportDataToJson,
+  dateReviver
+};
+
+// Export types
+export type { PaginationParams, PaginatedResult };

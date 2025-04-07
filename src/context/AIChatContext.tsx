@@ -37,7 +37,6 @@ const AIChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [apiKey, setApiKeyState] = useState<string | null>(null);
   const appContext = useApp();
-  const { purchaseOrders, logs, suppliers, logAIInteraction } = appContext;
 
   // Initialize with stored API key if available
   useEffect(() => {
@@ -121,31 +120,31 @@ const AIChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
           response = `Staff efficiency metrics show your peak staffing needs occur between 7-9am and 5-7pm on weekdays. You could optimize scheduling by adding one additional cashier during these hours, potentially reducing customer wait times by 23% based on current transaction data.`;
         }
         else if (lowercaseMessage.includes('how many orders') || lowercaseMessage.includes('total orders')) {
-          response = `There are currently ${purchaseOrders.length} orders in the system. The average order value is ₦${(purchaseOrders.reduce((sum, po) => sum + po.grandTotal, 0) / purchaseOrders.length).toLocaleString()} with ${purchaseOrders.filter(po => po.status === 'pending').length} pending orders awaiting processing.`;
+          response = `There are currently ${appContext.purchaseOrders.length} orders in the system. The average order value is ₦${(appContext.purchaseOrders.reduce((sum, po) => sum + po.grandTotal, 0) / appContext.purchaseOrders.length).toLocaleString()} with ${appContext.purchaseOrders.filter(po => po.status === 'pending').length} pending orders awaiting processing.`;
         } 
         else if (lowercaseMessage.includes('pending orders')) {
-          const pendingCount = purchaseOrders.filter(po => po.status === 'pending').length;
-          const pendingValue = purchaseOrders.filter(po => po.status === 'pending').reduce((sum, po) => sum + po.grandTotal, 0);
+          const pendingCount = appContext.purchaseOrders.filter(po => po.status === 'pending').length;
+          const pendingValue = appContext.purchaseOrders.filter(po => po.status === 'pending').reduce((sum, po) => sum + po.grandTotal, 0);
           response = `There are ${pendingCount} pending orders with a total value of ₦${pendingValue.toLocaleString()}. Based on historical data, I recommend prioritizing the processing of orders from your top 3 suppliers to maintain optimal supply chain efficiency.`;
         }
         else if (lowercaseMessage.includes('active orders')) {
-          const activeCount = purchaseOrders.filter(po => po.status === 'active').length;
+          const activeCount = appContext.purchaseOrders.filter(po => po.status === 'active').length;
           response = `There are ${activeCount} active orders that have been paid and are awaiting delivery. The expected average delivery time based on current logistics data is 3.2 days.`;
         }
         else if (lowercaseMessage.includes('fulfilled orders')) {
-          const fulfilledCount = purchaseOrders.filter(po => po.status === 'fulfilled').length;
+          const fulfilledCount = appContext.purchaseOrders.filter(po => po.status === 'fulfilled').length;
           const avgFulfillmentTime = 4.3; // Simulated average time
           response = `There are ${fulfilledCount} fulfilled orders with an average fulfillment time of ${avgFulfillmentTime} days, which is ${avgFulfillmentTime < 5 ? 'better than' : 'not meeting'} your target of 5 days.`;
         }
         else if (lowercaseMessage.includes('suppliers') || lowercaseMessage.includes('vendors')) {
-          response = `You have ${suppliers.length} registered suppliers. Your top 3 suppliers by order volume are ${suppliers.slice(0, 3).map(s => s.name).join(', ')}. Based on performance metrics, ${suppliers[0]?.name || 'No supplier'} provides the best combination of price and delivery reliability.`;
+          response = `You have ${appContext.suppliers.length} registered suppliers. Your top 3 suppliers by order volume are ${appContext.suppliers.slice(0, 3).map(s => s.name).join(', ')}. Based on performance metrics, ${appContext.suppliers[0]?.name || 'No supplier'} provides the best combination of price and delivery reliability.`;
         }
         else if (lowercaseMessage.includes('recent activity') || lowercaseMessage.includes('latest logs')) {
-          const recentLogs = logs.slice(0, 3);
-          response = `Recent system activity: ${recentLogs.map(log => log.action).join('; ')}. There have been ${logs.length} tracked activities in the past 30 days, with order creation being the most frequent action at ${Math.floor(logs.length * 0.4)} instances.`;
+          const recentLogs = appContext.logs.slice(0, 3);
+          response = `Recent system activity: ${recentLogs.map(log => log.action).join('; ')}. There have been ${appContext.logs.length} tracked activities in the past 30 days, with order creation being the most frequent action at ${Math.floor(appContext.logs.length * 0.4)} instances.`;
         }
         else if (lowercaseMessage.includes('total value') || lowercaseMessage.includes('order value')) {
-          const totalValue = purchaseOrders.reduce((sum, po) => sum + po.grandTotal, 0);
+          const totalValue = appContext.purchaseOrders.reduce((sum, po) => sum + po.grandTotal, 0);
           const monthlyAvg = totalValue / 3; // Simulated 3 months of data
           response = `The total value of all purchase orders is ₦${totalValue.toLocaleString()}, with a monthly average of ₦${monthlyAvg.toLocaleString()}. This represents a ${(Math.random() * 10 + 5).toFixed(1)}% increase compared to the previous quarter.`;
         }
@@ -174,7 +173,9 @@ const AIChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
     setMessages(prev => [...prev, aiMessage]);
     
     // Log the AI interaction to the activity log
-    logAIInteraction(message, response);
+    if (appContext.logAIInteraction) {
+      appContext.logAIInteraction(message, response);
+    }
   };
 
   return (

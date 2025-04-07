@@ -48,9 +48,9 @@ export const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
     
     // Attempt to fetch from Supabase asynchronously
     const tableName = key.replace('po_system_', '');
-    fetchFromSupabase<any>(tableName).then(supabaseData => {
+    fetchFromSupabase(tableName).then(supabaseData => {
       // If we got data from Supabase and it's different from localStorage, update localStorage
-      if (supabaseData && supabaseData.length > 0) {
+      if (supabaseData && Array.isArray(supabaseData) && supabaseData.length > 0) {
         const supabaseJson = JSON.stringify(supabaseData);
         const localJson = serializedData || '';
         
@@ -68,7 +68,7 @@ export const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
     
     // Return local data if available, otherwise default
     if (localData) {
-      console.info(`Loaded ${key} from localStorage (${localData.length} items)`);
+      console.info(`Loaded ${key} from localStorage (${Array.isArray(localData) ? localData.length : 'non-array'} items)`);
       return localData;
     }
     
