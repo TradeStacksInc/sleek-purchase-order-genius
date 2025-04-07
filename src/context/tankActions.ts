@@ -74,6 +74,8 @@ export const useTankActions = (
         timestamp: newActivityLog.timestamp.toISOString()
       });
       
+      setActivityLogs(prev => [newActivityLog, ...prev]);
+      
       toast({
         title: "Tank Added",
         description: `${newTank.name} has been added successfully.`,
@@ -254,7 +256,7 @@ export const useTankActions = (
     return tanks;
   };
 
-  const recordOffloadingToTank = (tankId: string, volume: number, source: string, sourceId: string): boolean => {
+  const recordOffloadingToTank = async (tankId: string, volume: number, source: string, sourceId: string): Promise<boolean> => {
     try {
       // Find the tank
       const tank = tanks.find(t => t.id === tankId);
@@ -264,28 +266,29 @@ export const useTankActions = (
       }
       
       // Update the tank
-      const updatedTank = {
-        ...tank,
+      const updatedData = {
         currentVolume: (tank.currentVolume || 0) + volume,
         lastRefillDate: new Date()
       };
       
-      setTanks(tanks.map(t => t.id === tankId ? updatedTank : t));
+      const success = await updateTank(tankId, updatedData);
       
-      // Log the activity
-      const newActivityLog: ActivityLog = {
-        id: `log-${uuidv4()}`,
-        entityType: 'tank',
-        entityId: tankId,
-        action: 'update',
-        details: `${volume.toLocaleString()} liters from ${source} (${sourceId}) offloaded to tank ${tank.name}. New volume: ${updatedTank.currentVolume?.toLocaleString()} / ${tank.capacity.toLocaleString()} liters.`,
-        user: 'System',
-        timestamp: new Date()
-      };
+      // Log the activity if successful
+      if (success) {
+        const newActivityLog: ActivityLog = {
+          id: `log-${uuidv4()}`,
+          entityType: 'tank',
+          entityId: tankId,
+          action: 'update',
+          details: `${volume.toLocaleString()} liters from ${source} (${sourceId}) offloaded to tank ${tank.name}. New volume: ${updatedData.currentVolume?.toLocaleString()} / ${tank.capacity.toLocaleString()} liters.`,
+          user: 'System',
+          timestamp: new Date()
+        };
+        
+        setActivityLogs(prev => [newActivityLog, ...prev]);
+      }
       
-      setActivityLogs(prev => [newActivityLog, ...prev]);
-      
-      return true;
+      return success;
     } catch (error) {
       console.error("Error recording offloading to tank:", error);
       return false;

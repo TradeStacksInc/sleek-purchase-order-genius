@@ -282,10 +282,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const recordOffloadingToTank = (tankId: string, volume: number, source: string, sourceId: string): boolean => {
-    return !!tankActionsMethods.recordOffloadingToTank(tankId, volume, source, sourceId);
-  };
-
   const updateDispenser = (id: string, updates: Partial<Dispenser>): boolean => {
     const result = dispenserActions.updateDispenser?.(id, updates);
     return result !== undefined;
@@ -644,7 +640,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  const recordOffloadingToTank = (tankId: string, volume: number, source: string, sourceId: string): boolean => {
+  const handleTankOffloading = (tankId: string, volume: number, source: string, sourceId: string): boolean => {
     const tankIndex = tanks.findIndex(tank => tank.id === tankId);
     if (tankIndex === -1) return false;
 
@@ -1041,7 +1037,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     completeDelivery,
     updateDeliveryStatus,
     recordOffloadingDetails,
-    recordOffloadingToTank,
+    recordOffloadingToTank: handleTankOffloading,
     assignDriverToOrder,
     
     aiActions,

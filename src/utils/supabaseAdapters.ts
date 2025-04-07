@@ -20,11 +20,11 @@ export const fromSupabaseFormat = {
     return {
       id: dbPurchaseOrder.id,
       poNumber: dbPurchaseOrder.po_number || '',
-      status: dbPurchaseOrder.status as OrderStatus,
+      status: (dbPurchaseOrder.status as OrderStatus) || 'draft',
       supplier: dbPurchaseOrder.supplier_id || '',
       deliveryDate: dbPurchaseOrder.delivery_date ? new Date(dbPurchaseOrder.delivery_date) : new Date(),
       notes: dbPurchaseOrder.notes || '',
-      paymentStatus: (dbPurchaseOrder.payment_status || 'pending') as 'pending' | 'paid' | 'partial',
+      paymentStatus: (dbPurchaseOrder.payment_status as 'pending' | 'paid' | 'partial') || 'pending',
       paymentTerm: dbPurchaseOrder.payment_term || '',
       createdAt: dbPurchaseOrder.created_at ? new Date(dbPurchaseOrder.created_at) : new Date(),
       updatedAt: dbPurchaseOrder.updated_at ? new Date(dbPurchaseOrder.updated_at) : new Date(),
@@ -46,7 +46,7 @@ export const fromSupabaseFormat = {
       bankName: dbSupplier.bank_name || '',
       products: dbSupplier.products || [],
       depotName: dbSupplier.depot_name || '',
-      supplierType: (dbSupplier.supplier_type || 'Independent') as 'Major' | 'Independent' | 'Government',
+      supplierType: (dbSupplier.supplier_type as 'Major' | 'Independent' | 'Government') || 'Independent',
       createdAt: dbSupplier.created_at ? new Date(dbSupplier.created_at) : new Date(),
       updatedAt: dbSupplier.updated_at ? new Date(dbSupplier.updated_at) : new Date()
     };
@@ -95,7 +95,7 @@ export const fromSupabaseFormat = {
       currentVolume: dbTank.current_volume || 0,
       minVolume: dbTank.min_volume || 0,
       productType: dbTank.product_type,
-      status: (dbTank.status || 'operational') as 'operational' | 'maintenance' | 'offline',
+      status: (dbTank.status as 'operational' | 'maintenance' | 'offline') || 'operational',
       isActive: dbTank.is_active !== false, // Default to true if undefined
       currentLevel: dbTank.current_level || 0,
       lastRefillDate: dbTank.last_refill_date ? new Date(dbTank.last_refill_date) : undefined,

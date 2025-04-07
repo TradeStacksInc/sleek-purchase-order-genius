@@ -47,16 +47,16 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
 
   const onSubmit = async (data: z.infer<typeof incidentSchema>) => {
     try {
-      const incidentData: Omit<Incident, 'id'> = {
+      const incidentData = {
         type: data.type,
         description: data.description,
         location: data.location,
         severity: data.severity,
-        orderId: orderId,
+        orderId: orderId, // This is valid in the Incident type
         timestamp: new Date(),
-        status: 'open',
+        status: 'open' as const, // Using const assertion for literal types
         reportedBy: 'Current User',
-        staffInvolved: []
+        staffInvolved: [] as string[] // Explicit typing to match the expected array type
       };
       
       // Use Supabase to store the incident
@@ -68,7 +68,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
           reported_by: incidentData.reportedBy,
           severity: incidentData.severity,
           status: incidentData.status,
-          location: incidentData.location, // Ensure location is always included
+          location: incidentData.location,
           staff_involved: incidentData.staffInvolved,
           order_id: orderId
         })
@@ -78,10 +78,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       if (error) throw error;
       
       // Call the context method to update the local state
-      addIncident({
-        ...incidentData,
-        id: newIncident.id
-      });
+      const createdIncident = addIncident(incidentData);
       
       toast({
         title: 'Incident Reported',
@@ -147,7 +144,6 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
                       <SelectItem value="low">Low</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
                       <SelectItem value="high">High</SelectItem>
-                      {/* Removed 'critical' option as it doesn't match the Incident type */}
                     </SelectContent>
                   </Select>
                 )}
