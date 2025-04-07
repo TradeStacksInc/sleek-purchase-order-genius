@@ -69,7 +69,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getRecentActivityLogs 
   } = useLogActions(logs, setLogs, activityLogs, setActivityLogs);
 
-  // Import driver and truck actions
   const {
     addDriver,
     updateDriver,
@@ -95,7 +94,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGpsData
   );
 
-  // Define purchase order functions first
   const addPurchaseOrder = useCallback(async (order: Omit<PurchaseOrder, 'id'>): Promise<PurchaseOrder> => {
     const now = new Date();
     const newOrder: PurchaseOrder = {
@@ -215,7 +213,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(purchaseOrders, params || { page: 1, limit: 10 });
   }, [purchaseOrders]);
 
-  // Define missing functions needed by AppContext
   const getOrderById = useCallback((id: string): PurchaseOrder | undefined => {
     return purchaseOrders.find(order => order.id === id);
   }, [purchaseOrders]);
@@ -250,7 +247,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   }, [purchaseOrders, updatePurchaseOrder, addActivityLog]);
 
-  // Define required functions for the app context
   const getAvailableDrivers = useCallback((): Driver[] => {
     return drivers.filter(driver => driver.isAvailable);
   }, [drivers]);
@@ -277,7 +273,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const getGPSDataForTruck = useCallback((truckId: string, limit?: number): GPSData[] => {
     let truckData = gpsData.filter(data => data.truckId === truckId);
     
-    // Sort by timestamp, newest first
     truckData.sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
@@ -294,7 +289,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [gpsData]);
 
   const updateGPSData = useCallback((truckId: string, latitude: number, longitude: number, speed: number): GPSData => {
-    // Update the truck's last known position
     updateTruck(truckId, { 
       lastLatitude: latitude, 
       lastLongitude: longitude,
@@ -302,7 +296,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date()
     });
     
-    // Add new GPS data entry
     const newGpsData: GPSData = {
       id: `gps-${uuidv4().substring(0, 8)}`,
       truckId,
@@ -310,7 +303,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       longitude,
       speed,
       timestamp: new Date(),
-      fuelLevel: Math.floor(Math.random() * 40) + 60, // Random fuel between 60-100%
+      fuelLevel: Math.floor(Math.random() * 40) + 60,
       location: 'En route'
     };
     
@@ -492,7 +485,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deliveryDetails: updatedDeliveryDetails as DeliveryDetails
     };
     
-    // Update the purchase order
     const updatedOrdersList = [...purchaseOrders];
     updatedOrdersList[orderIndex] = updatedOrder;
     setPurchaseOrders(updatedOrdersList);
@@ -797,7 +789,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [getTruckById, addActivityLog]);
 
-  // Additional stub implementations to match the interface requirements
   const getStaffById = useCallback((id: string): Staff | undefined => {
     return staff.find(s => s.id === id);
   }, [staff]);
@@ -938,4 +929,163 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [sales]);
 
   const deletePrice = useCallback((id: string): boolean => {
-    let deleted
+    let deleted = false;
+    setPrices(prev => {
+      const filteredPrices = prev.filter(price => price.id !== id);
+      deleted = filteredPrices.length < prev.length;
+      return filteredPrices;
+    });
+    
+    if (deleted) {
+      saveToLocalStorage(STORAGE_KEYS.PRICES, prices.filter(price => price.id !== id));
+      
+      addActivityLog({
+        action: 'delete',
+        entityType: 'price',
+        entityId: id,
+        details: `Price record deleted`,
+        user: 'Current User'
+      });
+    }
+    
+    return deleted;
+  }, [prices, addActivityLog]);
+
+  const getPriceById = useCallback((id: string): Price | undefined => {
+    return prices.find(p => p.id === id);
+  }, [prices]);
+
+  const getAllPrices = useCallback((params?: PaginationParams): PaginatedResult<Price> => {
+    return getPaginatedData(prices, params || { page: 1, limit: 10 });
+  }, [prices]);
+
+  const getCurrentPrices = useCallback((): Record<ProductType, number> => {
+    const currentPrices: Partial<Record<ProductType, number>> = {};
+    
+    prices.forEach(price => {
+      if (price.isActive) {
+        currentPrices[price.productType] = price.price;
+      }
+    });
+    
+    return currentPrices as Record<ProductType, number>;
+  }, [prices]);
+
+  const contextValue = {
+    purchaseOrders,
+    setPurchaseOrders,
+    logs,
+    setLogs,
+    suppliers,
+    setSuppliers,
+    drivers,
+    setDrivers,
+    trucks,
+    setTrucks,
+    gpsData,
+    setGpsData,
+    aiInsights,
+    setAiInsights,
+    incidents,
+    setIncidents,
+    activityLogs,
+    setActivityLogs,
+    addActivityLog,
+    getAllActivityLogs,
+    getActivityLogsByEntityType,
+    getActivityLogsByAction,
+    getRecentActivityLogs,
+    
+    addPurchaseOrder,
+    updatePurchaseOrder,
+    deletePurchaseOrder,
+    getPurchaseOrderById,
+    getAllPurchaseOrders,
+    getOrderById,
+    getOrdersWithDeliveryStatus,
+    getOrdersWithDiscrepancies,
+    updateOrderStatus,
+    
+    addDriver,
+    updateDriver,
+    deleteDriver,
+    getDriverById,
+    getAllDrivers,
+    getAvailableDrivers,
+    
+    addTruck,
+    updateTruck,
+    deleteTruck,
+    getTruckById,
+    getAllTrucks,
+    getAvailableTrucks,
+    getNonGPSTrucks,
+    
+    tagTruckWithGPS,
+    untagTruckGPS,
+    addGPSData,
+    getGPSDataForTruck,
+    getAllGPSData,
+    updateGPSData,
+    
+    addTank,
+    updateTank,
+    deleteTank,
+    getTankById, 
+    getAllTanks,
+    getTanksByProduct,
+    setTankActive,
+    
+    addIncident,
+    updateIncident,
+    deleteIncident,
+    getIncidentById,
+    getAllIncidents,
+    
+    completeDelivery,
+    recordOffloadingDetails,
+    updateDeliveryStatus,
+    assignDriverToOrder,
+    
+    addStaff,
+    updateStaff,
+    deleteStaff,
+    getStaffById,
+    getAllStaff,
+    getActiveStaff,
+    
+    logUserLogin,
+    logUserLogout,
+    
+    addPrice,
+    updatePrice,
+    deletePrice,
+    getPriceById,
+    getAllPrices,
+    getCurrentPrices,
+    
+    recordOffloadingToTank,
+    
+    logFraudDetection,
+    logGpsActivity,
+    
+    company,
+    setCompany
+  };
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
+
+export default AppContext;
