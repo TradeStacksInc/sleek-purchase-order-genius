@@ -56,6 +56,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [tanks, setTanks] = useState<Tank[]>([]);
   const [company, setCompany] = useState(defaultCompany);
   
+  const logActions = useLogActions(logs, setLogs, activityLogs, setActivityLogs);
   const { 
     addLog, 
     deleteLog, 
@@ -64,10 +65,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getLogsByOrderId,
     addActivityLog,
     getAllActivityLogs,
-    getActivityLogsByEntityType,
-    getActivityLogsByAction,
-    getRecentActivityLogs 
-  } = useLogActions(logs, setLogs, activityLogs, setActivityLogs);
+    logFraudDetection,
+    logGpsActivity
+  } = logActions;
 
   const {
     addDriver,

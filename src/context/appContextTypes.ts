@@ -174,4 +174,8 @@ export interface AppContextType {
   startDelivery: (orderId: string) => Promise<boolean>;
   updateDeliveryStatus: (orderId: string, status: 'pending' | 'delivered' | 'in_transit') => boolean;
   assignDriverToOrder: (orderId: string, driverId: string, truckId: string) => boolean;
+
+  // Fraud detection and GPS tracking functions
+  logFraudDetection: (description: string, severity: 'low' | 'medium' | 'high', entityId?: string) => void;
+  logGpsActivity: (truckId: string, description: string) => void;
 }
