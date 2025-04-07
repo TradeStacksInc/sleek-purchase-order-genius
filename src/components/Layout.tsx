@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import Sidebar from './Sidebar';
@@ -12,6 +12,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { logPageVisit } = useActivityLogger();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   
   // Log page visits
   useEffect(() => {
@@ -33,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="h-screen flex flex-col overflow-hidden">
       <AppHeader />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
+        <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
         <main className="flex-1 content-container p-4 bg-background/60">
           {children}
         </main>

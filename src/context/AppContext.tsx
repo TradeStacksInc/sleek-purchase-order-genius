@@ -640,6 +640,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return updatedPrice;
   }, [prices, addActivityLog]);
 
+  const deletePrice = useCallback((id: string): boolean => {
+    let deleted = false;
+    setPrices(prev => {
+      const filteredPrices = prev.filter(price => price.id !== id);
+      deleted = filteredPrices.length < prev.length;
+      
+      if (deleted) {
+        saveToLocalStorage(STORAGE_KEYS.PRICES, filteredPrices);
+        
+        const price = prev.find(p => p.id === id);
+        if (price) {
+          addActivityLog({
+            action: 'delete',
+            entityType: 'price',
+            entityId: id,
+            details: `Price for ${price.productType} deleted`,
+            user: 'Current User'
+          });
+        }
+      }
+      
+      return filteredPrices;
+    });
+    return deleted;
+  }, [addActivityLog]);
+
+  const getPriceById = useCallback((id: string): Price | undefined => {
+    return prices.find(p => p.id === id);
+  }, [prices]);
+
+  const getAllPrices = useCallback((params?: PaginationParams): PaginatedResult<Price> => {
+    return getPaginatedData(prices, params || { page: 1, limit: 10 });
+  }, [prices]);
+
+  const getCurrentPricesByProduct = useCallback((): Record<ProductType, number> => {
+    const currentPrices: Partial<Record<ProductType, number>> = {};
+    
+    const pricesByProduct: Record<string, Price[]> = {};
+    prices.forEach(price => {
+      if (!pricesByProduct[price.productType]) {
+        pricesByProduct[price.productType] = [];
+      }
+      pricesByProduct[price.productType].push(price);
+    });
+    
+    Object.entries(pricesByProduct).forEach(([productType, productPrices]) => {
+      const activePrices = productPrices.filter(p => p.isActive !== false);
+      if (activePrices.length > 0) {
+        activePrices.sort((a, b) => 
+          new Date(b.effectiveDate || 0).getTime() - 
+          new Date(a.effectiveDate || 0).getTime()
+        );
+        currentPrices[productType as ProductType] = activePrices[0].price;
+      }
+    });
+    
+    return currentPrices as Record<ProductType, number>;
+  }, [prices]);
+
   const addStaff = useCallback((staffMember: Omit<Staff, 'id'>): Staff => {
     const now = new Date();
     const newStaff: Staff = {
@@ -887,9 +946,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(shifts, params || { page: 1, limit: 10 });
   }, [shifts]);
 
-  const getCurrentShift = useCallback((): Shift | undefined => {
+  const getCurrentShift = useCallback((): Shift | null => {
     const now = new Date();
-    return shifts.find(s => s.status === 'active');
+    return shifts.find(s => s.status === 'active') || null;
   }, [shifts]);
 
   const updateSale = useCallback((id: string, sale: Partial<Sale>): Sale | null => {
@@ -927,65 +986,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const getSalesForShift = useCallback((shiftId: string): Sale[] => {
     return sales.filter(s => s.shiftId === shiftId);
   }, [sales]);
-
-  const deletePrice = useCallback((id: string): boolean => {
-    let deleted = false;
-    setPrices(prev => {
-      const filteredPrices = prev.filter(price => price.id !== id);
-      deleted = filteredPrices.length < prev.length;
-      
-      if (deleted) {
-        saveToLocalStorage(STORAGE_KEYS.PRICES, filteredPrices);
-        
-        const price = prev.find(p => p.id === id);
-        if (price) {
-          addActivityLog({
-            action: 'delete',
-            entityType: 'price',
-            entityId: id,
-            details: `Price for ${price.productType} deleted`,
-            user: 'Current User'
-          });
-        }
-      }
-      
-      return filteredPrices;
-    });
-    return deleted;
-  }, [addActivityLog]);
-
-  const getPriceById = useCallback((id: string): Price | undefined => {
-    return prices.find(p => p.id === id);
-  }, [prices]);
-
-  const getAllPrices = useCallback((params?: PaginationParams): PaginatedResult<Price> => {
-    return getPaginatedData(prices, params || { page: 1, limit: 10 });
-  }, [prices]);
-
-  const getCurrentPricesByProduct = useCallback((): Record<ProductType, number> => {
-    const currentPrices: Partial<Record<ProductType, number>> = {};
-    
-    const pricesByProduct: Record<string, Price[]> = {};
-    prices.forEach(price => {
-      if (!pricesByProduct[price.productType]) {
-        pricesByProduct[price.productType] = [];
-      }
-      pricesByProduct[price.productType].push(price);
-    });
-    
-    Object.entries(pricesByProduct).forEach(([productType, productPrices]) => {
-      const activePrices = productPrices.filter(p => p.isActive !== false);
-      if (activePrices.length > 0) {
-        activePrices.sort((a, b) => 
-          new Date(b.effectiveDate || 0).getTime() - 
-          new Date(a.effectiveDate || 0).getTime()
-        );
-        currentPrices[productType as ProductType] = activePrices[0].price;
-      }
-    });
-    
-    return currentPrices as Record<ProductType, number>;
-  }, [prices]);
 
   const updateCompany = useCallback((data: Partial<typeof defaultCompany>): void => {
     setCompany(prev => ({ ...prev, ...data }));
@@ -1027,35 +1027,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const contextValue: AppContextType = {
     purchaseOrders,
-    setPurchaseOrders,
     logs,
-    setLogs,
     suppliers,
-    setSuppliers,
     drivers,
-    setDrivers,
     trucks,
-    setTrucks,
     gpsData,
-    setGpsData,
     aiInsights,
-    setAiInsights,
     staff,
-    setStaff,
     dispensers,
-    setDispensers,
     shifts,
-    setShifts,
     sales,
-    setSales,
     prices,
-    setPrices,
     incidents,
-    setIncidents,
     activityLogs,
-    setActivityLogs,
     tanks,
-    setTanks,
+    company,
     
     addPurchaseOrder,
     updatePurchaseOrder,
@@ -1067,23 +1053,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getOrdersWithDiscrepancies,
     updateOrderStatus,
     
-    addLog,
-    deleteLog,
+    addLog: (log: Omit<LogEntry, 'id' | 'timestamp'>): LogEntry => {
+      return addLog(log);
+    },
+    
+    deleteLog: (id: string): boolean => {
+      return deleteLog(id);
+    },
+    
     getLogById,
     getAllLogs,
     getLogsByOrderId,
     
-    addSupplier(supplier) {
-      const newSupplier = {
+    addSupplier: (supplier: Omit<Supplier, 'id'>): Supplier => {
+      const newSupplier: Supplier = {
         ...supplier,
-        id: supplier.id || uuidv4(),
+        id: uuidv4(),
         createdAt: new Date(),
         updatedAt: new Date()
       };
       setSuppliers(prev => [...prev, newSupplier]);
       return newSupplier;
     },
-    updateSupplier(id, updates) {
+    
+    updateSupplier: (id: string, updates: Partial<Supplier>): Supplier | null => {
       let updatedSupplier: Supplier | null = null;
       setSuppliers(prev => prev.map(s => {
         if (s.id === id) {
@@ -1092,9 +1085,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return s;
       }));
-      return updatedSupplier || null;
+      return updatedSupplier;
     },
-    deleteSupplier(id) {
+    
+    deleteSupplier: (id: string): boolean => {
       let deleted = false;
       setSuppliers(prev => {
         const filtered = prev.filter(s => s.id !== id);
@@ -1103,23 +1097,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return deleted;
     },
-    getSupplierById(id) {
+    
+    getSupplierById: (id: string): Supplier | undefined => {
       return suppliers.find(s => s.id === id);
     },
-    getAllSuppliers(params) {
+    
+    getAllSuppliers: (params?: PaginationParams): PaginatedResult<Supplier> => {
       return getPaginatedData(suppliers, params || { page: 1, limit: 10 });
     },
     
-    addDriver,
-    updateDriver,
-    deleteDriver,
+    addDriver: (driver: Omit<Driver, 'id'>): Driver => {
+      return addDriver(driver);
+    },
+    
+    updateDriver: (id: string, driver: Partial<Driver>): Driver | null => {
+      const result = updateDriver(id, driver);
+      if (typeof result === 'boolean') {
+        // Need to find the updated driver to return it
+        return drivers.find(d => d.id === id) || null;
+      }
+      return result;
+    },
+    
+    deleteDriver: (id: string): boolean => {
+      return deleteDriver(id);
+    },
+    
     getDriverById,
     getAllDrivers,
     getAvailableDrivers,
     
-    addTruck,
-    updateTruck,
-    deleteTruck,
+    addTruck: (truck: Omit<Truck, 'id'>): Truck => {
+      return addTruck(truck);
+    },
+    
+    updateTruck: (id: string, truck: Partial<Truck>): Truck | null => {
+      const result = updateTruck(id, truck);
+      if (typeof result === 'boolean') {
+        // Need to find the updated truck to return it
+        return trucks.find(t => t.id === id) || null;
+      }
+      return result;
+    },
+    
+    deleteTruck: (id: string): boolean => {
+      return deleteTruck(id);
+    },
+    
     getTruckById,
     getAllTrucks,
     getAvailableTrucks,
@@ -1131,6 +1155,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getGPSDataForTruck,
     getAllGPSData,
     updateGPSData,
+    
+    addAIInsight: (insight: Omit<AIInsight, 'id'>): AIInsight => {
+      const newInsight: AIInsight = {
+        ...insight,
+        id: uuidv4(),
+        generatedAt: new Date(),
+        relatedEntityIds: insight.relatedEntityIds || [],
+        isRead: false
+      };
+      setAiInsights(prev => [...prev, newInsight]);
+      return newInsight;
+    },
+    
+    markAIInsightAsRead: (id: string): boolean => {
+      let updated = false;
+      setAiInsights(prev => prev.map(insight => {
+        if (insight.id === id) {
+          updated = true;
+          return { ...insight, isRead: true };
+        }
+        return insight;
+      }));
+      return updated;
+    },
+    
+    getUnreadAIInsights: (): AIInsight[] => {
+      return aiInsights.filter(insight => !insight.isRead);
+    },
+    
+    getAllAIInsights: (params?: PaginationParams): PaginatedResult<AIInsight> => {
+      return getPaginatedData(aiInsights, params || { page: 1, limit: 10 });
+    },
+    
+    resetAIInsights: (): boolean => {
+      setAiInsights([]);
+      return true;
+    },
+    
+    generateAIInsights: (data: any): AIInsight => {
+      const insight: AIInsight = {
+        id: uuidv4(),
+        type: 'automatic',
+        description: `AI insight generated from ${data.source || 'system'}`,
+        severity: 'medium',
+        relatedEntityIds: data.entityIds || [],
+        generatedAt: new Date(),
+        isRead: false
+      };
+      setAiInsights(prev => [...prev, insight]);
+      return insight;
+    },
+    
+    getInsightsByType: (type: string): AIInsight[] => {
+      return aiInsights.filter(insight => insight.type === type);
+    },
     
     addIncident,
     updateIncident,
@@ -1144,59 +1223,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getTankById,
     getAllTanks,
     getTanksByProduct,
-    setTankActive(id, isActive) {
-      const tank = updateTank(id, { isActive });
-      return tank !== null;
-    },
+    setTankActive,
     
     addActivityLog,
     getAllActivityLogs,
-    getActivityLogsByEntityType,
-    getActivityLogsByAction,
-    getRecentActivityLogs,
-    
-    addAIInsight(insight) {
-      const newInsight: AIInsight = {
-        ...insight,
-        id: uuidv4(),
-        generatedAt: new Date(),
-        relatedEntityIds: insight.relatedEntityIds || [],
-        isRead: false
-      };
-      setAiInsights(prev => [...prev, newInsight]);
-      return newInsight;
-    },
-    updateAIInsight(id, updates) {
-      let updatedInsight: AIInsight | null = null;
-      setAiInsights(prev => prev.map(insight => {
-        if (insight.id === id) {
-          updatedInsight = { ...insight, ...updates };
-          return updatedInsight;
-        }
-        return insight;
-      }));
-      return updatedInsight;
-    },
-    deleteAIInsight(id) {
-      let deleted = false;
-      setAiInsights(prev => {
-        const filtered = prev.filter(insight => insight.id !== id);
-        deleted = filtered.length < prev.length;
-        return filtered;
-      });
-      return deleted;
-    },
-    getAIInsightById(id) {
-      return aiInsights.find(insight => insight.id === id);
-    },
-    getAllAIInsights(params) {
-      return getPaginatedData(aiInsights, params || { page: 1, limit: 10 });
-    },
-    
-    completeDelivery,
-    recordOffloadingDetails,
-    updateDeliveryStatus,
-    assignDriverToOrder,
     
     addStaff,
     updateStaff,
@@ -1213,37 +1243,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deletePrice,
     getPriceById,
     getAllPrices,
-    getCurrentPricesByProduct,
     
-    logAIInteraction(interaction) {
-      addLog({
+    getCurrentPrices: (): Record<ProductType, number> => {
+      const currentPrices: Partial<Record<ProductType, number>> = {};
+      
+      const pricesByProduct: Record<string, Price[]> = {};
+      prices.forEach(price => {
+        if (!pricesByProduct[price.productType]) {
+          pricesByProduct[price.productType] = [];
+        }
+        pricesByProduct[price.productType].push(price);
+      });
+      
+      Object.entries(pricesByProduct).forEach(([productType, productPrices]) => {
+        const activePrices = productPrices.filter(p => p.isActive !== false);
+        if (activePrices.length > 0) {
+          activePrices.sort((a, b) => 
+            new Date(b.effectiveDate || 0).getTime() - 
+            new Date(a.effectiveDate || 0).getTime()
+          );
+          currentPrices[productType as ProductType] = activePrices[0].price;
+        }
+      });
+      
+      return currentPrices as Record<ProductType, number>;
+    },
+    
+    logAIInteraction: (prompt: string, response: string): LogEntry => {
+      const interaction = prompt + " -> " + response.substring(0, 50) + "...";
+      return addLog({
         action: 'ai_interaction',
         entityType: 'ai',
         entityId: 'system',
         details: interaction,
         user: 'Current User'
       });
-      return { 
-        id: 'ai-interaction',
-        action: 'ai_interaction',
-        entityType: 'ai',
-        entityId: 'system',
-        details: interaction,
-        user: 'Current User',
-        timestamp: new Date()
-      };
     },
     
     logFraudDetection,
     logGpsActivity,
     
     company,
-    setCompany,
     updateCompany,
     
+    completeDelivery,
+    recordOffloadingDetails,
+    recordOffloadingToTank,
     startDelivery,
-    
-    recordOffloadingToTank
+    updateDeliveryStatus,
+    assignDriverToOrder
   };
 
   return (
