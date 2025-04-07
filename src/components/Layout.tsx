@@ -11,11 +11,11 @@ const Layout = ({ children }: LayoutProps) => {
   const [open, setOpen] = useState(true);
   
   return (
-    <div className="h-screen flex flex-col bg-slate-50">
+    <div className="flex flex-col h-screen bg-slate-50">
       <AppHeader />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar open={open} setOpen={setOpen} />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto p-4">
           {children}
         </main>
       </div>

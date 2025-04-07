@@ -1,5 +1,7 @@
+
 import { saveToLocalStorage, getFromLocalStorage } from './core';
 import { STORAGE_KEYS } from './constants';
+import { PaginationParams, PaginatedResult } from './types';
 
 export interface StoredAppData {
   purchaseOrders: any[];
