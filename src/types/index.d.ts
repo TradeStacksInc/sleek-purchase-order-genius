@@ -14,4 +14,5 @@ export interface OffloadingDetails {
   measuredByRole: string;
   timestamp: Date;
   notes?: string;
+  gpsDeviceId?: string;
 }

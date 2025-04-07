@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter, RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import Layout from './components/Layout';
 import AppRoutes from './components/AppRoutes';
