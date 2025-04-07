@@ -977,7 +977,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (orderIndex === -1) return false;
     
     const offloadingDetails: OffloadingDetails = {
-      poId: orderId,
       tankId: details.tankId,
       initialTankVolume: details.initialTankVolume,
       finalTankVolume: details.finalTankVolume,

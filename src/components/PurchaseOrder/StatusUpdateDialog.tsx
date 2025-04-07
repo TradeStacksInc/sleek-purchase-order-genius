@@ -22,13 +22,13 @@ const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({
   onOpenChange
 }) => {
   const { toast } = useToast();
-  const { updatePurchaseOrderStatus } = useApp();
+  const { updateOrderStatus } = useApp();
   const [status, setStatus] = useState<OrderStatus>(currentStatus as OrderStatus);
   const [note, setNote] = useState('');
 
   const handleSubmit = () => {
     try {
-      updatePurchaseOrderStatus(orderId, status, note);
+      updateOrderStatus(orderId, status);
       
       toast({
         title: 'Status updated',
@@ -57,9 +57,8 @@ const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({
             <Select 
               value={status} 
               onValueChange={(value) => setStatus(value as OrderStatus)}
-              className="col-span-3"
             >
-              <SelectTrigger>
+              <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Select new status" />
               </SelectTrigger>
               <SelectContent>

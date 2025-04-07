@@ -171,18 +171,7 @@ const Orders: React.FC = () => {
                   ×
                 </Button>
               </div>
-              <StatusTracker 
-                currentStatus={selectedOrder.status} 
-                statusHistory={selectedOrder.statusHistory || [
-                  {
-                    id: 'preview',
-                    status: selectedOrder.status,
-                    timestamp: selectedOrder.createdAt,
-                    user: 'Current User',
-                    note: 'Order created'
-                  }
-                ]}
-              />
+              <StatusTracker currentStatus={selectedOrder.status} />
             </div>
           )}
           
