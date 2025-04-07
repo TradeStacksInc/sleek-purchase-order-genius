@@ -49,7 +49,7 @@ import * as z from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { GPSData, Truck, Driver } from '@/types';
 import { format } from 'date-fns';
-import { Circle, CheckCircle, AlertTriangle, MapPin, Gps } from 'lucide-react';
+import { Circle, CheckCircle, AlertTriangle, MapPin, Map } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { gpsFormSchema } from '@/schemas/gpsFormSchema';
 

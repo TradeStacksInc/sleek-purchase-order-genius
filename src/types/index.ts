@@ -1,4 +1,3 @@
-
 // Product types
 export type Product = 'PMS' | 'AGO' | 'DPK' | 'LPG' | 'KERO';
 export type ProductType = Product | string; // Allow string comparison for Product types
@@ -166,6 +165,7 @@ export interface Driver {
   currentTruckId?: string;
   contact?: string;
   isAvailable?: boolean;
+  yearsOfExperience?: number; // Added missing property
 }
 
 // Truck

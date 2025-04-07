@@ -1,40 +1,15 @@
 
-import * as z from "zod";
+import * as z from 'zod';
 
 export const gpsFormSchema = z.object({
-  latitude: z.coerce.number()
-    .min(-90, "Latitude must be between -90 and 90")
-    .max(90, "Latitude must be between -90 and 90"),
-  
-  longitude: z.coerce.number()
-    .min(-180, "Longitude must be between -180 and 180")
-    .max(180, "Longitude must be between -180 and 180"),
-  
-  speed: z.coerce.number()
-    .min(0, "Speed must be a positive number")
-    .optional(),
-  
-  heading: z.coerce.number()
-    .min(0, "Heading must be between 0 and 360")
-    .max(360, "Heading must be between 0 and 360")
-    .optional(),
-  
+  gpsDeviceId: z.string().min(1, "GPS device ID is required"),
+  latitude: z.number().optional().default(6.5244),
+  longitude: z.number().optional().default(3.3792),
+  speed: z.number().optional(),
+  fuelLevel: z.number().optional(),
   location: z.string().optional(),
-
-  truckId: z.string().uuid("Invalid truck ID"),
-  
-  fuelLevel: z.coerce.number()
-    .min(0, "Fuel level must be between 0 and 100")
-    .max(100, "Fuel level must be between 0 and 100")
-    .optional()
-    .default(100),
+  heading: z.number().optional(),
+  truckId: z.string().optional(),
 });
 
-export type GPSFormValues = z.infer<typeof gpsFormSchema>;
-
-export const defaultGPSValues: Partial<GPSFormValues> = {
-  speed: 0,
-  heading: 0,
-  location: "Unknown",
-  fuelLevel: 100
-};
+export type GpsFormValues = z.infer<typeof gpsFormSchema>;

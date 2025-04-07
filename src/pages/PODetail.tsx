@@ -74,7 +74,9 @@ const PODetail = () => {
               {purchaseOrder.status.charAt(0).toUpperCase() + purchaseOrder.status.slice(1)}
             </Badge>
             <div className="mt-4">
-              <StatusTracker status={purchaseOrder.status} />
+              <StatusTracker 
+                currentStatus={purchaseOrder.status} 
+              />
             </div>
           </CardContent>
         </Card>
@@ -319,8 +321,8 @@ const PODetail = () => {
         <StatusUpdateDialog 
           orderId={id!} 
           currentStatus={purchaseOrder.status} 
-          isOpen={isDialogOpen} 
-          onClose={() => setIsDialogOpen(false)} 
+          onOpenChange={setIsDialogOpen}
+          open={isDialogOpen}
         />
       )}
     </div>
