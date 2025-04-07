@@ -11,7 +11,6 @@ import { loadAppState } from '@/utils/localStorage/appState';
 import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
 import { defaultInitialState } from '@/context/initialState';
 
-// Import all the action hooks
 import { usePurchaseOrderActions } from './purchaseOrderActions';
 import { useLogActions } from './logActions';
 import { useSupplierActions } from './supplierActions';
@@ -26,10 +25,8 @@ import { usePriceActions } from './priceActions';
 import { useTankActions } from './tankActions';
 import { AppContextType } from './appContextTypes';
 
-// Create the app context
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Create the useApp hook for consuming the context
 export const useApp = () => {
   const context = useContext(AppContext);
   if (!context) {
@@ -38,7 +35,6 @@ export const useApp = () => {
   return context;
 };
 
-// App Provider component
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   
@@ -80,7 +76,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
-  // State persistence helper functions
   const persistentSetPurchaseOrders = (value: React.SetStateAction<PurchaseOrder[]>) => {
     setPurchaseOrders((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
@@ -227,7 +222,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Initialize action hooks
   const purchaseOrderActions = usePurchaseOrderActions(
     purchaseOrders, 
     persistentSetPurchaseOrders, 
@@ -305,22 +299,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     dispensers, setDispensers
   );
 
-  // Database management functions
   const resetDatabase = (includeSeedData: boolean = true) => {
-    // Implementation would go here
   };
 
   const exportDatabase = () => {
-    // Implementation would go here
     return JSON.stringify({});
   };
 
   const importDatabase = (jsonData: string) => {
-    // Implementation would go here
     return true;
   };
 
-  // Create the dispenser actions that were missing
   const addDispenser = (dispenser: Omit<Dispenser, 'id'>): Dispenser => {
     const newDispenser = {
       ...dispenser,
@@ -603,7 +592,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       latitude,
       longitude,
       timestamp: new Date(),
-      speed: Math.random() * 60, // Random speed for simulation
+      speed: Math.random() * 60,
       fuelLevel: Math.random() * 100,
       location: 'In transit'
     };
@@ -657,24 +646,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     const updatedOrder = { ...purchaseOrders[orderIndex] };
     if (!updatedOrder.deliveryDetails) {
-      // If updates is a string, treat it as status
       if (typeof updates === 'string') {
         updatedOrder.deliveryDetails = {
           status: updates as 'pending' | 'in_transit' | 'delivered'
         };
       } else {
-        // Otherwise, it's a partial DeliveryDetails object
         updatedOrder.deliveryDetails = {
           status: updates.status || 'pending',
           ...updates
         };
       }
     } else {
-      // If updates is a string, update only status
       if (typeof updates === 'string') {
         updatedOrder.deliveryDetails.status = updates as 'pending' | 'in_transit' | 'delivered';
       } else {
-        // Otherwise, merge the updates
         updatedOrder.deliveryDetails = {
           ...updatedOrder.deliveryDetails,
           ...updates
@@ -868,6 +853,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return trucks.filter(truck => !truck.isGPSTagged);
   };
 
+  const getTankByProductType = (productType: ProductType): Tank | undefined => {
+    return tanks.find(tank => tank.productType === productType);
+  };
+
+  const getActiveDispensersByTankId = (tankId: string): Dispenser[] => {
+    return dispensers.filter(dispenser => 
+      dispenser.tankId === tankId || 
+      dispenser.connectedTankId === tankId
+    );
+  };
+
+  const getActiveTanksByProductType = (productType: ProductType): Tank[] => {
+    return tanks.filter(tank => 
+      tank.productType === productType && 
+      tank.isActive === true
+    );
+  };
+
   const contextValue: AppContextType = {
     purchaseOrders,
     logs,
@@ -950,7 +953,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getAvailableDrivers,
     getAvailableTrucks,
     getGPSTaggedTrucks,
-    getNonTaggedTrucks
+    getNonTaggedTrucks,
+    getTankByProductType,
+    getActiveDispensersByTankId,
+    getActiveTanksByProductType
   };
 
   return (

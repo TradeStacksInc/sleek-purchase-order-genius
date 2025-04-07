@@ -47,7 +47,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       ...data,
       orderId,
       reportedAt: new Date(),
-      status: 'open',
+      status: 'open' as const, // Explicitly use union literal type
       reportedBy: 'Current User',
       staffInvolved: [], // Empty array for staff involved
       type: data.type, // Explicitly include type to ensure it's not optional
