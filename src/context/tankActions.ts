@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Tank, ActivityLog, Dispenser, Product, ProductType } from '../types';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useTankActions = (
   tanks: Tank[],
@@ -11,15 +12,44 @@ export const useTankActions = (
 ) => {
   const { toast } = useToast();
 
-  const addTank = (tankData: Omit<Tank, 'id'>): Tank => {
+  const addTank = async (tankData: Omit<Tank, 'id'>): Promise<Tank> => {
     try {
       console.log("Adding tank:", tankData);
       
+      const { data, error } = await supabase
+        .from('tanks')
+        .insert({
+          name: tankData.name,
+          capacity: tankData.capacity,
+          product_type: tankData.productType,
+          current_level: tankData.currentLevel || 0,
+          last_refill_date: tankData.lastRefillDate,
+          next_inspection_date: tankData.nextInspectionDate,
+          current_volume: tankData.currentVolume || 0,
+          min_volume: tankData.minVolume,
+          status: tankData.status || 'operational',
+          is_active: tankData.isActive || false,
+          connected_dispensers: tankData.connectedDispensers || []
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Convert database format to application format
       const newTank: Tank = {
-        ...tankData,
-        id: `tank-${uuidv4().substring(0, 8)}`,
-        connectedDispensers: [],
-        isActive: false
+        id: data.id,
+        name: data.name,
+        capacity: data.capacity,
+        productType: data.product_type as ProductType,
+        currentLevel: data.current_level,
+        lastRefillDate: data.last_refill_date ? new Date(data.last_refill_date) : new Date(),
+        nextInspectionDate: data.next_inspection_date ? new Date(data.next_inspection_date) : undefined,
+        currentVolume: data.current_volume,
+        minVolume: data.min_volume,
+        status: data.status,
+        isActive: data.is_active,
+        connectedDispensers: data.connected_dispensers || []
       };
       
       setTanks(prev => [newTank, ...prev]);
@@ -35,7 +65,14 @@ export const useTankActions = (
         timestamp: new Date()
       };
       
-      setActivityLogs(prev => [newActivityLog, ...prev]);
+      await supabase.from('activity_logs').insert({
+        entity_type: newActivityLog.entityType,
+        entity_id: newActivityLog.entityId,
+        action: newActivityLog.action,
+        details: newActivityLog.details,
+        user_name: newActivityLog.user,
+        timestamp: newActivityLog.timestamp
+      });
       
       toast({
         title: "Tank Added",
@@ -54,46 +91,69 @@ export const useTankActions = (
     }
   };
 
-  const updateTank = (id: string, data: Partial<Tank>): Tank | undefined => {
+  const updateTank = async (id: string, data: Partial<Tank>): Promise<boolean> => {
     try {
-      let updatedTank: Tank | undefined;
+      // First, convert the application format to database format
+      const dbData: any = {};
       
+      if (data.name !== undefined) dbData.name = data.name;
+      if (data.capacity !== undefined) dbData.capacity = data.capacity;
+      if (data.productType !== undefined) dbData.product_type = data.productType;
+      if (data.currentLevel !== undefined) dbData.current_level = data.currentLevel;
+      if (data.lastRefillDate !== undefined) dbData.last_refill_date = data.lastRefillDate;
+      if (data.nextInspectionDate !== undefined) dbData.next_inspection_date = data.nextInspectionDate;
+      if (data.currentVolume !== undefined) dbData.current_volume = data.currentVolume;
+      if (data.minVolume !== undefined) dbData.min_volume = data.minVolume;
+      if (data.status !== undefined) dbData.status = data.status;
+      if (data.isActive !== undefined) dbData.is_active = data.isActive;
+      if (data.connectedDispensers !== undefined) dbData.connected_dispensers = data.connectedDispensers;
+      
+      const { error } = await supabase
+        .from('tanks')
+        .update(dbData)
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      // Update local state
       setTanks(prev => {
-        const updatedTankList = prev.map(tank => {
+        return prev.map(tank => {
           if (tank.id === id) {
-            updatedTank = { ...tank, ...data };
-            return updatedTank;
+            return { ...tank, ...data };
           }
           return tank;
         });
-        
-        // If tank not found, return unmodified list
-        if (!updatedTank) return prev;
-        
-        return updatedTankList;
       });
       
-      if (updatedTank) {
-        // Log the action
-        const newActivityLog: ActivityLog = {
-          id: `log-${uuidv4()}`,
-          entityType: 'tank' as 'tank',
-          entityId: updatedTank.id,
-          action: 'update',
-          details: `Updated tank: ${updatedTank.name}`,
-          user: 'Current User',
-          timestamp: new Date()
-        };
-        
-        setActivityLogs(prev => [newActivityLog, ...prev]);
-        
-        toast({
-          title: "Tank Updated",
-          description: `${updatedTank.name} has been updated successfully.`,
-        });
-      }
+      // Log the action
+      const tank = tanks.find(t => t.id === id);
+      const newActivityLog: ActivityLog = {
+        id: `log-${uuidv4()}`,
+        entityType: 'tank' as 'tank',
+        entityId: id,
+        action: 'update',
+        details: `Updated tank: ${tank?.name || id}`,
+        user: 'Current User',
+        timestamp: new Date()
+      };
       
-      return updatedTank;
+      await supabase.from('activity_logs').insert({
+        entity_type: newActivityLog.entityType,
+        entity_id: newActivityLog.entityId,
+        action: newActivityLog.action,
+        details: newActivityLog.details,
+        user_name: newActivityLog.user,
+        timestamp: newActivityLog.timestamp
+      });
+      
+      setActivityLogs(prev => [newActivityLog, ...prev]);
+      
+      toast({
+        title: "Tank Updated",
+        description: `${tank?.name || 'Tank'} has been updated successfully.`,
+      });
+      
+      return true;
     } catch (error) {
       console.error("Error updating tank:", error);
       toast({
@@ -101,11 +161,11 @@ export const useTankActions = (
         description: "Failed to update tank. Please try again.",
         variant: "destructive",
       });
-      return undefined;
+      return false;
     }
   };
 
-  const deleteTank = (id: string): boolean => {
+  const deleteTank = async (id: string): Promise<boolean> => {
     try {
       const tankToDelete = tanks.find(tank => tank.id === id);
       
@@ -137,6 +197,13 @@ export const useTankActions = (
         return false;
       }
       
+      const { error } = await supabase
+        .from('tanks')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
       setTanks(prev => prev.filter(tank => tank.id !== id));
       
       // Log the action
@@ -149,6 +216,15 @@ export const useTankActions = (
         user: 'Current User',
         timestamp: new Date()
       };
+      
+      await supabase.from('activity_logs').insert({
+        entity_type: newActivityLog.entityType,
+        entity_id: newActivityLog.entityId,
+        action: newActivityLog.action,
+        details: newActivityLog.details,
+        user_name: newActivityLog.user,
+        timestamp: newActivityLog.timestamp
+      });
       
       setActivityLogs(prev => [newActivityLog, ...prev]);
       

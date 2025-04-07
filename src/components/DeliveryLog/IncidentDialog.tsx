@@ -12,13 +12,14 @@ import * as z from 'zod';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Make sure the schema matches the Incident type definition from src/types/index.ts
 const incidentSchema = z.object({
   title: z.string().min(5, { message: 'Title is required and must be at least 5 characters' }),
   description: z.string().min(10, { message: 'Description is required and must be at least 10 characters' }),
   severity: z.enum(['low', 'medium', 'high']), // Remove 'critical' to match the Incident type
-  location: z.string().min(3, { message: 'Location is required' }),
+  location: z.string().min(3, { message: 'Location is required' }), // Make sure location is required
   type: z.enum(['delay', 'mechanical', 'accident', 'feedback', 'other']),
 });
 
@@ -43,29 +44,57 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
     },
   });
 
-  const onSubmit = (data: z.infer<typeof incidentSchema>) => {
-    const incident = {
-      ...data,
-      orderId,
-      reportedAt: new Date(),
-      status: 'open' as const, 
-      reportedBy: 'Current User',
-      staffInvolved: [], 
-      description: data.description, // Explicitly include description to satisfy type requirements
-      location: data.location, // Explicitly include location to ensure it's not optional
-      // Make sure all required fields from Incident type are included
-      type: data.type,
-    };
-    
-    addIncident(incident);
-    
-    toast({
-      title: 'Incident Reported',
-      description: 'The incident has been logged successfully.',
-    });
-    
-    form.reset();
-    setIsOpen(false);
+  const onSubmit = async (data: z.infer<typeof incidentSchema>) => {
+    try {
+      const incident = {
+        ...data,
+        orderId,
+        reportedAt: new Date(),
+        status: 'open' as const, 
+        reportedBy: 'Current User',
+        staffInvolved: [], 
+        // Make sure all required fields from Incident type are included
+      };
+      
+      // Use Supabase to store the incident
+      const { data: newIncident, error } = await supabase
+        .from('incidents')
+        .insert({
+          type: incident.type,
+          description: incident.description,
+          reported_by: incident.reportedBy,
+          severity: incident.severity,
+          status: incident.status,
+          location: incident.location, // Ensure location is always included
+          staff_involved: incident.staffInvolved,
+          order_id: orderId
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Call the context method to update the local state
+      addIncident({
+        ...incident,
+        id: newIncident.id
+      });
+      
+      toast({
+        title: 'Incident Reported',
+        description: 'The incident has been logged successfully.',
+      });
+      
+      form.reset();
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Error saving incident:", error);
+      toast({
+        title: 'Error',
+        description: 'Failed to log the incident. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
   
   return (

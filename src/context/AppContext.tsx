@@ -6,10 +6,10 @@ import {
   Product, ProductType, DeliveryDetails
 } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { STORAGE_KEYS, saveToLocalStorage, getPaginatedData } from '@/utils/localStorage';
-import { loadAppState } from '@/utils/localStorage/appState';
+import { supabase } from '@/integrations/supabase/client';
 import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
 import { defaultInitialState } from '@/context/initialState';
+import { fromSupabaseFormat, toSupabaseFormat } from '@/utils/supabaseAdapters';
 
 import { usePurchaseOrderActions } from './purchaseOrderActions';
 import { useLogActions } from './logActions';
@@ -38,48 +38,100 @@ export const useApp = () => {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   
-  const loadedState = loadAppState(defaultInitialState);
-  
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(loadedState.purchaseOrders);
-  const [logs, setLogs] = useState<any[]>(loadedState.logs);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(loadedState.suppliers);
-  const [drivers, setDrivers] = useState<Driver[]>(loadedState.drivers);
-  const [trucks, setTrucks] = useState<Truck[]>(loadedState.trucks);
-  const [gpsData, setGPSData] = useState<GPSData[]>(loadedState.gpsData);
-  const [aiInsights, setAIInsights] = useState<AIInsight[]>(loadedState.aiInsights || []);
-  const [staff, setStaff] = useState<Staff[]>(loadedState.staff || []);
-  const [dispensers, setDispensers] = useState<Dispenser[]>(loadedState.dispensers || []);
-  const [shifts, setShifts] = useState<Shift[]>(loadedState.shifts || []);
-  const [sales, setSales] = useState<Sale[]>(loadedState.sales || []);
-  const [prices, setPrices] = useState<Price[]>(loadedState.prices || []);
-  const [incidents, setIncidents] = useState<Incident[]>(loadedState.incidents || []);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(loadedState.activityLogs || []);
-  const [tanks, setTanks] = useState<Tank[]>(loadedState.tanks || []);
+  // State initialization
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [gpsData, setGPSData] = useState<GPSData[]>([]);
+  const [aiInsights, setAIInsights] = useState<AIInsight[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [dispensers, setDispensers] = useState<Dispenser[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [prices, setPrices] = useState<Price[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [tanks, setTanks] = useState<Tank[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Load data from Supabase on component mount
   useEffect(() => {
-    console.log('AppContext initialized with data:', {
-      purchaseOrders: purchaseOrders.length,
-      logs: logs.length,
-      suppliers: suppliers.length,
-      drivers: drivers.length,
-      trucks: trucks.length,
-      gpsData: gpsData.length,
-      aiInsights: aiInsights.length,
-      staff: staff.length,
-      dispensers: dispensers.length,
-      shifts: shifts.length,
-      sales: sales.length,
-      prices: prices.length,
-      incidents: incidents.length,
-      activityLogs: activityLogs.length,
-      tanks: tanks.length
-    });
-  }, []);
+    const fetchInitialData = async () => {
+      setLoading(true);
+      
+      try {
+        // Fetch purchase orders
+        const { data: poData, error: poError } = await supabase
+          .from('purchase_orders')
+          .select('*');
+          
+        if (poError) throw poError;
+        setPurchaseOrders(poData.map(po => fromSupabaseFormat.purchaseOrder(po)));
+        
+        // Fetch suppliers
+        const { data: supplierData, error: supplierError } = await supabase
+          .from('suppliers')
+          .select('*');
+          
+        if (supplierError) throw supplierError;
+        setSuppliers(supplierData.map(supplier => fromSupabaseFormat.supplier(supplier)));
+        
+        // Fetch drivers
+        const { data: driverData, error: driverError } = await supabase
+          .from('drivers')
+          .select('*');
+          
+        if (driverError) throw driverError;
+        setDrivers(driverData.map(driver => fromSupabaseFormat.driver(driver)));
+        
+        // Fetch trucks
+        const { data: truckData, error: truckError } = await supabase
+          .from('trucks')
+          .select('*');
+          
+        if (truckError) throw truckError;
+        setTrucks(truckData.map(truck => fromSupabaseFormat.truck(truck)));
+        
+        // Fetch tanks
+        const { data: tankData, error: tankError } = await supabase
+          .from('tanks')
+          .select('*');
+          
+        if (tankError) throw tankError;
+        setTanks(tankData.map(tank => fromSupabaseFormat.tank(tank)));
+        
+        // Fetch incidents
+        const { data: incidentData, error: incidentError } = await supabase
+          .from('incidents')
+          .select('*');
+          
+        if (incidentError) throw incidentError;
+        setIncidents(incidentData.map(incident => fromSupabaseFormat.incident(incident)));
+        
+        // Continue with other data fetching (logs, gpsData, etc.)
+        // ...
+        
+        console.log('Initial data loaded from Supabase');
+      } catch (error) {
+        console.error('Error loading data from Supabase:', error);
+        toast({
+          title: 'Data Loading Error',
+          description: 'Failed to load data from the database.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInitialData();
+  }, [toast]);
 
   const persistentSetPurchaseOrders = (value: React.SetStateAction<PurchaseOrder[]>) => {
     setPurchaseOrders((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newValue);
       return newValue;
     });
   };
@@ -87,7 +139,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const persistentSetLogs = (value: React.SetStateAction<any[]>) => {
     setLogs((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
-      saveToLocalStorage(STORAGE_KEYS.LOGS, newValue);
       return newValue;
     });
   };
@@ -96,7 +147,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSuppliers((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newValue);
       }
       return newValue;
     });
@@ -106,7 +156,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDrivers((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.DRIVERS, newValue);
       }
       return newValue;
     });
@@ -116,7 +165,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTrucks((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.TRUCKS, newValue);
       }
       return newValue;
     });
@@ -126,7 +174,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGPSData((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.GPS_DATA, newValue);
       }
       return newValue;
     });
@@ -136,7 +183,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAIInsights((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, newValue);
       }
       return newValue;
     });
@@ -146,7 +192,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStaff((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.STAFF, newValue);
       }
       return newValue;
     });
@@ -156,7 +201,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDispensers((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newValue);
       }
       return newValue;
     });
@@ -166,7 +210,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setShifts((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.SHIFTS, newValue);
       }
       return newValue;
     });
@@ -176,7 +219,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSales((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.SALES, newValue);
       }
       return newValue;
     });
@@ -186,7 +228,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPrices((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.PRICES, newValue);
       }
       return newValue;
     });
@@ -196,7 +237,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIncidents((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newValue);
       }
       return newValue;
     });
@@ -206,7 +246,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActivityLogs((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, newValue);
       }
       return newValue;
     });
@@ -216,43 +255,97 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTanks((prev) => {
       const newValue = typeof value === 'function' ? value(prev) : value;
       if (Array.isArray(newValue)) {
-        saveToLocalStorage(STORAGE_KEYS.TANKS, newValue);
       }
       return newValue;
     });
   };
 
+  // Fix the updateTank and setTankActive functions to return boolean instead of Tank
+  const setTankActive = (tankId: string, isActive: boolean): boolean => {
+    try {
+      const tank = tanks.find(t => t.id === tankId);
+      
+      if (!tank) {
+        toast({
+          title: "Error",
+          description: "Tank not found.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      // Return boolean from the updateTank method
+      return !!tankActionsMethods.updateTank(tankId, { isActive });
+    } catch (error) {
+      console.error("Error setting tank active state:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update tank state. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  // Use Supabase for all database operations
+  const addIncident = async (incident: Omit<Incident, 'id'>): Promise<Incident> => {
+    try {
+      const dbIncident = toSupabaseFormat.incident(incident);
+      
+      const { data, error } = await supabase
+        .from('incidents')
+        .insert(dbIncident)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      const newIncident = fromSupabaseFormat.incident(data);
+      
+      setIncidents(prev => [newIncident, ...prev]);
+      return newIncident;
+    } catch (error) {
+      console.error("Error adding incident:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add incident. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   const purchaseOrderActions = usePurchaseOrderActions(
     purchaseOrders, 
-    persistentSetPurchaseOrders, 
+    setPurchaseOrders, 
     logs, 
-    persistentSetLogs
+    setLogs
   );
   
   const logActions = useLogActions(
-    logs, persistentSetLogs,
+    logs, setLogs,
     activityLogs, setActivityLogs
   );
   
   const supplierActions = useSupplierActions(
     suppliers, 
-    persistentSetSuppliers, 
-    persistentSetLogs
+    setSuppliers, 
+    setLogs
   );
   
   const driverTruckActions = useDriverTruckActions(
     drivers, setDrivers, 
     trucks, setTrucks, 
-    purchaseOrders, persistentSetPurchaseOrders, 
-    persistentSetLogs, 
+    purchaseOrders, setPurchaseOrders, 
+    setLogs, 
     gpsData, setGPSData
   );
   
   const deliveryActions = useDeliveryActions(
-    purchaseOrders, persistentSetPurchaseOrders,
+    purchaseOrders, setPurchaseOrders,
     drivers, setDrivers,
     trucks, setTrucks, 
-    persistentSetLogs,
+    setLogs,
     gpsData, setGPSData,
     setActivityLogs
   );
@@ -299,7 +392,127 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     dispensers, setDispensers
   );
 
-  const resetDatabase = (includeSeedData: boolean = true) => {
+  // Helper function to get paginated data
+  const getPaginatedData = <T>(
+    collection: T[],
+    params: PaginationParams
+  ): PaginatedResult<T> => {
+    let filteredData = [...collection];
+    
+    // Apply filters if provided
+    if (params.filter) {
+      filteredData = filteredData.filter(item => {
+        return Object.entries(params.filter || {}).every(([key, value]) => {
+          if (value === undefined || value === null) return true;
+          
+          const itemValue = (item as any)[key];
+          
+          // Handle different filter types
+          if (typeof value === 'string' && typeof itemValue === 'string') {
+            return itemValue.toLowerCase().includes(value.toLowerCase());
+          }
+          
+          // Date range filtering
+          if (value.start && value.end && itemValue instanceof Date) {
+            const start = new Date(value.start);
+            const end = new Date(value.end);
+            return itemValue >= start && itemValue <= end;
+          }
+          
+          // Exact match
+          return itemValue === value;
+        });
+      });
+    }
+    
+    // Apply sorting if provided
+    if (params.sort) {
+      filteredData.sort((a, b) => {
+        const aValue = (a as any)[params.sort?.field || ''];
+        const bValue = (b as any)[params.sort?.field || ''];
+        
+        // Handle different value types
+        if (aValue instanceof Date && bValue instanceof Date) {
+          return params.sort?.direction === 'asc' 
+            ? aValue.getTime() - bValue.getTime() 
+            : bValue.getTime() - aValue.getTime();
+        }
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return params.sort?.direction === 'asc'
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+        
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return params.sort?.direction === 'asc' ? aValue - bValue : bValue - aValue;
+        }
+        
+        return 0;
+      });
+    }
+    
+    // Calculate pagination values
+    const totalCount = filteredData.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / params.limit));
+    const currentPage = Math.min(Math.max(1, params.page), totalPages);
+    const startIndex = (currentPage - 1) * params.limit;
+    const endIndex = Math.min(startIndex + params.limit, totalCount);
+    
+    // Get the page of data
+    const paginatedData = filteredData.slice(startIndex, endIndex);
+    
+    return {
+      data: paginatedData,
+      totalCount,
+      totalPages,
+      currentPage
+    };
+  };
+
+  // Database management functions
+  const resetDatabase = async (includeSeedData: boolean = true) => {
+    try {
+      // Call the reset_database function in Supabase
+      const { error } = await supabase.rpc('reset_database');
+      
+      if (error) throw error;
+      
+      // Reset all state variables
+      setPurchaseOrders([]);
+      setLogs([]);
+      setSuppliers([]);
+      setDrivers([]);
+      setTrucks([]);
+      setGPSData([]);
+      setAIInsights([]);
+      setStaff([]);
+      setDispensers([]);
+      setShifts([]);
+      setSales([]);
+      setPrices([]);
+      setIncidents([]);
+      setActivityLogs([]);
+      setTanks([]);
+      
+      toast({
+        title: 'Database Reset',
+        description: 'The database has been reset successfully.'
+      });
+      
+      if (includeSeedData) {
+        // Add seed data if requested
+        // This would add initial test data to the database
+        // Implementation would depend on your specific needs
+      }
+    } catch (error) {
+      console.error('Error resetting database:', error);
+      toast({
+        title: 'Reset Failed',
+        description: 'Failed to reset the database.',
+        variant: 'destructive'
+      });
+    }
   };
 
   const exportDatabase = () => {
@@ -406,17 +619,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     return true;
-  };
-
-  const addIncident = (incident: Omit<Incident, 'id'>): Incident => {
-    const newIncident = {
-      ...incident,
-      id: `incident-${uuidv4().substring(0, 8)}`,
-      timestamp: new Date()
-    };
-    
-    setIncidents(prev => [...prev, newIncident]);
-    return newIncident;
   };
 
   const recordOffloadingDetails = (orderId: string, details: any): boolean => {
@@ -694,7 +896,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const filtered = prev.filter(s => s.id !== id);
       deleted = filtered.length < prev.length;
       if (deleted) {
-        saveToLocalStorage(STORAGE_KEYS.STAFF, filtered);
       }
       return filtered;
     });
@@ -761,215 +962,4 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (saleIndex === -1) return false;
 
     const updatedSale = { ...sales[saleIndex] };
-    if (updates.amount) updatedSale.amount = updates.amount;
-    if (updates.volume) updatedSale.volume = updates.volume;
-    if (updates.staffId) updatedSale.staffId = updates.staffId;
-    if (updates.shiftId) updatedSale.shiftId = updates.shiftId;
-    if (updates.dispenserId) updatedSale.dispenserId = updates.dispenserId;
-    
-    setSales(prev => {
-      const newSales = [...prev];
-      newSales[saleIndex] = updatedSale;
-      updated = true;
-      return newSales;
-    });
-
-    return updated;
-  };
-
-  const deleteSale = (id: string): boolean => {
-    let deleted = false;
-    setSales(prev => {
-      const filtered = prev.filter(s => s.id !== id);
-      deleted = filtered.length < prev.length;
-      return filtered;
-    });
-    return deleted;
-  };
-
-  const getSaleById = (id: string): Sale | null => {
-    return sales.find(sale => sale.id === id) || null;
-  };
-
-  const getAllSales = (params?: PaginationParams): PaginatedResult<Sale> => {
-    return getPaginatedData(sales, params || { page: 1, limit: 10 });
-  };
-
-  const addPrice = (price: Omit<Price, 'id'>): Price => {
-    const newPrice = {
-      ...price,
-      id: `price-${uuidv4().substring(0, 8)}`,
-    };
-    
-    persistentSetPrices(prev => [...prev, newPrice]);
-    return newPrice;
-  };
-
-  const updatePrice = (id: string, updates: Partial<Price>): boolean => {
-    let updated = false;
-    setPrices(prev => {
-      const index = prev.findIndex(p => p.id === id);
-      if (index === -1) return prev;
-      
-      const newPrices = [...prev];
-      newPrices[index] = { ...newPrices[index], ...updates };
-      updated = true;
-      return newPrices;
-    });
-    return updated;
-  };
-
-  const deletePrice = (id: string): boolean => {
-    let deleted = false;
-    setPrices(prev => {
-      const filtered = prev.filter(p => p.id !== id);
-      deleted = filtered.length < prev.length;
-      return filtered;
-    });
-    return deleted;
-  };
-
-  const getPriceById = (id: string): Price | undefined => {
-    return prices.find(p => p.id === id);
-  };
-
-  const getAllPrices = (params?: PaginationParams): PaginatedResult<Price> => {
-    return getPaginatedData(prices, params || { page: 1, limit: 10 });
-  };
-
-  const getAvailableDrivers = (): Driver[] => {
-    return drivers.filter(driver => driver.isAvailable);
-  };
-
-  const getAvailableTrucks = (): Truck[] => {
-    return trucks.filter(truck => truck.isAvailable);
-  };
-
-  const getGPSTaggedTrucks = (): Truck[] => {
-    return trucks.filter(truck => truck.isGPSTagged);
-  };
-
-  const getNonTaggedTrucks = (): Truck[] => {
-    return trucks.filter(truck => !truck.isGPSTagged);
-  };
-
-  const getTankByProductType = (productType: ProductType): Tank | undefined => {
-    return tanks.find(tank => tank.productType === productType);
-  };
-
-  const getActiveDispensersByTankId = (tankId: string): Dispenser[] => {
-    return dispensers.filter(dispenser => 
-      dispenser.tankId === tankId || 
-      dispenser.connectedTankId === tankId
-    );
-  };
-
-  const getActiveTanksByProductType = (productType: ProductType): Tank[] => {
-    return tanks.filter(tank => 
-      tank.productType === productType && 
-      tank.isActive === true
-    );
-  };
-
-  const contextValue: AppContextType = {
-    purchaseOrders,
-    logs,
-    suppliers,
-    drivers,
-    trucks,
-    gpsData,
-    aiInsights,
-    staff,
-    dispensers,
-    shifts,
-    sales,
-    prices,
-    incidents,
-    activityLogs,
-    tanks,
-    ...purchaseOrderActions,
-    ...logActions,
-    ...supplierActions,
-    ...driverTruckActions,
-    ...deliveryActions,
-    ...aiActions,
-    ...staffActions,
-    ...dispenserActions,
-    ...shiftActions,
-    ...saleActions,
-    ...priceActions,
-    ...tankActionsMethods,
-    addDispenser,
-    deleteDispenser,
-    getDispenserById,
-    getAllDispensers,
-    setDispenserActive,
-    recordDispensing,
-    getDispenserSalesStats,
-    resetDatabase,
-    exportDatabase,
-    importDatabase,
-    generateAIInsights: aiActions.generateAIInsights,
-    getInsightsByType: aiActions.getInsightsByType,
-    getOrderById,
-    getOrdersWithDeliveryStatus,
-    startDelivery,
-    completeDelivery,
-    updateDeliveryStatus,
-    addIncident,
-    recordOffloadingDetails,
-    recordOffloadingToTank,
-    updateGPSData,
-    getOrdersWithDiscrepancies,
-    assignDriverToOrder,
-    tagTruckWithGPS,
-    untagTruckGPS,
-    getNonGPSTrucks,
-    logAIInteraction,
-    recordGPSData,
-    getGPSDataForTruck,
-    updateDeliveryDetails,
-    markOrderAsDelivered,
-    deleteStaff,
-    addShift,
-    updateShift,
-    deleteShift,
-    getShiftById: shiftActions.getShiftById,
-    getAllShifts,
-    startShift: shiftActions.startShift,
-    endShift: shiftActions.endShift,
-    getShiftsByStaffId,
-    getCurrentStaffShift,
-    addSale,
-    updateSale,
-    deleteSale,
-    getSaleById,
-    getAllSales,
-    addPrice,
-    updatePrice,
-    deletePrice,
-    getPriceById,
-    getAllPrices,
-    getAvailableDrivers,
-    getAvailableTrucks,
-    getGPSTaggedTrucks,
-    getNonTaggedTrucks,
-    getTankByProductType,
-    getActiveDispensersByTankId,
-    getActiveTanksByProductType,
-    updateDispenser: (id: string, updates: Partial<Dispenser>): boolean => {
-      if (dispenserActions.updateDispenser) {
-        return !!dispenserActions.updateDispenser(id, updates);
-      }
-      return false;
-    }
-  };
-
-  return (
-    <AppContext.Provider value={contextValue}>
-      {children}
-    </AppContext.Provider>
-  );
-};
-
-export default AppContext;
+    if (updates.
