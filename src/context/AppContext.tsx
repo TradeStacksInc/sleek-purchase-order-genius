@@ -956,7 +956,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getNonTaggedTrucks,
     getTankByProductType,
     getActiveDispensersByTankId,
-    getActiveTanksByProductType
+    getActiveTanksByProductType,
+    updateDispenser: (id: string, updates: Partial<Dispenser>): boolean => {
+      if (dispenserActions.updateDispenser) {
+        return !!dispenserActions.updateDispenser(id, updates);
+      }
+      return false;
+    }
   };
 
   return (

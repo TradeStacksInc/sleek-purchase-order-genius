@@ -52,6 +52,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       reportedBy: 'Current User',
       staffInvolved: [], 
       description: data.description, // Explicitly include description to satisfy type requirements
+      location: data.location, // Explicitly include location to ensure it's not optional
       // Make sure all required fields from Incident type are included
       type: data.type,
     };
