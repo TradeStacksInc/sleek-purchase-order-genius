@@ -652,7 +652,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
   
-  // Fixed updateDeliveryStatus to accept either status string or partial DeliveryDetails
   const updateDeliveryStatus = (orderId: string, updates: Partial<DeliveryDetails> | string): boolean => {
     const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
     if (orderIndex === -1) return false;
@@ -693,7 +692,125 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
   
-  // Create contextValue with all required properties
+  const getAllShifts = (params?: PaginationParams): PaginatedResult<Shift> => {
+    return getPaginatedData(shifts, params || { page: 1, limit: 10 });
+  };
+
+  const getShiftsByStaffId = (staffId: string): Shift[] => {
+    return shifts.filter(shift => shift.staffId === staffId);
+  };
+
+  const getCurrentStaffShift = (staffId: string): Shift | null => {
+    return shifts.find(shift => shift.staffId === staffId && !shift.endTime) || null;
+  };
+
+  const deleteStaff = (id: string): boolean => {
+    let deleted = false;
+    setStaff(prev => {
+      const filtered = prev.filter(s => s.id !== id);
+      deleted = filtered.length < prev.length;
+      if (deleted) {
+        saveToLocalStorage(STORAGE_KEYS.STAFF, filtered);
+      }
+      return filtered;
+    });
+    return deleted;
+  };
+
+  const addShift = (shift: Omit<Shift, 'id'>): Shift => {
+    const newShift = {
+      ...shift,
+      id: `shift-${uuidv4().substring(0, 8)}`,
+      startTime: new Date(),
+      endTime: null
+    };
+    
+    setShifts(prev => [...prev, newShift]);
+    return newShift;
+  };
+
+  const updateShift = (id: string, updates: Partial<Shift>): Shift => {
+    const shiftIndex = shifts.findIndex(shift => shift.id === id);
+    if (shiftIndex === -1) return null;
+
+    const updatedShift = { ...shifts[shiftIndex] };
+    if (updates.startTime) updatedShift.startTime = updates.startTime;
+    if (updates.endTime) updatedShift.endTime = updates.endTime;
+
+    setShifts(prev => {
+      const newShifts = [...prev];
+      newShifts[shiftIndex] = updatedShift;
+      return newShifts;
+    });
+
+    return updatedShift;
+  };
+
+  const deleteShift = (id: string): boolean => {
+    let deleted = false;
+    setShifts(prev => {
+      const filtered = prev.filter(s => s.id !== id);
+      deleted = filtered.length < prev.length;
+      return filtered;
+    });
+    return deleted;
+  };
+
+  const getShiftById = (id: string): Shift | null => {
+    return shifts.find(shift => shift.id === id) || null;
+  };
+
+  const addSale = (sale: Omit<Sale, 'id'>): Sale => {
+    const newSale = {
+      ...sale,
+      id: `sale-${uuidv4().substring(0, 8)}`,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    setSales(prev => [...prev, newSale]);
+    return newSale;
+  };
+
+  const updateSale = (id: string, updates: Partial<Sale>): Sale => {
+    const saleIndex = sales.findIndex(sale => sale.id === id);
+    if (saleIndex === -1) return null;
+
+    const updatedSale = { ...sales[saleIndex] };
+    if (updates.amount) updatedSale.amount = updates.amount;
+    if (updates.quantity) updatedSale.quantity = updates.quantity;
+    if (updates.staffId) updatedSale.staffId = updates.staffId;
+    if (updates.shiftId) updatedSale.shiftId = updates.shiftId;
+    if (updates.dispenserId) updatedSale.dispenserId = updates.dispenserId;
+    if (updates.deliveryDetails) updatedSale.deliveryDetails = updates.deliveryDetails;
+
+    setSales(prev => {
+      const newSales = [...prev];
+      newSales[saleIndex] = updatedSale;
+      return newSales;
+    });
+
+    return updatedSale;
+  };
+
+  const deleteSale = (id: string): boolean => {
+    let deleted = false;
+    setSales(prev => {
+      const filtered = prev.filter(s => s.id !== id);
+      deleted = filtered.length < prev.length;
+      return filtered;
+    });
+    return deleted;
+  };
+
+  const getSaleById = (id: string): Sale | null => {
+    return sales.find(sale => sale.id === id) || null;
+  };
+
+  const getAllSales = (): Sale[] => {
+    return sales;
+  };
+
   const contextValue: AppContextType = {
     purchaseOrders,
     logs,
@@ -762,7 +879,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     startShift: shiftActions.startShift,
     endShift: shiftActions.endShift,
     getShiftsByStaffId,
-    getCurrentStaffShift
+    getCurrentStaffShift,
+    addSale,
+    updateSale,
+    deleteSale,
+    getSaleById,
+    getAllSales
   };
 
   return (

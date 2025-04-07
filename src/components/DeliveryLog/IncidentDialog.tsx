@@ -18,6 +18,7 @@ const incidentSchema = z.object({
   description: z.string().min(10, { message: 'Description is required and must be at least 10 characters' }),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
   location: z.string().min(3, { message: 'Location is required' }),
+  type: z.string().min(3, { message: 'Incident type is required' }),
 });
 
 export interface IncidentDialogProps {
@@ -37,6 +38,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       description: '',
       severity: 'medium',
       location: '',
+      type: 'delivery-issue',
     },
   });
 
@@ -47,6 +49,8 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
       reportedAt: new Date(),
       status: 'open',
       reportedBy: 'Current User',
+      staffInvolved: [], // Add empty array for staff involved
+      type: data.type,
     };
     
     addIncident(incident);
@@ -128,6 +132,35 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
                 <p className="text-sm text-red-500 mt-1">{form.formState.errors.location.message}</p>
               )}
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="type">Incident Type</Label>
+            <Controller
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <Select 
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select incident type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="delivery-issue">Delivery Issue</SelectItem>
+                    <SelectItem value="product-damage">Product Damage</SelectItem>
+                    <SelectItem value="documentation-error">Documentation Error</SelectItem>
+                    <SelectItem value="vehicle-issue">Vehicle Issue</SelectItem>
+                    <SelectItem value="safety-concern">Safety Concern</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.type && (
+              <p className="text-sm text-red-500 mt-1">{form.formState.errors.type.message}</p>
+            )}
           </div>
           
           <div>
