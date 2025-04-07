@@ -1,203 +1,178 @@
 
-import { 
-  PurchaseOrder, 
-  Supplier, 
-  Driver, 
-  Truck, 
-  GPSData, 
-  AIInsight, 
-  Staff, 
-  Dispenser, 
-  Shift, 
-  Sale, 
-  Price, 
-  Incident, 
-  ActivityLog, 
-  Tank,
-  ProductType
-} from '@/types';
-
 /**
- * Convert snake_case database fields to camelCase for frontend use
+ * Helper functions to convert between application types and Supabase database types
  */
+import type { 
+  PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight, 
+  Staff, Dispenser, Shift, Sale, Incident, ActivityLog, Tank, 
+  Price, OffloadingDetails, DeliveryDetails 
+} from '@/types';
+import type {
+  DbPurchaseOrder, DbSupplier, DbDriver, DbTruck, DbGPSData,
+  DbIncident, DbTank, DbDispenser, DbStaff, DbShift, DbSale,
+  DbPrice, DbDeliveryDetails, DbOffloadingDetails, DbActivityLog,
+  DbAIInsight
+} from '@/types/supabase-custom';
+
 export const fromSupabaseFormat = {
-  purchaseOrder: (dbPO: any): PurchaseOrder => ({
-    id: dbPO.id,
-    supplierId: dbPO.supplier_id,
-    items: [], // Items would need to be fetched separately
-    status: dbPO.status,
-    createdAt: new Date(dbPO.created_at),
-    updatedAt: new Date(dbPO.updated_at),
-    notes: dbPO.notes,
-    paymentStatus: dbPO.payment_status,
-    poNumber: dbPO.po_number,
-    grandTotal: dbPO.grand_total,
-    paymentTerm: dbPO.payment_term,
-    deliveryDate: dbPO.delivery_date ? new Date(dbPO.delivery_date) : undefined,
-    statusHistory: [], // Would need to be constructed separately
-  }),
+  // Convert from Supabase format to application format
+  purchaseOrder: (dbPurchaseOrder: DbPurchaseOrder): PurchaseOrder => {
+    return {
+      id: dbPurchaseOrder.id,
+      poNumber: dbPurchaseOrder.po_number || '',
+      status: dbPurchaseOrder.status,
+      supplier: dbPurchaseOrder.supplier_id || '',
+      deliveryDate: dbPurchaseOrder.delivery_date ? new Date(dbPurchaseOrder.delivery_date) : new Date(),
+      notes: dbPurchaseOrder.notes || '',
+      paymentStatus: dbPurchaseOrder.payment_status || 'pending',
+      paymentTerm: dbPurchaseOrder.payment_term || '',
+      createdAt: dbPurchaseOrder.created_at ? new Date(dbPurchaseOrder.created_at) : new Date(),
+      updatedAt: dbPurchaseOrder.updated_at ? new Date(dbPurchaseOrder.updated_at) : new Date(),
+      grandTotal: dbPurchaseOrder.grand_total || 0
+    };
+  },
   
-  supplier: (dbSupplier: any): Supplier => ({
-    id: dbSupplier.id,
-    name: dbSupplier.name,
-    contactName: dbSupplier.contact_name,
-    contactEmail: dbSupplier.contact_email,
-    contactPhone: dbSupplier.contact_phone,
-    address: dbSupplier.address,
-    email: dbSupplier.email,
-    contact: dbSupplier.contact,
-    createdAt: dbSupplier.created_at ? new Date(dbSupplier.created_at) : undefined,
-    updatedAt: dbSupplier.updated_at ? new Date(dbSupplier.updated_at) : undefined,
-    supplierType: dbSupplier.supplier_type,
-    depotName: dbSupplier.depot_name,
-    taxId: dbSupplier.tax_id,
-    accountNumber: dbSupplier.account_number,
-    bankName: dbSupplier.bank_name,
-    products: dbSupplier.products,
-  }),
+  supplier: (dbSupplier: DbSupplier): Supplier => {
+    return {
+      id: dbSupplier.id,
+      name: dbSupplier.name,
+      address: dbSupplier.address,
+      contact: dbSupplier.contact || dbSupplier.contact_name || '',
+      contactPhone: dbSupplier.contact_phone || '',
+      contactEmail: dbSupplier.contact_email || dbSupplier.email || '',
+      taxId: dbSupplier.tax_id || '',
+      accountNumber: dbSupplier.account_number || '',
+      bankName: dbSupplier.bank_name || '',
+      products: dbSupplier.products || [],
+      depotName: dbSupplier.depot_name || '',
+      supplierType: dbSupplier.supplier_type || '',
+      createdAt: dbSupplier.created_at ? new Date(dbSupplier.created_at) : new Date(),
+      updatedAt: dbSupplier.updated_at ? new Date(dbSupplier.updated_at) : new Date()
+    };
+  },
   
-  driver: (dbDriver: any): Driver => ({
-    id: dbDriver.id,
-    name: dbDriver.name,
-    licenseNumber: dbDriver.license_number,
-    contactPhone: dbDriver.contact_phone,
-    address: dbDriver.address,
-    createdAt: dbDriver.created_at ? new Date(dbDriver.created_at) : undefined,
-    updatedAt: dbDriver.updated_at ? new Date(dbDriver.updated_at) : undefined,
-    currentTruckId: dbDriver.current_truck_id,
-    contact: dbDriver.contact,
-    isAvailable: dbDriver.is_available,
-  }),
+  driver: (dbDriver: DbDriver): Driver => {
+    return {
+      id: dbDriver.id,
+      name: dbDriver.name,
+      licenseNumber: dbDriver.license_number,
+      contact: dbDriver.contact || dbDriver.contact_phone || '',
+      address: dbDriver.address || '',
+      isAvailable: dbDriver.is_available !== false, // Default to true if undefined
+      currentTruckId: dbDriver.current_truck_id || undefined,
+      createdAt: dbDriver.created_at ? new Date(dbDriver.created_at) : new Date(),
+      updatedAt: dbDriver.updated_at ? new Date(dbDriver.updated_at) : new Date()
+    };
+  },
   
-  truck: (dbTruck: any): Truck => ({
-    id: dbTruck.id,
-    plateNumber: dbTruck.plate_number,
-    model: dbTruck.model,
-    capacity: dbTruck.capacity,
-    createdAt: dbTruck.created_at ? new Date(dbTruck.created_at) : undefined,
-    updatedAt: dbTruck.updated_at ? new Date(dbTruck.updated_at) : undefined,
-    driverId: dbTruck.driver_id,
-    driverName: dbTruck.driver_name,
-    isAvailable: dbTruck.is_available,
-    hasGPS: dbTruck.has_gps,
-    isGPSTagged: dbTruck.is_gps_tagged,
-    gpsDeviceId: dbTruck.gps_device_id,
-    lastSpeed: dbTruck.last_speed,
-    lastLatitude: dbTruck.last_latitude,
-    lastLongitude: dbTruck.last_longitude,
-    year: dbTruck.year,
-  }),
+  truck: (dbTruck: DbTruck): Truck => {
+    return {
+      id: dbTruck.id,
+      plateNumber: dbTruck.plate_number,
+      model: dbTruck.model,
+      capacity: dbTruck.capacity,
+      isAvailable: dbTruck.is_available !== false, // Default to true if undefined
+      driverId: dbTruck.driver_id || undefined,
+      driverName: dbTruck.driver_name || '',
+      hasGPS: dbTruck.has_gps || false,
+      isGPSTagged: dbTruck.is_gps_tagged || false,
+      gpsDeviceId: dbTruck.gps_device_id || undefined,
+      lastLatitude: dbTruck.last_latitude || 0,
+      lastLongitude: dbTruck.last_longitude || 0,
+      lastSpeed: dbTruck.last_speed || 0,
+      year: dbTruck.year || 0,
+      createdAt: dbTruck.created_at ? new Date(dbTruck.created_at) : new Date(),
+      updatedAt: dbTruck.updated_at ? new Date(dbTruck.updated_at) : new Date()
+    };
+  },
   
-  tank: (dbTank: any): Tank => ({
-    id: dbTank.id,
-    name: dbTank.name,
-    capacity: dbTank.capacity,
-    productType: dbTank.product_type as ProductType,
-    currentLevel: dbTank.current_level,
-    lastRefillDate: dbTank.last_refill_date ? new Date(dbTank.last_refill_date) : undefined,
-    nextInspectionDate: dbTank.next_inspection_date ? new Date(dbTank.next_inspection_date) : undefined,
-    currentVolume: dbTank.current_volume,
-    minVolume: dbTank.min_volume,
-    status: dbTank.status,
-    isActive: dbTank.is_active,
-    connectedDispensers: dbTank.connected_dispensers || [],
-  }),
+  tank: (dbTank: DbTank): Tank => {
+    return {
+      id: dbTank.id,
+      name: dbTank.name,
+      capacity: dbTank.capacity,
+      currentVolume: dbTank.current_volume || 0,
+      minVolume: dbTank.min_volume || 0,
+      productType: dbTank.product_type,
+      status: dbTank.status || 'active',
+      isActive: dbTank.is_active !== false, // Default to true if undefined
+      currentLevel: dbTank.current_level || 0,
+      lastRefillDate: dbTank.last_refill_date ? new Date(dbTank.last_refill_date) : undefined,
+      connectedDispensers: dbTank.connected_dispensers || [],
+      nextInspectionDate: dbTank.next_inspection_date ? new Date(dbTank.next_inspection_date) : undefined
+    };
+  },
   
-  incident: (dbIncident: any): Incident => ({
-    id: dbIncident.id,
-    type: dbIncident.type,
-    description: dbIncident.description,
-    timestamp: dbIncident.timestamp ? new Date(dbIncident.timestamp) : new Date(),
-    reportedBy: dbIncident.reported_by,
-    severity: dbIncident.severity,
-    status: dbIncident.status,
-    resolution: dbIncident.resolution,
-    location: dbIncident.location,
-    staffInvolved: dbIncident.staff_involved || [],
-    deliveryId: dbIncident.delivery_id,
-    impact: dbIncident.impact,
-    orderId: dbIncident.order_id,
-    reportedAt: dbIncident.timestamp ? new Date(dbIncident.timestamp) : new Date(),
-  }),
-  
-  // Add other entity converters as needed
+  incident: (dbIncident: DbIncident): Incident => {
+    return {
+      id: dbIncident.id,
+      type: dbIncident.type || 'general',
+      description: dbIncident.description,
+      location: dbIncident.location,
+      timestamp: dbIncident.timestamp ? new Date(dbIncident.timestamp) : new Date(),
+      status: dbIncident.status || 'reported',
+      severity: dbIncident.severity || 'medium',
+      orderId: dbIncident.order_id || undefined,
+      deliveryId: dbIncident.delivery_id || undefined,
+      staffInvolved: dbIncident.staff_involved || [],
+      reportedBy: dbIncident.reported_by || '',
+      resolution: dbIncident.resolution || '',
+      impact: dbIncident.impact || ''
+    };
+  }
 };
 
-/**
- * Convert camelCase frontend models to snake_case for database storage
- */
 export const toSupabaseFormat = {
-  purchaseOrder: (po: Partial<PurchaseOrder>): any => {
-    const dbPO: any = {};
-    
-    if (po.supplierId !== undefined) dbPO.supplier_id = po.supplierId;
-    if (po.status !== undefined) dbPO.status = po.status;
-    if (po.notes !== undefined) dbPO.notes = po.notes;
-    if (po.paymentStatus !== undefined) dbPO.payment_status = po.paymentStatus;
-    if (po.poNumber !== undefined) dbPO.po_number = po.poNumber;
-    if (po.grandTotal !== undefined) dbPO.grand_total = po.grandTotal;
-    if (po.paymentTerm !== undefined) dbPO.payment_term = po.paymentTerm;
-    if (po.deliveryDate !== undefined) dbPO.delivery_date = po.deliveryDate;
-    
-    return dbPO;
+  // Convert from application format to Supabase format
+  incident: (incident: Omit<Incident, 'id'>): Omit<DbIncident, 'id'> => {
+    return {
+      type: incident.type || 'general',
+      description: incident.description,
+      location: incident.location,
+      timestamp: incident.timestamp.toISOString(),
+      status: incident.status || 'reported',
+      severity: incident.severity || 'medium',
+      order_id: incident.orderId,
+      delivery_id: incident.deliveryId,
+      staff_involved: incident.staffInvolved || [],
+      reported_by: incident.reportedBy || '',
+      resolution: incident.resolution || '',
+      impact: incident.impact || ''
+    };
   },
   
-  supplier: (supplier: Partial<Supplier>): any => {
-    const dbSupplier: any = {};
-    
-    if (supplier.name !== undefined) dbSupplier.name = supplier.name;
-    if (supplier.contactName !== undefined) dbSupplier.contact_name = supplier.contactName;
-    if (supplier.contactEmail !== undefined) dbSupplier.contact_email = supplier.contactEmail;
-    if (supplier.contactPhone !== undefined) dbSupplier.contact_phone = supplier.contactPhone;
-    if (supplier.address !== undefined) dbSupplier.address = supplier.address;
-    if (supplier.email !== undefined) dbSupplier.email = supplier.email;
-    if (supplier.contact !== undefined) dbSupplier.contact = supplier.contact;
-    if (supplier.supplierType !== undefined) dbSupplier.supplier_type = supplier.supplierType;
-    if (supplier.depotName !== undefined) dbSupplier.depot_name = supplier.depotName;
-    if (supplier.taxId !== undefined) dbSupplier.tax_id = supplier.taxId;
-    if (supplier.accountNumber !== undefined) dbSupplier.account_number = supplier.accountNumber;
-    if (supplier.bankName !== undefined) dbSupplier.bank_name = supplier.bankName;
-    if (supplier.products !== undefined) dbSupplier.products = supplier.products;
-    
-    return dbSupplier;
+  purchaseOrder: (order: Omit<PurchaseOrder, 'id'>): Omit<DbPurchaseOrder, 'id'> => {
+    return {
+      po_number: order.poNumber,
+      status: order.status,
+      supplier_id: order.supplier,
+      delivery_date: order.deliveryDate?.toISOString(),
+      notes: order.notes,
+      payment_status: order.paymentStatus,
+      payment_term: order.paymentTerm,
+      created_at: order.createdAt?.toISOString(),
+      updated_at: new Date().toISOString(),
+      grand_total: order.grandTotal
+    };
   },
   
-  tank: (tank: Partial<Tank>): any => {
-    const dbTank: any = {};
-    
-    if (tank.name !== undefined) dbTank.name = tank.name;
-    if (tank.capacity !== undefined) dbTank.capacity = tank.capacity;
-    if (tank.productType !== undefined) dbTank.product_type = tank.productType;
-    if (tank.currentLevel !== undefined) dbTank.current_level = tank.currentLevel;
-    if (tank.lastRefillDate !== undefined) dbTank.last_refill_date = tank.lastRefillDate;
-    if (tank.nextInspectionDate !== undefined) dbTank.next_inspection_date = tank.nextInspectionDate;
-    if (tank.currentVolume !== undefined) dbTank.current_volume = tank.currentVolume;
-    if (tank.minVolume !== undefined) dbTank.min_volume = tank.minVolume;
-    if (tank.status !== undefined) dbTank.status = tank.status;
-    if (tank.isActive !== undefined) dbTank.is_active = tank.isActive;
-    if (tank.connectedDispensers !== undefined) dbTank.connected_dispensers = tank.connectedDispensers;
-    
-    return dbTank;
-  },
-  
-  incident: (incident: Partial<Incident>): any => {
-    const dbIncident: any = {};
-    
-    if (incident.type !== undefined) dbIncident.type = incident.type;
-    if (incident.description !== undefined) dbIncident.description = incident.description;
-    if (incident.reportedAt !== undefined) dbIncident.timestamp = incident.reportedAt;
-    if (incident.reportedBy !== undefined) dbIncident.reported_by = incident.reportedBy;
-    if (incident.severity !== undefined) dbIncident.severity = incident.severity;
-    if (incident.status !== undefined) dbIncident.status = incident.status;
-    if (incident.resolution !== undefined) dbIncident.resolution = incident.resolution;
-    if (incident.location !== undefined) dbIncident.location = incident.location;
-    if (incident.staffInvolved !== undefined) dbIncident.staff_involved = incident.staffInvolved;
-    if (incident.deliveryId !== undefined) dbIncident.delivery_id = incident.deliveryId;
-    if (incident.impact !== undefined) dbIncident.impact = incident.impact;
-    if (incident.orderId !== undefined) dbIncident.order_id = incident.orderId;
-    
-    return dbIncident;
-  },
-  
-  // Add other entity converters as needed
+  supplier: (supplier: Omit<Supplier, 'id'>): Omit<DbSupplier, 'id'> => {
+    return {
+      name: supplier.name,
+      address: supplier.address,
+      contact: supplier.contact,
+      contact_phone: supplier.contactPhone,
+      contact_email: supplier.contactEmail,
+      email: supplier.contactEmail,
+      tax_id: supplier.taxId,
+      account_number: supplier.accountNumber,
+      bank_name: supplier.bankName,
+      products: supplier.products,
+      depot_name: supplier.depotName,
+      supplier_type: supplier.supplierType,
+      created_at: supplier.createdAt?.toISOString(),
+      updated_at: new Date().toISOString(),
+      contact_name: supplier.contact
+    };
+  }
 };
