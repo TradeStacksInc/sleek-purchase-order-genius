@@ -65,7 +65,8 @@ const AssignDriver: React.FC = () => {
     assignDriverToOrder,
     tagTruckWithGPS,
     getAllDrivers,
-    getAllTrucks
+    getAllTrucks,
+    getTruckById
   } = useApp();
   
   // State for the assign tab
@@ -92,7 +93,8 @@ const AssignDriver: React.FC = () => {
     order => order.status === 'active' && !order.deliveryDetails?.driverId
   );
   
-  // Get available drivers and trucks
+  // Get available drivers and trucks 
+  // Fixed: Instead of calling getAvailableDrivers(), we filter the drivers array directly
   const availableDrivers = drivers.filter(driver => driver.isAvailable);
   const availableTrucks = trucks.filter(truck => truck.isAvailable);
   
@@ -126,6 +128,11 @@ const AssignDriver: React.FC = () => {
     setSelectedDriverId('');
     setSelectedTruckId('');
     setIsGPSDialogOpen(false);
+    
+    toast({
+      title: "Driver Assigned",
+      description: "Driver and truck have been successfully assigned to the order.",
+    });
   };
   
   // Handle add driver
@@ -150,6 +157,11 @@ const AssignDriver: React.FC = () => {
     setNewDriverName('');
     setNewDriverContact('');
     setNewDriverLicense('');
+    
+    toast({
+      title: "Driver Added",
+      description: "New driver has been added successfully.",
+    });
   };
   
   // Handle add truck
@@ -177,6 +189,11 @@ const AssignDriver: React.FC = () => {
     setNewTruckCapacity('');
     setNewTruckModel('');
     setNewTruckHasGPS('true');
+    
+    toast({
+      title: "Truck Added",
+      description: "New truck has been added successfully.",
+    });
   };
 
   return (
@@ -212,14 +229,16 @@ const AssignDriver: React.FC = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Label htmlFor="order">Purchase Order</Label>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="w-80">Select a paid purchase order to assign a driver and truck for delivery.</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="w-80">Select a paid purchase order to assign a driver and truck for delivery.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                       <Select
                         value={selectedOrderId}
@@ -231,7 +250,7 @@ const AssignDriver: React.FC = () => {
                         <SelectContent>
                           {eligibleOrders.map((order) => (
                             <SelectItem key={order.id} value={order.id}>
-                              PO #{order.poNumber} - {order.supplier.name} (₦{order.grandTotal.toLocaleString()})
+                              PO #{order.poNumber || 'N/A'} - {order.supplier?.name || 'Unknown'} (₦{order.grandTotal?.toLocaleString() || '0'})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -256,14 +275,16 @@ const AssignDriver: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Label htmlFor="driver">Driver</Label>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="w-80">Select an available driver to handle this delivery.</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="w-80">Select an available driver to handle this delivery.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                         <Select
                           value={selectedDriverId}
@@ -275,7 +296,7 @@ const AssignDriver: React.FC = () => {
                           <SelectContent>
                             {availableDrivers.map((driver) => (
                               <SelectItem key={driver.id} value={driver.id}>
-                                {driver.name} - {driver.contact}
+                                {driver.name} - {driver.contact || driver.contactPhone || 'No contact'}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -301,14 +322,16 @@ const AssignDriver: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Label htmlFor="truck">Truck</Label>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="w-80">Select an available truck for this delivery. Trucks with GPS capability will require GPS tagging before transport.</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="w-80">Select an available truck for this delivery. Trucks with GPS capability will require GPS tagging before transport.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                         <Select
                           value={selectedTruckId}
@@ -359,14 +382,16 @@ const AssignDriver: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label htmlFor="driverName">Driver Name</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Enter the full name of the driver</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Enter the full name of the driver</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     <Input 
                       id="driverName" 
@@ -379,14 +404,16 @@ const AssignDriver: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label htmlFor="contactNumber">Contact Number</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Enter the driver's phone number</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Enter the driver's phone number</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     <Input 
                       id="contactNumber" 
@@ -399,14 +426,16 @@ const AssignDriver: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label htmlFor="licenseNumber">License Number</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Enter the driver's license number</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Enter the driver's license number</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     <Input 
                       id="licenseNumber" 
@@ -455,14 +484,16 @@ const AssignDriver: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label htmlFor="plateNumber">Plate Number</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Enter the truck's license plate number</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Enter the truck's license plate number</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     <Input 
                       id="plateNumber" 
@@ -475,14 +506,16 @@ const AssignDriver: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label htmlFor="truckModel">Truck Model</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Enter the truck's make and model</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Enter the truck's make and model</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     <Input 
                       id="truckModel" 
@@ -495,14 +528,16 @@ const AssignDriver: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label htmlFor="capacity">Capacity (liters)</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Enter the maximum fuel capacity of the truck in liters</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Enter the maximum fuel capacity of the truck in liters</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     <Input 
                       id="capacity" 
@@ -516,14 +551,16 @@ const AssignDriver: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label htmlFor="hasGPS">GPS Capability</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Indicate whether this truck has GPS tracking capability</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Indicate whether this truck has GPS tracking capability</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     <Select
                       value={newTruckHasGPS}
@@ -595,7 +632,7 @@ const GPSTaggingDialog = ({
   onComplete: () => void;
 }) => {
   const { tagTruckWithGPS, getTruckById } = useApp();
-  const truck = getTruckById(truckId);
+  const truck = truckId ? getTruckById(truckId) : undefined;
   
   const form = useForm<z.infer<typeof gpsFormSchema>>({
     resolver: zodResolver(gpsFormSchema),
@@ -614,6 +651,11 @@ const GPSTaggingDialog = ({
         values.latitude,
         values.longitude
       );
+      
+      toast({
+        title: "GPS Tagged",
+        description: "GPS device has been successfully tagged to the truck.",
+      });
       
       setIsOpen(false);
       form.reset();
@@ -710,7 +752,7 @@ const DriverCard: React.FC<{ driver: Driver }> = ({ driver }) => {
       <div className="flex justify-between">
         <div>
           <h4 className="font-medium">{driver.name}</h4>
-          <p className="text-sm text-muted-foreground">{driver.contact}</p>
+          <p className="text-sm text-muted-foreground">{driver.contact || driver.contactPhone || 'No contact'}</p>
           <p className="text-xs text-muted-foreground mt-1">License: {driver.licenseNumber}</p>
         </div>
         <div>

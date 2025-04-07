@@ -1,3 +1,4 @@
+
 // Product types
 export type Product = 'PMS' | 'AGO' | 'DPK' | 'LPG' | 'KERO';
 export type ProductType = Product | string; // Allow string comparison for Product types
@@ -52,7 +53,7 @@ export interface Company {
 }
 
 // Order Status
-export type OrderStatus = 'draft' | 'pending' | 'active' | 'completed' | 'cancelled';
+export type OrderStatus = 'draft' | 'pending' | 'active' | 'completed' | 'cancelled' | 'approved' | 'rejected' | 'delivered' | 'fulfilled';
 export type PaymentTerm = 'net_7' | 'net_15' | 'net_30' | 'net_60' | 'cod' | '50% Advance' | '100% Advance' | 'Credit';
 
 export interface StatusHistoryEntry {

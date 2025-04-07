@@ -1,3 +1,4 @@
+
 import { PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight, Staff, Dispenser, Shift, Sale, Incident, ActivityLog, Tank, Price, ProductType, DeliveryDetails, OrderStatus } from '@/types';
 
 export const fromSupabaseFormat = {
@@ -19,7 +20,8 @@ export const fromSupabaseFormat = {
       paymentTerm: data.payment_term,
       notes: data.notes,
       createdAt: data.created_at && new Date(data.created_at),
-      updatedAt: data.updated_at && new Date(data.updated_at)
+      updatedAt: data.updated_at && new Date(data.updated_at),
+      items: data.items || [] // Default to empty array if no items
     };
   },
   driver: (data: any): Driver => {
@@ -42,7 +44,7 @@ export const fromSupabaseFormat = {
       hasGPS: data.has_gps,
       isAvailable: data.is_available,
       isGPSTagged: data.is_gps_tagged,
-	  driverId: data.driver_id,
+      driverId: data.driver_id,
       gpsDeviceId: data.gps_device_id,
       lastLatitude: data.last_latitude,
       lastLongitude: data.last_longitude,
@@ -63,8 +65,8 @@ export const fromSupabaseFormat = {
       isActive: data.is_active,
       connectedDispensers: data.connected_dispensers,
       lastRefillDate: data.last_refill_date && new Date(data.last_refill_date),
-      createdAt: data.created_at && new Date(data.created_at),
-      updatedAt: data.updated_at && new Date(data.updated_at)
+      currentLevel: data.current_level,
+      nextInspectionDate: data.next_inspection_date && new Date(data.next_inspection_date)
     };
   },
   incident: (data: any): Incident => {
@@ -89,14 +91,11 @@ export const fromSupabaseFormat = {
       id: data.id,
       name: data.name,
       role: data.role,
-      contact: data.contact,
       email: data.email,
+      phone: data.phone,
       address: data.address,
-      hireDate: data.hire_date && new Date(data.hire_date),
-      salary: data.salary,
+      contactPhone: data.contact_phone,
       isActive: data.is_active,
-      permissions: data.permissions,
-      notes: data.notes,
       createdAt: data.created_at && new Date(data.created_at),
       updatedAt: data.updated_at && new Date(data.updated_at)
     };
@@ -109,12 +108,18 @@ export const fromSupabaseFormat = {
       tankId: data.tank_id,
       unitPrice: data.unit_price,
       isActive: data.is_active,
-      location: data.location,
+      number: data.number,
       model: data.model,
-      capacity: data.capacity,
-      installationDate: data.installation_date && new Date(data.installation_date),
-      lastMaintenanceDate: data.last_maintenance_date && new Date(data.last_maintenance_date),
-      notes: data.notes,
+      serialNumber: data.serial_number,
+      flow: data.flow,
+      status: data.status,
+      currentShiftSales: data.current_shift_sales,
+      currentShiftVolume: data.current_shift_volume,
+      totalSales: data.total_sales,
+      totalVolume: data.total_volume,
+      totalVolumeSold: data.total_volume_sold,
+      lastActivity: data.last_activity && new Date(data.last_activity),
+      lastShiftReset: data.last_shift_reset && new Date(data.last_shift_reset),
       createdAt: data.created_at && new Date(data.created_at),
       updatedAt: data.updated_at && new Date(data.updated_at)
     };
@@ -125,9 +130,11 @@ export const fromSupabaseFormat = {
       staffId: data.staff_id,
       startTime: data.start_time && new Date(data.start_time),
       endTime: data.end_time && new Date(data.end_time),
-      notes: data.notes,
-      createdAt: data.created_at && new Date(data.created_at),
-      updatedAt: data.updated_at && new Date(data.updated_at)
+      staffMembers: data.staff_members,
+      name: data.name,
+      salesVolume: data.sales_volume,
+      salesAmount: data.sales_amount,
+      status: data.status
     };
   },
   sale: (data: any): Sale => {
@@ -140,9 +147,11 @@ export const fromSupabaseFormat = {
       amount: data.amount,
       paymentMethod: data.payment_method,
       timestamp: data.timestamp && new Date(data.timestamp),
-      notes: data.notes,
-      createdAt: data.created_at && new Date(data.created_at),
-      updatedAt: data.updated_at && new Date(data.updated_at)
+      dispenserNumber: data.dispenser_number,
+      unitPrice: data.unit_price,
+      totalAmount: data.total_amount,
+      productType: data.product_type as ProductType,
+      isManualEntry: data.is_manual_entry
     };
   },
   price: (data: any): Price => {
@@ -151,9 +160,10 @@ export const fromSupabaseFormat = {
       productType: data.product_type as ProductType,
       price: data.price,
       effectiveDate: data.effective_date && new Date(data.effective_date),
-      notes: data.notes,
-      createdAt: data.created_at && new Date(data.created_at),
-      updatedAt: data.updated_at && new Date(data.updated_at)
+      endDate: data.end_date && new Date(data.end_date),
+      isActive: data.is_active,
+      purchasePrice: data.purchase_price,
+      sellingPrice: data.selling_price
     };
   },
   activityLog: (data: any): ActivityLog => {
@@ -164,9 +174,7 @@ export const fromSupabaseFormat = {
       action: data.action,
       entityType: data.entity_type,
       entityId: data.entity_id,
-      details: data.details,
-      createdAt: data.created_at && new Date(data.created_at),
-      updatedAt: data.updated_at && new Date(data.updated_at)
+      details: data.details
     };
   },
   supplier: (data: any): Supplier => {
@@ -196,18 +204,17 @@ export const toSupabaseFormat = {
     return {
       po_number: data.poNumber,
       status: data.status,
-      supplier_name: data.supplier.name,
-      supplier_id: data.supplier.id,
-      supplier_address: data.supplier.address,
-      supplier_contact: data.supplier.contact,
+      supplier_name: data.supplier?.name,
+      supplier_id: data.supplier?.id,
+      supplier_address: data.supplier?.address,
+      supplier_contact: data.supplier?.contact,
       grand_total: data.grandTotal,
       delivery_details: data.deliveryDetails,
       offloading_details: data.offloadingDetails,
       payment_status: data.paymentStatus,
       payment_term: data.paymentTerm,
       notes: data.notes,
-      created_at: data.createdAt?.toISOString(),
-      updated_at: data.updatedAt?.toISOString()
+      items: data.items
     };
   },
   driver: (data: Omit<Driver, 'id'>): any => {
@@ -215,9 +222,7 @@ export const toSupabaseFormat = {
       name: data.name,
       contact: data.contact,
       license_number: data.licenseNumber,
-      is_available: data.isAvailable,
-      created_at: data.createdAt?.toISOString(),
-      updated_at: data.updatedAt?.toISOString()
+      is_available: data.isAvailable
     };
   },
   truck: (data: Omit<Truck, 'id'>): any => {
@@ -228,13 +233,11 @@ export const toSupabaseFormat = {
       has_gps: data.hasGPS,
       is_available: data.isAvailable,
       is_gps_tagged: data.isGPSTagged,
-	  driver_id: data.driverId,
+      driver_id: data.driverId,
       gps_device_id: data.gpsDeviceId,
       last_latitude: data.lastLatitude,
       last_longitude: data.lastLongitude,
-      last_speed: data.lastSpeed,
-      created_at: data.createdAt?.toISOString(),
-      updated_at: data.updatedAt?.toISOString()
+      last_speed: data.lastSpeed
     };
   },
   tank: (data: Omit<Tank, 'id'>): any => {
@@ -247,9 +250,9 @@ export const toSupabaseFormat = {
       status: data.status,
       is_active: data.isActive,
       connected_dispensers: data.connectedDispensers,
-      last_refill_date: data.lastRefillDate?.toISOString(),
-      created_at: data.createdAt?.toISOString(),
-      updated_at: data.updatedAt?.toISOString()
+      last_refill_date: data.lastRefillDate && data.lastRefillDate.toISOString(),
+      current_level: data.currentLevel,
+      next_inspection_date: data.nextInspectionDate && data.nextInspectionDate.toISOString()
     };
   },
   incident: (data: Omit<Incident, 'id'>): any => {
@@ -258,7 +261,7 @@ export const toSupabaseFormat = {
       description: data.description,
       severity: data.severity,
       location: data.location,
-      timestamp: data.timestamp?.toISOString(),
+      timestamp: data.timestamp && data.timestamp.toISOString(),
       status: data.status,
       order_id: data.orderid,
       impact: data.impact,
@@ -272,16 +275,11 @@ export const toSupabaseFormat = {
     return {
       name: data.name,
       role: data.role,
-      contact: data.contact,
       email: data.email,
+      phone: data.phone,
       address: data.address,
-      hire_date: data.hireDate?.toISOString(),
-      salary: data.salary,
-      is_active: data.isActive,
-      permissions: data.permissions,
-      notes: data.notes,
-      created_at: data.createdAt?.toISOString(),
-      updated_at: data.updatedAt?.toISOString()
+      contact_phone: data.contactPhone,
+      is_active: data.isActive
     };
   },
   dispenser: (data: Omit<Dispenser, 'id'>): any => {
@@ -291,24 +289,30 @@ export const toSupabaseFormat = {
       tank_id: data.tankId,
       unit_price: data.unitPrice,
       is_active: data.isActive,
-      location: data.location,
+      number: data.number,
       model: data.model,
-      capacity: data.capacity,
-      installation_date: data.installationDate?.toISOString(),
-      last_maintenance_date: data.lastMaintenanceDate?.toISOString(),
-      notes: data.notes,
-      created_at: data.createdAt?.toISOString(),
-      updated_at: data.updatedAt?.toISOString()
+      serial_number: data.serialNumber,
+      flow: data.flow,
+      status: data.status,
+      current_shift_sales: data.currentShiftSales,
+      current_shift_volume: data.currentShiftVolume,
+      total_sales: data.totalSales,
+      total_volume: data.totalVolume,
+      total_volume_sold: data.totalVolumeSold,
+      last_activity: data.lastActivity && data.lastActivity.toISOString(),
+      last_shift_reset: data.lastShiftReset && data.lastShiftReset.toISOString()
     };
   },
   shift: (data: Omit<Shift, 'id'>): any => {
     return {
       staff_id: data.staffId,
-      start_time: data.startTime?.toISOString(),
-      end_time: data.endTime?.toISOString(),
-      notes: data.notes,
-      created_at: data.createdAt?.toISOString(),
-      updated_at: data.updatedAt?.toISOString()
+      start_time: data.startTime && data.startTime.toISOString(),
+      end_time: data.endTime && data.endTime.toISOString(),
+      staff_members: data.staffMembers,
+      name: data.name,
+      sales_volume: data.salesVolume,
+      sales_amount: data.salesAmount,
+      status: data.status
     };
   },
   sale: (data: Omit<Sale, 'id'>): any => {
@@ -319,48 +323,49 @@ export const toSupabaseFormat = {
       volume: data.volume,
       amount: data.amount,
       payment_method: data.paymentMethod,
-      timestamp: data.timestamp?.toISOString(),
-      notes: data.notes,
-      created_at: data.createdAt?.toISOString(),
-      updated_at: data.updatedAt?.toISOString()
+      timestamp: data.timestamp && data.timestamp.toISOString(),
+      dispenser_number: data.dispenserNumber,
+      unit_price: data.unitPrice,
+      total_amount: data.totalAmount,
+      product_type: data.productType,
+      is_manual_entry: data.isManualEntry
     };
   },
   price: (data: Omit<Price, 'id' | 'effectiveDate'>): any => {
     return {
       product_type: data.productType,
       price: data.price,
-      notes: data.notes,
-      created_at: data.createdAt?.toISOString(),
-      updated_at: data.updatedAt?.toISOString()
+      end_date: data.endDate && data.endDate.toISOString(),
+      is_active: data.isActive,
+      purchase_price: data.purchasePrice,
+      selling_price: data.sellingPrice
     };
   },
   activityLog: (data: Omit<ActivityLog, 'id'>): any => {
     return {
-      timestamp: data.timestamp?.toISOString(),
+      timestamp: data.timestamp && data.timestamp.toISOString(),
       user: data.user,
       action: data.action,
       entity_type: data.entityType,
       entity_id: data.entityId,
-      details: data.details,
-      created_at: data.createdAt?.toISOString(),
-      updated_at: data.updatedAt?.toISOString()
+      details: data.details
     };
   },
-  supplier: (data: Supplier): any => {
+  supplier: (data: Omit<Supplier, 'id'>): any => {
     return {
       name: data.name,
       address: data.address,
       contact: data.contact,
-      email: data.email,
       contact_name: data.contactName,
       contact_phone: data.contactPhone,
       contact_email: data.contactEmail,
+      email: data.email,
       tax_id: data.taxId,
       account_number: data.accountNumber,
       bank_name: data.bankName,
-      products: data.products,
       depot_name: data.depotName,
-      supplier_type: data.supplierType
+      supplier_type: data.supplierType,
+      products: data.products
     };
-  },
+  }
 };

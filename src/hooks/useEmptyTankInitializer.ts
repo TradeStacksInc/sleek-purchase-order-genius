@@ -6,7 +6,7 @@ import { Tank } from '@/types';
 // Flag to prevent multiple initialization attempts
 let hasInitialized = false;
 
-export const useEmptyTankInitializer = () => {
+export const useEmptyTankInitializer = (autoInitialize: boolean = false) => {
   const { getAllTanks, addTank, updateTank } = useApp();
   const [initialized, setInitialized] = useState(false);
   
@@ -19,6 +19,13 @@ export const useEmptyTankInitializer = () => {
 
     const checkAndInitializeTanks = async () => {
       try {
+        // Only proceed with initialization if autoInitialize is true
+        if (!autoInitialize) {
+          console.log('Auto initialization disabled');
+          setInitialized(true);
+          return;
+        }
+        
         const tanksResult = getAllTanks();
         const existingTanks = tanksResult.data || [];
         
@@ -91,8 +98,92 @@ export const useEmptyTankInitializer = () => {
       }
     };
     
-    checkAndInitializeTanks();
-  }, [getAllTanks, addTank, updateTank]);
+    if (autoInitialize) {
+      checkAndInitializeTanks();
+    } else {
+      setInitialized(true);
+    }
+  }, [getAllTanks, addTank, updateTank, autoInitialize]);
   
-  return { initialized };
+  return { 
+    initialized,
+    initializeTanks: async () => {
+      if (!hasInitialized) {
+        try {
+          const tanksResult = getAllTanks();
+          const existingTanks = tanksResult.data || [];
+          
+          if (existingTanks.length === 0) {
+            console.log('Manually initializing default tanks');
+            
+            // Create 2 empty PMS tanks
+            await addTank({
+              name: "PMS Tank 1",
+              capacity: 20000,
+              currentVolume: 0,
+              productType: 'PMS',
+              minVolume: 2000, // 10% of capacity
+              status: 'operational',
+              connectedDispensers: []
+            });
+            
+            await addTank({
+              name: "PMS Tank 2",
+              capacity: 25000,
+              currentVolume: 0,
+              productType: 'PMS',
+              minVolume: 2500, // 10% of capacity
+              status: 'operational',
+              connectedDispensers: []
+            });
+            
+            // Create 1 partially filled PMS tank
+            await addTank({
+              name: "PMS Tank 3",
+              capacity: 30000,
+              currentVolume: 15000,
+              productType: 'PMS',
+              minVolume: 3000, // 10% of capacity
+              status: 'operational',
+              connectedDispensers: []
+            });
+            
+            // Create AGO and DPK tanks
+            await addTank({
+              name: "AGO Tank 1",
+              capacity: 15000,
+              currentVolume: 0,
+              productType: 'AGO',
+              minVolume: 1500, // 10% of capacity
+              status: 'operational',
+              connectedDispensers: []
+            });
+            
+            await addTank({
+              name: "DPK Tank 1",
+              capacity: 10000,
+              currentVolume: 0,
+              productType: 'DPK',
+              minVolume: 1000, // 10% of capacity
+              status: 'operational',
+              connectedDispensers: []
+            });
+            
+            hasInitialized = true;
+            setInitialized(true);
+            return true;
+          } else {
+            console.log('Tanks already exist, skipping initialization');
+            hasInitialized = true;
+            setInitialized(true);
+            return false;
+          }
+        } catch (error) {
+          console.error('Error in manual tank initialization:', error);
+          return false;
+        }
+      }
+      return false;
+    }
+  };
 };
