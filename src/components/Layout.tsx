@@ -1,24 +1,41 @@
 
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import Sidebar from './Sidebar';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 
-type LayoutProps = {
+interface LayoutProps {
   children: React.ReactNode;
 }
 
-const Layout = ({ children }: LayoutProps) => {
-  const [open, setOpen] = useState(true);
+const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const location = useLocation();
+  const { logPageVisit } = useActivityLogger();
   
+  // Log page visits
+  useEffect(() => {
+    // Get the page name from the pathname
+    const getPageName = (pathname: string) => {
+      if (pathname === '/') return 'Dashboard';
+      const path = pathname.startsWith('/') ? pathname.substring(1) : pathname;
+      return path
+        .split('/')
+        .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+        .join(' ');
+    };
+    
+    const pageName = getPageName(location.pathname);
+    logPageVisit(pageName);
+  }, [location.pathname, logPageVisit]);
+
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="h-screen flex flex-col overflow-hidden">
       <AppHeader />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar open={open} setOpen={setOpen} />
-        <main className="flex-1 overflow-auto p-6 transition-all duration-200">
-          <div className="container mx-auto max-w-7xl pb-10">
-            {children}
-          </div>
+        <Sidebar />
+        <main className="flex-1 content-container p-4 bg-background/60">
+          {children}
         </main>
       </div>
     </div>

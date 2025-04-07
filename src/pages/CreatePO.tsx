@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -266,9 +267,9 @@ const CreatePO: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container py-6 max-w-5xl mx-auto">
       {showSuccessDialog && (
-        <Card className="w-full max-w-5xl mx-auto mb-4 bg-green-50 border-green-200">
+        <Card className="w-full mb-6 bg-green-50 border-green-200 transition-all duration-300 shadow-md">
           <CardHeader className="pb-2">
             <CardTitle className="text-xl flex items-center gap-2">
               <div className="bg-green-100 p-2 rounded-full">
@@ -283,7 +284,7 @@ const CreatePO: React.FC = () => {
           <CardFooter className="pt-2 flex justify-end gap-2">
             <Button 
               variant="outline" 
-              className="transition-all duration-200 rounded-lg"
+              className="transition-all duration-200 rounded-lg hover:bg-gray-100"
               onClick={() => {
                 setShowSuccessDialog(false);
                 setCompany({ name: '', address: '', contact: '', taxId: '' });
@@ -310,8 +311,8 @@ const CreatePO: React.FC = () => {
         </Card>
       )}
       
-      <Card className="w-full rounded-xl transition-all duration-200 shadow-sm hover:shadow-md">
-        <CardHeader className="border-b">
+      <Card className="w-full rounded-xl transition-all duration-300 shadow-md hover:shadow-lg">
+        <CardHeader className="border-b bg-muted/30">
           <CardTitle className="text-2xl flex items-center gap-2">
             <ClipboardList className="h-6 w-6 text-primary" />
             Create Purchase Order
@@ -321,8 +322,8 @@ const CreatePO: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <form id="create-po-form" onSubmit={handleSubmit}>
-            <div className="po-form-section mb-8">
+          <form id="create-po-form" onSubmit={handleSubmit} className="space-y-8">
+            <div className="po-form-section">
               <div className="flex items-center mb-4">
                 <div className="mr-3 bg-blue-100 p-2 rounded-full">
                   <Building2 className="h-5 w-5 text-blue-600" />
@@ -385,7 +386,7 @@ const CreatePO: React.FC = () => {
               </div>
             </div>
 
-            <div className="po-form-section mb-8">
+            <div className="po-form-section">
               <div className="flex items-center mb-4">
                 <div className="mr-3 bg-yellow-100 p-2 rounded-full">
                   <WarehouseIcon className="h-5 w-5 text-yellow-600" />
@@ -507,7 +508,7 @@ const CreatePO: React.FC = () => {
               </div>
             </div>
 
-            <div className="po-form-section mb-8">
+            <div className="po-form-section">
               <div className="flex items-center mb-4">
                 <div className="mr-3 bg-purple-100 p-2 rounded-full">
                   <Fuel className="h-5 w-5 text-purple-600" />
@@ -516,7 +517,10 @@ const CreatePO: React.FC = () => {
               </div>
               <div className="space-y-4">
                 {items.map((item, index) => (
-                  <div key={item.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end border p-4 rounded-lg relative transition-all duration-200 hover:shadow-sm">
+                  <div 
+                    key={item.id} 
+                    className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end border p-4 rounded-lg relative transition-all duration-200 hover:shadow-sm"
+                  >
                     <div>
                       <Label>Product</Label>
                       <Select
@@ -566,7 +570,7 @@ const CreatePO: React.FC = () => {
                       <Button
                         type="button"
                         variant="ghost"
-                        className="absolute top-2 right-2 text-red-500 rounded-full hover:bg-red-50 transition-all duration-200"
+                        className="absolute top-2 right-2 text-red-500 rounded-full hover:bg-red-50 transition-all duration-200 p-1 h-auto"
                         onClick={() => removeItem(item.id)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -578,7 +582,7 @@ const CreatePO: React.FC = () => {
                   type="button" 
                   variant="outline" 
                   onClick={addItem} 
-                  className="flex items-center gap-2 rounded-lg transition-all duration-200"
+                  className="flex items-center gap-2 rounded-lg transition-all duration-200 hover:bg-gray-100"
                 >
                   <Plus className="h-4 w-4" />
                   Add Item
@@ -586,7 +590,7 @@ const CreatePO: React.FC = () => {
               </div>
             </div>
 
-            <div className="po-form-section mb-8">
+            <div className="po-form-section">
               <div className="flex items-center mb-4">
                 <div className="mr-3 bg-indigo-100 p-2 rounded-full">
                   <Truck className="h-5 w-5 text-indigo-600" />
@@ -616,7 +620,10 @@ const CreatePO: React.FC = () => {
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className={cn("w-full justify-start text-left font-normal rounded-lg transition-all duration-200", !deliveryDate && "text-muted-foreground")}
+                        className={cn(
+                          "w-full justify-start text-left font-normal rounded-lg transition-all duration-200",
+                           !deliveryDate && "text-muted-foreground"
+                        )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {deliveryDate ? format(deliveryDate, "PPP") : "Pick a date"}
@@ -628,7 +635,7 @@ const CreatePO: React.FC = () => {
                         selected={deliveryDate}
                         onSelect={setDeliveryDate}
                         disabled={(date) => date < new Date()}
-                        className="rounded-lg"
+                        className="rounded-lg pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
@@ -638,13 +645,13 @@ const CreatePO: React.FC = () => {
             </div>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-between items-center border-t pt-4">
+        <CardFooter className="flex justify-between items-center border-t pt-4 bg-muted/20">
           <div className="text-lg font-semibold">Grand Total: ₦{grandTotal.toLocaleString()}</div>
           <Button 
             type="submit" 
             form="create-po-form" 
             disabled={isSubmitting}
-            className="rounded-lg transition-all duration-200 hover:shadow-sm"
+            className="rounded-lg transition-all duration-300 hover:shadow-md"
           >
             {isSubmitting ? 'Submitting...' : 'Create Purchase Order'}
           </Button>

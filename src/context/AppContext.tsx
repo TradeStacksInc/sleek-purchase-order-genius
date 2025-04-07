@@ -933,23 +933,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPrices(prev => {
       const filteredPrices = prev.filter(price => price.id !== id);
       deleted = filteredPrices.length < prev.length;
+      
+      if (deleted) {
+        saveToLocalStorage(STORAGE_KEYS.PRICES, filteredPrices);
+        
+        const price = prev.find(p => p.id === id);
+        if (price) {
+          addActivityLog({
+            action: 'delete',
+            entityType: 'price',
+            entityId: id,
+            details: `Price for ${price.productType} deleted`,
+            user: 'Current User'
+          });
+        }
+      }
+      
       return filteredPrices;
     });
-    
-    if (deleted) {
-      saveToLocalStorage(STORAGE_KEYS.PRICES, prices.filter(price => price.id !== id));
-      
-      addActivityLog({
-        action: 'delete',
-        entityType: 'price',
-        entityId: id,
-        details: `Price record deleted`,
-        user: 'Current User'
-      });
-    }
-    
     return deleted;
-  }, [prices, addActivityLog]);
+  }, [addActivityLog]);
 
   const getPriceById = useCallback((id: string): Price | undefined => {
     return prices.find(p => p.id === id);
@@ -959,12 +962,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(prices, params || { page: 1, limit: 10 });
   }, [prices]);
 
-  const getCurrentPrices = useCallback((): Record<ProductType, number> => {
+  const getCurrentPricesByProduct = useCallback((): Record<ProductType, number> => {
     const currentPrices: Partial<Record<ProductType, number>> = {};
     
+    const pricesByProduct: Record<string, Price[]> = {};
     prices.forEach(price => {
-      if (price.isActive) {
-        currentPrices[price.productType] = price.price;
+      if (!pricesByProduct[price.productType]) {
+        pricesByProduct[price.productType] = [];
+      }
+      pricesByProduct[price.productType].push(price);
+    });
+    
+    Object.entries(pricesByProduct).forEach(([productType, productPrices]) => {
+      const activePrices = productPrices.filter(p => p.isActive !== false);
+      if (activePrices.length > 0) {
+        activePrices.sort((a, b) => 
+          new Date(b.effectiveDate || 0).getTime() - 
+          new Date(a.effectiveDate || 0).getTime()
+        );
+        currentPrices[productType as ProductType] = activePrices[0].price;
       }
     });
     
@@ -1024,15 +1040,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGpsData,
     aiInsights,
     setAiInsights,
+    staff,
+    setStaff,
+    dispensers,
+    setDispensers,
+    shifts,
+    setShifts,
+    sales,
+    setSales,
+    prices,
+    setPrices,
     incidents,
     setIncidents,
     activityLogs,
     setActivityLogs,
-    addActivityLog,
-    getAllActivityLogs,
-    getActivityLogsByEntityType,
-    getActivityLogsByAction,
-    getRecentActivityLogs,
+    tanks,
+    setTanks,
     
     addPurchaseOrder,
     updatePurchaseOrder,
@@ -1043,6 +1066,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getOrdersWithDeliveryStatus,
     getOrdersWithDiscrepancies,
     updateOrderStatus,
+    
+    addLog,
+    deleteLog,
+    getLogById,
+    getAllLogs,
+    getLogsByOrderId,
+    
+    addSupplier(supplier) {
+      const newSupplier = {
+        ...supplier,
+        id: supplier.id || uuidv4(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      setSuppliers(prev => [...prev, newSupplier]);
+      return newSupplier;
+    },
+    updateSupplier(id, updates) {
+      let updatedSupplier: Supplier | null = null;
+      setSuppliers(prev => prev.map(s => {
+        if (s.id === id) {
+          updatedSupplier = { ...s, ...updates, updatedAt: new Date() };
+          return updatedSupplier;
+        }
+        return s;
+      }));
+      return updatedSupplier || null;
+    },
+    deleteSupplier(id) {
+      let deleted = false;
+      setSuppliers(prev => {
+        const filtered = prev.filter(s => s.id !== id);
+        deleted = filtered.length < prev.length;
+        return filtered;
+      });
+      return deleted;
+    },
+    getSupplierById(id) {
+      return suppliers.find(s => s.id === id);
+    },
+    getAllSuppliers(params) {
+      return getPaginatedData(suppliers, params || { page: 1, limit: 10 });
+    },
     
     addDriver,
     updateDriver,
@@ -1058,27 +1124,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getAllTrucks,
     getAvailableTrucks,
     getNonGPSTrucks,
-    
     tagTruckWithGPS,
     untagTruckGPS,
+    
     addGPSData,
     getGPSDataForTruck,
     getAllGPSData,
     updateGPSData,
-    
-    addTank,
-    updateTank,
-    deleteTank,
-    getTankById, 
-    getAllTanks,
-    getTanksByProduct,
-    setTankActive,
     
     addIncident,
     updateIncident,
     deleteIncident,
     getIncidentById,
     getAllIncidents,
+    
+    addTank,
+    updateTank,
+    deleteTank,
+    getTankById,
+    getAllTanks,
+    getTanksByProduct,
+    setTankActive(id, isActive) {
+      const tank = updateTank(id, { isActive });
+      return tank !== null;
+    },
+    
+    addActivityLog,
+    getAllActivityLogs,
+    getActivityLogsByEntityType,
+    getActivityLogsByAction,
+    getRecentActivityLogs,
+    
+    addAIInsight(insight) {
+      const newInsight: AIInsight = {
+        ...insight,
+        id: uuidv4(),
+        generatedAt: new Date(),
+        relatedEntityIds: insight.relatedEntityIds || [],
+        isRead: false
+      };
+      setAiInsights(prev => [...prev, newInsight]);
+      return newInsight;
+    },
+    updateAIInsight(id, updates) {
+      let updatedInsight: AIInsight | null = null;
+      setAiInsights(prev => prev.map(insight => {
+        if (insight.id === id) {
+          updatedInsight = { ...insight, ...updates };
+          return updatedInsight;
+        }
+        return insight;
+      }));
+      return updatedInsight;
+    },
+    deleteAIInsight(id) {
+      let deleted = false;
+      setAiInsights(prev => {
+        const filtered = prev.filter(insight => insight.id !== id);
+        deleted = filtered.length < prev.length;
+        return filtered;
+      });
+      return deleted;
+    },
+    getAIInsightById(id) {
+      return aiInsights.find(insight => insight.id === id);
+    },
+    getAllAIInsights(params) {
+      return getPaginatedData(aiInsights, params || { page: 1, limit: 10 });
+    },
     
     completeDelivery,
     recordOffloadingDetails,
@@ -1100,17 +1213,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deletePrice,
     getPriceById,
     getAllPrices,
-    getCurrentPrices,
+    getCurrentPricesByProduct,
     
-    recordOffloadingToTank,
+    logAIInteraction(interaction) {
+      addLog({
+        action: 'ai_interaction',
+        entityType: 'ai',
+        entityId: 'system',
+        details: interaction,
+        user: 'Current User'
+      });
+      return { 
+        id: 'ai-interaction',
+        action: 'ai_interaction',
+        entityType: 'ai',
+        entityId: 'system',
+        details: interaction,
+        user: 'Current User',
+        timestamp: new Date()
+      };
+    },
     
     logFraudDetection,
     logGpsActivity,
     
     company,
     setCompany,
+    updateCompany,
     
-    startDelivery
+    startDelivery,
+    
+    recordOffloadingToTank
   };
 
   return (
@@ -1120,9 +1253,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
-export const useApp = () => {
+export const useApp = (): AppContextType => {
   const context = useContext(AppContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useApp must be used within an AppProvider');
   }
   return context;

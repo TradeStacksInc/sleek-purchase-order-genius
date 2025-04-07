@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { format, startOfToday, startOfWeek, startOfMonth, startOfYear, isWithinInterval } from 'date-fns';
@@ -116,7 +115,7 @@ const Dashboard: React.FC = () => {
   
   // Filter data based on date range
   const filteredOrders = useMemo(() => {
-    return purchaseOrders.filter(order => {
+    return (purchaseOrders || []).filter(order => {
       const orderDate = order.createdAt;
       return isWithinInterval(orderDate, { 
         start: getDateRange.from, 
@@ -126,7 +125,7 @@ const Dashboard: React.FC = () => {
   }, [purchaseOrders, getDateRange]);
   
   const filteredSales = useMemo(() => {
-    return sales.filter(sale => {
+    return (sales || []).filter(sale => {
       const saleDate = sale.timestamp;
       return isWithinInterval(saleDate, { 
         start: getDateRange.from, 
@@ -136,7 +135,7 @@ const Dashboard: React.FC = () => {
   }, [sales, getDateRange]);
   
   const filteredIncidents = useMemo(() => {
-    return incidents.filter(incident => {
+    return (incidents || []).filter(incident => {
       const incidentDate = incident.timestamp;
       return isWithinInterval(incidentDate, { 
         start: getDateRange.from, 
@@ -147,17 +146,17 @@ const Dashboard: React.FC = () => {
   
   // Calculate statistics from real data
   const stats = useMemo(() => {
-    const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalRevenue = (filteredSales || []).reduce((sum, sale) => sum + sale.totalAmount, 0);
     
-    const totalCost = filteredOrders.reduce((sum, order) => sum + order.grandTotal, 0);
+    const totalCost = (filteredOrders || []).reduce((sum, order) => sum + order.grandTotal, 0);
     
     const profit = totalRevenue - totalCost;
     
-    const ordersCount = filteredOrders.length;
+    const ordersCount = filteredOrders?.length || 0;
     
-    const driversCount = drivers.length;
+    const driversCount = drivers?.length || 0;
     
-    const incidentsCount = filteredIncidents.length;
+    const incidentsCount = filteredIncidents?.length || 0;
     
     // Calculate fuel stock
     const fuelStock = {
@@ -166,10 +165,10 @@ const Dashboard: React.FC = () => {
       DPK: 0
     };
     
-    tanks.forEach(tank => {
-      if (tank.productType === 'PMS') fuelStock.PMS += tank.currentVolume;
-      if (tank.productType === 'AGO') fuelStock.AGO += tank.currentVolume;
-      if (tank.productType === 'DPK') fuelStock.DPK += tank.currentVolume;
+    (tanks || []).forEach(tank => {
+      if (tank.productType === 'PMS') fuelStock.PMS += tank.currentVolume || 0;
+      if (tank.productType === 'AGO') fuelStock.AGO += tank.currentVolume || 0;
+      if (tank.productType === 'DPK') fuelStock.DPK += tank.currentVolume || 0;
     });
     
     // Calculate sales by fuel type
@@ -179,7 +178,7 @@ const Dashboard: React.FC = () => {
       { name: 'DPK', value: 0 }
     ];
     
-    filteredSales.forEach(sale => {
+    (filteredSales || []).forEach(sale => {
       const fuelType = sale.productType;
       const foundIndex = salesByFuelType.findIndex(item => item.name === fuelType);
       if (foundIndex !== -1) {
@@ -197,41 +196,41 @@ const Dashboard: React.FC = () => {
     });
     
     // Populate with actual data
-    sales.forEach(sale => {
+    (sales || []).forEach(sale => {
       const month = sale.timestamp.getMonth();
       monthlyRevenue[month].revenue += sale.totalAmount;
     });
     
     // Get active deliveries
-    const activeDeliveries = purchaseOrders.filter(po => 
+    const activeDeliveries = (purchaseOrders || []).filter(po => 
       po.deliveryDetails?.status === 'in_transit'
     );
     
     // Recent activity logs
-    const recentLogs = activityLogs
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    const recentLogs = (activityLogs || [])
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 5);
     
     // Calculate dispenser metrics
-    const totalLitersSold = filteredSales.reduce((sum, sale) => sum + sale.volume, 0);
+    const totalLitersSold = (filteredSales || []).reduce((sum, sale) => sum + sale.volume, 0);
     
     // Count active/inactive dispensers
     const dispenserStatus = {
-      active: dispensers.filter(d => d.status === 'operational').length,
-      inactive: dispensers.filter(d => d.status !== 'operational').length,
-      total: dispensers.length
+      active: (dispensers || []).filter(d => d.status === 'operational').length,
+      inactive: (dispensers || []).filter(d => d.status !== 'operational').length,
+      total: dispensers?.length || 0
     };
     
     // Calculate tank statuses
     const tankStatus = {
-      available: tanks.filter(tank => tank.currentVolume < tank.capacity * 0.9).length,
-      full: tanks.filter(tank => tank.currentVolume >= tank.capacity * 0.9).length,
-      empty: tanks.filter(tank => tank.currentVolume <= tank.capacity * 0.1).length,
-      total: tanks.length
+      available: (tanks || []).filter(tank => (tank.currentVolume || 0) < (tank.capacity * 0.9)).length,
+      full: (tanks || []).filter(tank => (tank.currentVolume || 0) >= (tank.capacity * 0.9)).length,
+      empty: (tanks || []).filter(tank => (tank.currentVolume || 0) <= (tank.capacity * 0.1)).length,
+      total: tanks?.length || 0
     };
 
     // Calculate simplified wait time metrics (using simulated data since waitTime isn't in DeliveryDetails)
-    const waitTimes = purchaseOrders
+    const waitTimes = (purchaseOrders || [])
       .filter(order => 
         order.deliveryDetails && 
         isWithinInterval(order.createdAt, { start: getDateRange.from, end: getDateRange.to })
@@ -247,16 +246,16 @@ const Dashboard: React.FC = () => {
       : 0;
     
     // Calculate completed deliveries
-    const completedDeliveries = filteredOrders.filter(order => 
+    const completedDeliveries = (filteredOrders || []).filter(order => 
       order.deliveryDetails?.status === 'delivered'
     ).length;
     
     // Calculate discrepancies (using item quantities from order items)
-    const ordersWithDiscrepancies = filteredOrders.filter(order => {
+    const ordersWithDiscrepancies = (filteredOrders || []).filter(order => {
       if (!order.deliveryDetails) return false;
       
       // Use the first item in the items array as a simplified approach
-      const ordered = order.items.reduce((sum, item) => sum + item.quantity, 0);
+      const ordered = (order.items || []).reduce((sum, item) => sum + item.quantity, 0);
       
       // Simulate delivered amount (since offloadingDetails.actualQuantity isn't available)
       const delivered = ordered * (1 + (Math.random() * 0.1 - 0.05)); // ±5% random variation
@@ -620,7 +619,7 @@ const Dashboard: React.FC = () => {
               </CardHeader>
               <CardContent className="space-y-2 max-h-[200px] overflow-y-auto">
                 {stats.recentLogs.length > 0 ? stats.recentLogs.map((log, index) => (
-                  <div key={log.id || index} className="border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                  <div key={log.id || index} className="border-b border-gray-100 pb-2 last:border-0">
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-sm font-medium">{log.action}</p>
