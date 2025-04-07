@@ -1022,12 +1022,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getOrdersWithDeliveryStatus,
     getOrdersWithDiscrepancies,
     
-    logActions,
+    // Add individual methods from logActions
+    addLog: logActions.addLog,
+    deleteLog: logActions.deleteLog,
+    getLogById: logActions.getLogById,
+    getAllLogs: logActions.getAllLogs,
+    getLogsByOrderId: logActions.getLogsByOrderId,
     logAIInteraction,
     
-    supplierActions,
+    // Add individual methods from supplierActions
+    addSupplier: supplierActions.addSupplier,
+    updateSupplier: supplierActions.updateSupplier,
+    deleteSupplier: supplierActions.deleteSupplier,
+    getSupplierById: supplierActions.getSupplierById,
+    getAllSuppliers: supplierActions.getAllSuppliers,
     
-    driverTruckActions,
+    // Add individual methods from driverTruckActions
+    addDriver: driverTruckActions.addDriver,
+    updateDriver: driverTruckActions.updateDriver,
+    deleteDriver: driverTruckActions.deleteDriver, 
+    getDriverById: driverTruckActions.getDriverById,
+    getAllDrivers: driverTruckActions.getAllDrivers,
+    addTruck: driverTruckActions.addTruck,
+    updateTruck: driverTruckActions.updateTruck,
+    deleteTruck: driverTruckActions.deleteTruck,
+    getTruckById: driverTruckActions.getTruckById,
+    getAllTrucks: driverTruckActions.getAllTrucks,
     getNonGPSTrucks,
     tagTruckWithGPS,
     untagTruckGPS,
@@ -1036,7 +1056,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getGPSDataForTruck,
     updateGPSData,
     
-    deliveryActions,
+    // Add individual methods from deliveryActions
     updateDeliveryDetails,
     markOrderAsDelivered,
     startDelivery,
@@ -1046,12 +1066,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     recordOffloadingToTank: handleTankOffloading,
     assignDriverToOrder,
     
-    aiActions,
+    // Add individual methods from aiActions
+    generateAIInsights: aiActions.generateAIInsights,
+    getInsightsByType: aiActions.getInsightsByType,
     
-    staffActions,
+    // Add individual methods from staffActions
+    addStaff: staffActions.addStaff,
+    updateStaff: staffActions.updateStaff,
     deleteStaff,
+    getStaffById: staffActions.getStaffById,
+    getAllStaff: staffActions.getAllStaff,
     
-    dispenserActions,
+    // Add individual methods for dispensers
     addDispenser,
     updateDispenser,
     deleteDispenser,
@@ -1062,7 +1088,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getDispenserSalesStats,
     recordDispensing,
     
-    shiftActions,
+    // Add individual methods for shifts
     addShift,
     updateShift,
     deleteShift,
@@ -1073,16 +1099,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getShiftsByStaffId,
     getCurrentStaffShift,
     
-    saleActions,
+    // Add individual methods for sales
     addSale,
     updateSale,
     deleteSale,
     getSaleById,
     getAllSales,
     
-    priceActions,
+    // Add individual methods for prices
+    addPrice: priceActions.addPrice,
+    updatePrice: priceActions.updatePrice,
+    deletePrice: priceActions.deletePrice,
+    getPriceById: priceActions.getPriceById,
+    getAllPrices: priceActions.getAllPrices,
     
-    tankActionsMethods,
+    // Add individual methods for tanks
+    getTankByProductType: tankActionsMethods.getTankByProductType,
+    getActiveDispensersByTankId: tankActionsMethods.getActiveDispensersByTankId,
+    getActiveTanksByProductType: tankActionsMethods.getActiveTanksByProductType,
+    addTank: tankActionsMethods.addTank,
+    updateTank: tankActionsMethods.updateTank,
+    deleteTank: tankActionsMethods.deleteTank,
+    getAllTanks: tankActionsMethods.getAllTanks,
+    connectTankToDispenser: tankActionsMethods.connectTankToDispenser,
+    disconnectTankFromDispenser: tankActionsMethods.disconnectTankFromDispenser,
     setTankActive,
     
     addIncident,
