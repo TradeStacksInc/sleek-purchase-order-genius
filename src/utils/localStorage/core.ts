@@ -1,5 +1,9 @@
 
+// Update the core localStorage functions to use Supabase
 import { broadcastStorageUpdate } from '../storageSync';
+import { supabase } from '@/integrations/supabase/client';
+import { syncToSupabase, fetchFromSupabase } from './index';
+import { fromSupabaseFormat, toSupabaseFormat } from '../supabaseAdapters';
 
 // Date reviver function to convert date strings back to Date objects
 export const dateReviver = (_key: string, value: any): any => {
@@ -12,7 +16,7 @@ export const dateReviver = (_key: string, value: any): any => {
   return value;
 };
 
-// Base save function with retry mechanism and error handling
+// Save function that first saves to Supabase and then to localStorage as backup
 export const saveToLocalStorage = <T>(key: string, data: T): boolean => {
   try {
     if (!Array.isArray(data)) {
@@ -20,72 +24,58 @@ export const saveToLocalStorage = <T>(key: string, data: T): boolean => {
       return false;
     }
     
-    // Try to optimize the data before saving
+    // Save to Supabase first
+    syncToSupabase(key, data);
+    
+    // Then save to localStorage as backup
     const serializedData = JSON.stringify(data);
-    
-    // Attempt to save with retry logic
-    let attempts = 0;
-    const maxAttempts = 3;
-    let success = false;
-    
-    while (attempts < maxAttempts && !success) {
-      try {
-        localStorage.setItem(key, serializedData);
-        success = true;
-      } catch (retryError) {
-        attempts++;
-        if (attempts >= maxAttempts) {
-          throw retryError; // Re-throw after max attempts
-        }
-        // Wait briefly before retry
-        setTimeout(() => {}, 100 * attempts);
-      }
-    }
-    
-    // Broadcast the update to other tabs - without causing page reloads
-    broadcastStorageUpdate(key);
+    localStorage.setItem(key, serializedData);
     
     console.info(`Successfully saved data to ${key} (${serializedData.length} bytes)`);
     return true;
   } catch (error) {
-    // Handle storage quota exceeded error
-    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-      console.error(`Storage quota exceeded when saving to ${key}. Attempting cleanup...`);
-      // This is just a placeholder - real implementation would be more sophisticated
-    }
-    
-    console.error(`Error saving to local storage (${key}):`, error);
+    console.error(`Error saving to storage (${key}):`, error);
     return false;
   }
 };
 
-// Base retrieve function with error handling and improved logging
+// Retrieve function that tries to get data from Supabase first, falls back to localStorage
 export const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
   try {
+    // Try to get from localStorage first for instant load
     const serializedData = localStorage.getItem(key);
-    if (serializedData === null) {
-      console.info(`No data found in local storage for ${key}, using default value`);
-      return defaultValue;
-    }
-
-    // Parse JSON with date reviver and validation
-    try {
-      const parsedData = JSON.parse(serializedData, dateReviver);
-      
-      // Validate that parsed data is an array if defaultValue is an array
-      if (Array.isArray(defaultValue) && !Array.isArray(parsedData)) {
-        console.warn(`Invalid data format in ${key}, expected array. Using default value.`);
-        return defaultValue;
+    const localData = serializedData ? JSON.parse(serializedData, dateReviver) as T : null;
+    
+    // Attempt to fetch from Supabase asynchronously
+    const tableName = key.replace('po_system_', '');
+    fetchFromSupabase<any>(tableName).then(supabaseData => {
+      // If we got data from Supabase and it's different from localStorage, update localStorage
+      if (supabaseData && supabaseData.length > 0) {
+        const supabaseJson = JSON.stringify(supabaseData);
+        const localJson = serializedData || '';
+        
+        if (supabaseJson !== localJson) {
+          localStorage.setItem(key, supabaseJson);
+          console.info(`Updated ${key} in localStorage with newer data from Supabase`);
+          
+          // Broadcast update to other components
+          broadcastStorageUpdate(key);
+        }
       }
-      
-      console.info(`Successfully loaded data from ${key} (${parsedData.length} items)`);
-      return parsedData;
-    } catch (parseError) {
-      console.error(`Error parsing data from ${key}:`, parseError);
-      return defaultValue;
+    }).catch(err => {
+      console.error(`Error fetching ${key} from Supabase:`, err);
+    });
+    
+    // Return local data if available, otherwise default
+    if (localData) {
+      console.info(`Loaded ${key} from localStorage (${localData.length} items)`);
+      return localData;
     }
+    
+    console.info(`No data found in storage for ${key}, using default value`);
+    return defaultValue;
   } catch (error) {
-    console.error(`Error retrieving from local storage (${key}):`, error);
+    console.error(`Error retrieving from storage (${key}):`, error);
     return defaultValue;
   }
 };

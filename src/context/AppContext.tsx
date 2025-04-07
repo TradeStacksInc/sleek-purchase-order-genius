@@ -1,1432 +1,1140 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
-  PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight, Staff, 
-  Dispenser, Shift, Sale, Incident, ActivityLog, Tank, Price, 
-  ProductType, DeliveryDetails, OrderStatus
-} from '@/types';
-import { useToast } from '@/hooks/use-toast';
+  PurchaseOrder, 
+  Supplier, 
+  LogEntry, 
+  Driver, 
+  Truck, 
+  GPSData, 
+  AIInsight, 
+  Staff, 
+  Dispenser, 
+  Shift, 
+  Sale, 
+  PriceRecord, 
+  Incident, 
+  ActivityLog, 
+  Tank,
+  OrderStatus,
+  ProductType,
+  DeliveryDetails
+} from '../types';
+import { 
+  saveToLocalStorage, 
+  getFromLocalStorage, 
+  STORAGE_KEYS, 
+  PaginationParams, 
+  PaginatedResult, 
+  getPaginatedData 
+} from '../utils/localStorage';
+import { defaultCompany } from '../data/mockData';
 import { supabase } from '@/integrations/supabase/client';
-import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
-import { defaultInitialState } from '@/context/initialState';
 import { fromSupabaseFormat, toSupabaseFormat } from '@/utils/supabaseAdapters';
 
-import { usePurchaseOrderActions } from './purchaseOrderActions';
-import { useLogActions } from './logActions';
-import { useSupplierActions } from './supplierActions';
-import { useDriverTruckActions } from './driverTruckActions';
-import { useDeliveryActions } from './deliveryActions';
-import { useAIActions } from './aiActions';
-import { useStaffActions } from './staffActions';
-import { useDispenserActions } from './dispenserActions';
-import { useShiftActions } from './shiftActions';
-import { useSaleActions } from './saleActions';
-import { usePriceActions } from './priceActions';
-import { useTankActions } from './tankActions';
-import { AppContextType } from './appContextTypes';
+// Define the shape of our context
+interface AppContextType {
+  // Purchase Orders
+  purchaseOrders: PurchaseOrder[];
+  addPurchaseOrder: (order: Omit<PurchaseOrder, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PurchaseOrder>;
+  updatePurchaseOrder: (id: string, order: Partial<PurchaseOrder>) => Promise<PurchaseOrder | null>;
+  getPurchaseOrder: (id: string) => PurchaseOrder | null;
+  getAllPurchaseOrders: (params?: PaginationParams) => PaginatedResult<PurchaseOrder>;
+  deletePurchaseOrder: (id: string) => boolean;
+  
+  // Logs
+  logs: LogEntry[];
+  addLog: (log: Omit<LogEntry, 'id' | 'timestamp'>) => LogEntry;
+  getLogsForPO: (poId: string) => LogEntry[];
+  getAllLogs: (params?: PaginationParams) => PaginatedResult<LogEntry>;
+  
+  // Suppliers
+  suppliers: Supplier[];
+  addSupplier: (supplier: Omit<Supplier, 'id'>) => Supplier;
+  updateSupplier: (id: string, supplier: Partial<Supplier>) => Supplier | null;
+  getSupplier: (id: string) => Supplier | null;
+  getAllSuppliers: (params?: PaginationParams) => PaginatedResult<Supplier>;
+  deleteSupplier: (id: string) => boolean;
+  
+  // Drivers
+  drivers: Driver[];
+  addDriver: (driver: Omit<Driver, 'id' | 'createdAt' | 'updatedAt'>) => Driver;
+  updateDriver: (id: string, driver: Partial<Driver>) => Driver | null;
+  getDriver: (id: string) => Driver | null;
+  getAllDrivers: (params?: PaginationParams) => PaginatedResult<Driver>;
+  deleteDriver: (id: string) => boolean;
+  getAvailableDrivers: () => Driver[];
+  
+  // Trucks
+  trucks: Truck[];
+  addTruck: (truck: Omit<Truck, 'id' | 'createdAt' | 'updatedAt'>) => Truck;
+  updateTruck: (id: string, truck: Partial<Truck>) => Truck | null;
+  getTruck: (id: string) => Truck | null;
+  getAllTrucks: (params?: PaginationParams) => PaginatedResult<Truck>;
+  deleteTruck: (id: string) => boolean;
+  getAvailableTrucks: () => Truck[];
+  tagTruckWithGPS: (truckId: string, gpsDeviceId: string) => boolean;
+  untagTruckGPS: (truckId: string) => boolean;
+  getNonGPSTrucks: () => Truck[];
+  
+  // GPS Data
+  gpsData: GPSData[];
+  addGPSData: (data: Omit<GPSData, 'id' | 'timestamp'>) => GPSData;
+  getGPSDataForTruck: (truckId: string, limit?: number) => GPSData[];
+  getAllGPSData: (params?: PaginationParams) => PaginatedResult<GPSData>;
+  
+  // AI Insights
+  aiInsights: AIInsight[];
+  addAIInsight: (insight: Omit<AIInsight, 'id' | 'timestamp' | 'isRead'>) => AIInsight;
+  markAIInsightAsRead: (id: string) => boolean;
+  getUnreadAIInsights: () => AIInsight[];
+  getAllAIInsights: (params?: PaginationParams) => PaginatedResult<AIInsight>;
+  resetAIInsights: () => boolean;
+  
+  // Staff
+  staff: Staff[];
+  addStaff: (staffMember: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>) => Staff;
+  updateStaff: (id: string, staffMember: Partial<Staff>) => Staff | null;
+  getStaff: (id: string) => Staff | null;
+  getAllStaff: (params?: PaginationParams) => PaginatedResult<Staff>;
+  deleteStaff: (id: string) => boolean;
+  getActiveStaff: () => Staff[];
+  
+  // Dispensers
+  dispensers: Dispenser[];
+  addDispenser: (dispenser: Omit<Dispenser, 'id' | 'createdAt' | 'updatedAt'>) => Dispenser;
+  updateDispenser: (id: string, dispenser: Partial<Dispenser>) => Dispenser | null;
+  getDispenser: (id: string) => Dispenser | null;
+  getAllDispensers: (params?: PaginationParams) => PaginatedResult<Dispenser>;
+  deleteDispenser: (id: string) => boolean;
+  getActiveDispensers: () => Dispenser[];
+  
+  // Shifts
+  shifts: Shift[];
+  addShift: (shift: Omit<Shift, 'id'>) => Shift;
+  updateShift: (id: string, shift: Partial<Shift>) => Shift | null;
+  getShift: (id: string) => Shift | null;
+  getAllShifts: (params?: PaginationParams) => PaginatedResult<Shift>;
+  deleteShift: (id: string) => boolean;
+  getCurrentShift: () => Shift | null;
+  
+  // Sales
+  sales: Sale[];
+  addSale: (sale: Omit<Sale, 'id'>) => Sale;
+  updateSale: (id: string, sale: Partial<Sale>) => Sale | null;
+  getSale: (id: string) => Sale | null;
+  getAllSales: (params?: PaginationParams) => PaginatedResult<Sale>;
+  deleteSale: (id: string) => boolean;
+  getSalesForShift: (shiftId: string) => Sale[];
+  
+  // Prices
+  prices: PriceRecord[];
+  addPrice: (price: Omit<PriceRecord, 'id'>) => PriceRecord;
+  updatePrice: (id: string, price: Partial<PriceRecord>) => PriceRecord | null;
+  getPrice: (id: string) => PriceRecord | null;
+  getAllPrices: (params?: PaginationParams) => PaginatedResult<PriceRecord>;
+  deletePrice: (id: string) => boolean;
+  getCurrentPrices: () => Record<ProductType, number>;
+  
+  // Incidents
+  incidents: Incident[];
+  addIncident: (incident: Omit<Incident, 'id'>) => Incident;
+  updateIncident: (id: string, incident: Partial<Incident>) => Incident | null;
+  getIncident: (id: string) => Incident | null;
+  getAllIncidents: (params?: PaginationParams) => PaginatedResult<Incident>;
+  deleteIncident: (id: string) => boolean;
+  
+  // Activity Logs
+  activityLogs: ActivityLog[];
+  addActivityLog: (log: Omit<ActivityLog, 'id' | 'timestamp'>) => ActivityLog;
+  getAllActivityLogs: (params?: PaginationParams) => PaginatedResult<ActivityLog>;
+  
+  // Tanks
+  tanks: Tank[];
+  addTank: (tank: Omit<Tank, 'id'>) => Tank;
+  updateTank: (id: string, tank: Partial<Tank>) => Tank | null;
+  getTank: (id: string) => Tank | null;
+  getAllTanks: (params?: PaginationParams) => PaginatedResult<Tank>;
+  deleteTank: (id: string) => boolean;
+  getTanksByProduct: (productType: ProductType) => Tank[];
+  
+  // Company
+  company: typeof defaultCompany;
+  updateCompany: (data: Partial<typeof defaultCompany>) => void;
+}
 
-const getPaginatedData = <T extends {}>(
-  collection: T[],
-  params: PaginationParams = { page: 1, limit: 10 }
-): PaginatedResult<T> => {
-  let filteredData = [...collection];
-  
-  if (params.filter) {
-    filteredData = filteredData.filter(item => {
-      return Object.entries(params.filter || {}).every(([key, value]) => {
-        if (value === undefined || value === null) return true;
-        
-        const itemValue = (item as any)[key];
-        
-        if (typeof value === 'string' && typeof itemValue === 'string') {
-          return itemValue.toLowerCase().includes(value.toLowerCase());
-        }
-        
-        if (value.start && value.end && itemValue instanceof Date) {
-          const start = new Date(value.start);
-          const end = new Date(value.end);
-          return itemValue >= start && itemValue <= end;
-        }
-        
-        return itemValue === value;
-      });
-    });
-  }
-  
-  if (params.sort) {
-    filteredData.sort((a, b) => {
-      const aValue = (a as any)[params.sort?.field || ''];
-      const bValue = (b as any)[params.sort?.field || ''];
-      
-      if (aValue instanceof Date && bValue instanceof Date) {
-        return params.sort?.direction === 'asc' 
-          ? aValue.getTime() - bValue.getTime() 
-          : bValue.getTime() - aValue.getTime();
-      }
-      
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return params.sort?.direction === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-      
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return params.sort?.direction === 'asc' ? aValue - bValue : bValue - aValue;
-      }
-      
-      return 0;
-    });
-  }
-  
-  const totalCount = filteredData.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / params.limit));
-  const currentPage = Math.min(Math.max(1, params.page), totalPages);
-  const startIndex = (currentPage - 1) * params.limit;
-  const endIndex = Math.min(startIndex + params.limit, totalCount);
-  
-  const paginatedData = filteredData.slice(startIndex, endIndex);
-  
-  return {
-    data: paginatedData,
-    totalCount,
-    totalPages,
-    currentPage
-  };
-};
-
+// Create the context with a default value
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
-  return context;
-};
-
+// Provider component
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { toast } = useToast();
-  
+  // State for all our data
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [gpsData, setGPSData] = useState<GPSData[]>([]);
-  const [aiInsights, setAIInsights] = useState<AIInsight[]>([]);
+  const [gpsData, setGpsData] = useState<GPSData[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [dispensers, setDispensers] = useState<Dispenser[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
-  const [prices, setPrices] = useState<Price[]>([]);
+  const [prices, setPrices] = useState<PriceRecord[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [tanks, setTanks] = useState<Tank[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [company, setCompany] = useState(defaultCompany);
 
+  // Load data from localStorage on initial render
   useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true);
-      
-      try {
-        const { data: poData, error: poError } = await supabase
-          .from('purchase_orders')
-          .select('*');
-          
-        if (poError) throw poError;
-        setPurchaseOrders(poData.map(po => fromSupabaseFormat.purchaseOrder(po)));
-        
-        const { data: supplierData, error: supplierError } = await supabase
-          .from('suppliers')
-          .select('*');
-          
-        if (supplierError) throw supplierError;
-        setSuppliers(supplierData.map(supplier => fromSupabaseFormat.supplier(supplier)));
-        
-        const { data: driverData, error: driverError } = await supabase
-          .from('drivers')
-          .select('*');
-          
-        if (driverError) throw driverError;
-        setDrivers(driverData.map(driver => fromSupabaseFormat.driver(driver)));
-        
-        const { data: truckData, error: truckError } = await supabase
-          .from('trucks')
-          .select('*');
-          
-        if (truckError) throw truckError;
-        setTrucks(truckData.map(truck => fromSupabaseFormat.truck(truck)));
-        
-        const { data: tankData, error: tankError } = await supabase
-          .from('tanks')
-          .select('*');
-          
-        if (tankError) throw tankError;
-        setTanks(tankData.map(tank => fromSupabaseFormat.tank(tank)));
-        
-        const { data: incidentData, error: incidentError } = await supabase
-          .from('incidents')
-          .select('*');
-          
-        if (incidentError) throw incidentError;
-        setIncidents(incidentData.map(incident => fromSupabaseFormat.incident(incident)));
-        
-        console.log('Initial data loaded from Supabase');
-      } catch (error) {
-        console.error('Error loading data from Supabase:', error);
-        toast({
-          title: 'Data Loading Error',
-          description: 'Failed to load data from the database.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
+    setPurchaseOrders(getFromLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, []));
+    setLogs(getFromLocalStorage(STORAGE_KEYS.LOGS, []));
+    setSuppliers(getFromLocalStorage(STORAGE_KEYS.SUPPLIERS, []));
+    setDrivers(getFromLocalStorage(STORAGE_KEYS.DRIVERS, []));
+    setTrucks(getFromLocalStorage(STORAGE_KEYS.TRUCKS, []));
+    setGpsData(getFromLocalStorage(STORAGE_KEYS.GPS_DATA, []));
+    setAiInsights(getFromLocalStorage(STORAGE_KEYS.AI_INSIGHTS, []));
+    setStaff(getFromLocalStorage(STORAGE_KEYS.STAFF, []));
+    setDispensers(getFromLocalStorage(STORAGE_KEYS.DISPENSERS, []));
+    setShifts(getFromLocalStorage(STORAGE_KEYS.SHIFTS, []));
+    setSales(getFromLocalStorage(STORAGE_KEYS.SALES, []));
+    setPrices(getFromLocalStorage(STORAGE_KEYS.PRICES, []));
+    setIncidents(getFromLocalStorage(STORAGE_KEYS.INCIDENTS, []));
+    setActivityLogs(getFromLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, []));
+    setTanks(getFromLocalStorage(STORAGE_KEYS.TANKS, []));
+  }, []);
+
+  // Purchase Order functions
+  const addPurchaseOrder = useCallback(async (order: Omit<PurchaseOrder, 'id' | 'createdAt' | 'updatedAt'>): Promise<PurchaseOrder> => {
+    const now = new Date();
+    const newOrder: PurchaseOrder = {
+      ...order,
+      id: uuidv4(),
+      createdAt: now,
+      updatedAt: now
     };
     
-    fetchInitialData();
-  }, [toast]);
-
-  const persistentSetPurchaseOrders = (value: React.SetStateAction<PurchaseOrder[]>) => {
-    setPurchaseOrders((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      return newValue;
-    });
-  };
-
-  const persistentSetLogs = (value: React.SetStateAction<any[]>) => {
-    setLogs((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      return newValue;
-    });
-  };
-
-  const persistentSetSuppliers = (value: React.SetStateAction<Supplier[]>) => {
-    setSuppliers((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetDrivers = (value: React.SetStateAction<Driver[]>) => {
-    setDrivers((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetTrucks = (value: React.SetStateAction<Truck[]>) => {
-    setTrucks((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetGPSData = (value: React.SetStateAction<GPSData[]>) => {
-    setGPSData((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetAIInsights = (value: React.SetStateAction<AIInsight[]>) => {
-    setAIInsights((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetStaff = (value: React.SetStateAction<Staff[]>) => {
-    setStaff((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetDispensers: typeof setDispensers = (value: React.SetStateAction<Dispenser[]>) => {
-    setDispensers((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetShifts = (value: React.SetStateAction<Shift[]>) => {
-    setShifts((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetSales = (value: React.SetStateAction<Sale[]>) => {
-    setSales((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetPrices = (value: React.SetStateAction<Price[]>) => {
-    setPrices((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetIncidents = (value: React.SetStateAction<Incident[]>) => {
-    setIncidents((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetActivityLogs = (value: React.SetStateAction<ActivityLog[]>) => {
-    setActivityLogs((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const persistentSetTanks = (value: React.SetStateAction<Tank[]>) => {
-    setTanks((prev) => {
-      const newValue = typeof value === 'function' ? value(prev) : value;
-      if (Array.isArray(newValue)) {
-      }
-      return newValue;
-    });
-  };
-
-  const setTankActive = (tankId: string, isActive: boolean): boolean => {
+    // Try to save to Supabase first
     try {
-      const tank = tanks.find(t => t.id === tankId);
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .insert(toSupabaseFormat.purchaseOrder(newOrder))
+        .select()
+        .single();
+        
+      if (error) throw error;
       
-      if (!tank) {
-        toast({
-          title: "Error",
-          description: "Tank not found.",
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      const result = tankActionsMethods.updateTank(tankId, { isActive });
-      return true;
+      // If successful, use the returned data with its database ID
+      const savedOrder = fromSupabaseFormat.purchaseOrder(data);
+      setPurchaseOrders(prev => [...prev, savedOrder]);
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, [...purchaseOrders, savedOrder]);
+      return savedOrder;
     } catch (error) {
-      console.error("Error setting tank active state:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update tank state. Please try again.",
-        variant: "destructive",
-      });
-      return false;
+      console.error('Error saving purchase order to Supabase:', error);
+      
+      // Fall back to local storage only
+      setPurchaseOrders(prev => [...prev, newOrder]);
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, [...purchaseOrders, newOrder]);
+      return newOrder;
     }
-  };
+  }, [purchaseOrders]);
 
-  const updateDispenser = (id: string, updates: Partial<Dispenser>): boolean => {
-    const result = dispenserActions.updateDispenser?.(id, updates);
-    return result !== undefined;
-  };
+  const updatePurchaseOrder = useCallback(async (id: string, orderUpdate: Partial<PurchaseOrder>): Promise<PurchaseOrder | null> => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === id);
+    if (orderIndex === -1) return null;
 
-  const addIncident = (incidentData: Omit<Incident, 'id'>): Incident => {
+    const updatedOrder = {
+      ...purchaseOrders[orderIndex],
+      ...orderUpdate,
+      updatedAt: new Date()
+    };
+
     try {
-      const tempId = `temp-incident-${uuidv4()}`;
-      const newIncident: Incident = {
-        ...incidentData,
-        id: tempId
-      };
+      // Update in Supabase
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update(toSupabaseFormat.purchaseOrder(updatedOrder))
+        .eq('id', id);
+        
+      if (error) throw error;
       
-      setIncidents(prev => [newIncident, ...prev]);
+      // Update local state
+      const newOrders = [...purchaseOrders];
+      newOrders[orderIndex] = updatedOrder;
+      setPurchaseOrders(newOrders);
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      return updatedOrder;
+    } catch (error) {
+      console.error('Error updating purchase order in Supabase:', error);
       
-      (async () => {
-        try {
-          const dbIncident = toSupabaseFormat.incident(incidentData);
-          const { data, error } = await supabase
-            .from('incidents')
-            .insert(dbIncident)
-            .select()
-            .single();
-            
+      // Fall back to local storage only
+      const newOrders = [...purchaseOrders];
+      newOrders[orderIndex] = updatedOrder;
+      setPurchaseOrders(newOrders);
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
+      return updatedOrder;
+    }
+  }, [purchaseOrders]);
+
+  const getPurchaseOrder = useCallback((id: string): PurchaseOrder | null => {
+    return purchaseOrders.find(order => order.id === id) || null;
+  }, [purchaseOrders]);
+
+  const getAllPurchaseOrders = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<PurchaseOrder> => {
+    return getPaginatedData(purchaseOrders, params);
+  }, [purchaseOrders]);
+
+  const deletePurchaseOrder = useCallback((id: string): boolean => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === id);
+    if (orderIndex === -1) return false;
+
+    try {
+      // Delete from Supabase
+      supabase
+        .from('purchase_orders')
+        .delete()
+        .eq('id', id)
+        .then(({ error }) => {
           if (error) throw error;
-          
-          const finalIncident = fromSupabaseFormat.incident(data);
-          setIncidents(prev => prev.map(inc => 
-            inc.id === tempId ? finalIncident : inc
-          ));
-        } catch (err) {
-          console.error("Error in background save:", err);
-          setIncidents(prev => prev.filter(inc => inc.id !== tempId));
-          toast({
-            title: "Error",
-            description: "Failed to save incident to database.",
-            variant: "destructive",
-          });
-        }
-      })();
-      
-      return newIncident;
-    } catch (error) {
-      console.error("Error adding incident:", error);
-      throw error;
-    }
-  };
-
-  const purchaseOrderActions = usePurchaseOrderActions(
-    purchaseOrders, 
-    setPurchaseOrders, 
-    logs, 
-    setLogs
-  );
-  
-  const logActions = useLogActions(
-    logs, setLogs,
-    activityLogs, setActivityLogs
-  );
-  
-  const supplierActions = useSupplierActions(
-    suppliers, 
-    setSuppliers, 
-    setLogs
-  );
-  
-  const driverTruckActions = useDriverTruckActions(
-    drivers, setDrivers, 
-    trucks, setTrucks, 
-    purchaseOrders, setPurchaseOrders, 
-    setLogs, 
-    gpsData, setGPSData
-  );
-  
-  const deliveryActions = useDeliveryActions(
-    purchaseOrders, setPurchaseOrders,
-    drivers, setDrivers,
-    trucks, setTrucks, 
-    setLogs,
-    gpsData, setGPSData,
-    setActivityLogs
-  );
-  
-  const aiActions = useAIActions(
-    purchaseOrders, 
-    aiInsights, setAIInsights, 
-    driverTruckActions.getDriverById, 
-    driverTruckActions.getTruckById
-  );
-
-  const staffActions = useStaffActions(
-    staff, setStaff,
-    setActivityLogs
-  );
-
-  const priceActions = usePriceActions(
-    prices, setPrices,
-    setActivityLogs
-  );
-
-  const dispenserActions = useDispenserActions(
-    dispensers, setDispensers,
-    setActivityLogs,
-    setSales
-  );
-
-  const shiftActions = useShiftActions(
-    shifts, setShifts,
-    staff, setStaff,
-    setActivityLogs
-  );
-
-  const saleActions = useSaleActions(
-    sales, setSales,
-    shifts, setShifts,
-    dispensers, setDispensers,
-    setActivityLogs
-  );
-
-  const tankActionsMethods = useTankActions(
-    tanks, setTanks, 
-    setActivityLogs,
-    dispensers, setDispensers
-  );
-
-  // Implement missing functions
-  const getOrdersWithDeliveryStatus = (status: string): PurchaseOrder[] => {
-    return purchaseOrders.filter(order => 
-      order.deliveryDetails?.status === status
-    );
-  };
-
-  const getOrdersWithDiscrepancies = (): PurchaseOrder[] => {
-    return purchaseOrders.filter(order => 
-      order.offloadingDetails?.isDiscrepancyFlagged === true
-    );
-  };
-
-  const logAIInteraction = (prompt: string, response: string): void => {
-    const newLog = {
-      id: `log-${uuidv4()}`,
-      type: 'ai_interaction',
-      timestamp: new Date(),
-      details: { prompt, response }
-    };
-    setLogs(prev => [newLog, ...prev]);
-  };
-
-  const getNonGPSTrucks = (): Truck[] => {
-    return trucks.filter(truck => !truck.isGPSTagged);
-  };
-
-  const tagTruckWithGPS = (truckId: string, deviceId: string, initialLatitude: number, initialLongitude: number): boolean => {
-    try {
-      const truck = trucks.find(t => t.id === truckId);
-      if (!truck) return false;
-
-      setTrucks(prev => prev.map(t => 
-        t.id === truckId 
-          ? { 
-              ...t, 
-              isGPSTagged: true, 
-              hasGPS: true,
-              gpsDeviceId: deviceId,
-              lastLatitude: initialLatitude,
-              lastLongitude: initialLongitude
-            } 
-          : t
-      ));
-
-      // Add initial GPS data
-      recordGPSData(truckId, initialLatitude, initialLongitude);
-      return true;
-    } catch (error) {
-      console.error("Error tagging truck with GPS:", error);
-      return false;
-    }
-  };
-
-  const untagTruckGPS = (truckId: string): boolean => {
-    try {
-      setTrucks(prev => prev.map(t => 
-        t.id === truckId 
-          ? { 
-              ...t, 
-              isGPSTagged: false,
-              gpsDeviceId: undefined
-            } 
-          : t
-      ));
-      return true;
-    } catch (error) {
-      console.error("Error untagging truck GPS:", error);
-      return false;
-    }
-  };
-
-  const recordGPSData = (truckId: string, latitude: number, longitude: number): GPSData => {
-    const newGPSData: GPSData = {
-      id: `gps-${uuidv4()}`,
-      truckId,
-      latitude,
-      longitude,
-      timestamp: new Date(),
-      location: `${latitude},${longitude}`,
-      speed: Math.floor(Math.random() * 80) + 20, // Random speed between 20-100 km/h
-      fuelLevel: Math.floor(Math.random() * 100) + 1, // Random fuel level 1-100%
-    };
-    
-    setGPSData(prev => [newGPSData, ...prev]);
-    
-    // Update truck's last known position
-    setTrucks(prev => prev.map(truck =>
-      truck.id === truckId 
-        ? { 
-            ...truck, 
-            lastLatitude: latitude,
-            lastLongitude: longitude,
-            lastSpeed: newGPSData.speed
-          }
-        : truck
-    ));
-    
-    return newGPSData;
-  };
-
-  const getGPSDataForTruck = (truckId: string, params?: PaginationParams): PaginatedResult<GPSData> => {
-    const truckGPSData = gpsData.filter(data => data.truckId === truckId);
-    return getPaginatedData(truckGPSData, params);
-  };
-
-  const updateGPSData = (truckId: string, latitude: number, longitude: number, speed: number): void => {
-    const newGPSData: GPSData = {
-      id: `gps-${uuidv4()}`,
-      truckId,
-      latitude,
-      longitude,
-      timestamp: new Date(),
-      location: `${latitude},${longitude}`,
-      speed,
-      fuelLevel: Math.floor(Math.random() * 100) + 1, // Random fuel level 1-100%
-    };
-    
-    setGPSData(prev => [newGPSData, ...prev]);
-    
-    // Update truck's last known position
-    setTrucks(prev => prev.map(truck =>
-      truck.id === truckId 
-        ? { 
-            ...truck, 
-            lastLatitude: latitude,
-            lastLongitude: longitude,
-            lastSpeed: speed
-          }
-        : truck
-    ));
-
-    // Update delivery progress for any active deliveries with this truck
-    setPurchaseOrders(prev => prev.map(order => {
-      if (order.deliveryDetails?.truckId === truckId && order.deliveryDetails?.status === 'in_transit') {
-        const totalDistance = order.deliveryDetails.totalDistance || 100;
-        const currentDistance = order.deliveryDetails.distanceCovered || 0;
-        
-        // Simulate progress based on speed (faster trucks make more progress)
-        const progressIncrement = Math.min((speed / 100) * 5, 10); // 0-10% progress based on speed
-        const newDistance = Math.min(currentDistance + progressIncrement, totalDistance);
-        
-        return {
-          ...order,
-          deliveryDetails: {
-            ...order.deliveryDetails,
-            distanceCovered: newDistance
-          }
-        };
-      }
-      return order;
-    }));
-  };
-
-  const updateDeliveryDetails = (orderId: string, driverId: string, truckId: string, deliveryDate: Date): boolean => {
-    try {
-      setPurchaseOrders(prev => prev.map(order => {
-        if (order.id === orderId) {
-          return {
-            ...order,
-            deliveryDetails: {
-              ...order.deliveryDetails,
-              driverId,
-              truckId,
-              status: 'pending',
-            },
-            deliveryDate
-          };
-        }
-        return order;
-      }));
-      return true;
-    } catch (error) {
-      console.error("Error updating delivery details:", error);
-      return false;
-    }
-  };
-
-  const markOrderAsDelivered = (orderId: string): boolean => {
-    try {
-      setPurchaseOrders(prev => prev.map(order => {
-        if (order.id === orderId) {
-          return {
-            ...order,
-            deliveryDetails: {
-              ...order.deliveryDetails,
-              status: 'delivered',
-              destinationArrivalTime: new Date()
-            },
-            status: 'delivered'
-          };
-        }
-        return order;
-      }));
-      return true;
-    } catch (error) {
-      console.error("Error marking order as delivered:", error);
-      return false;
-    }
-  };
-
-  const startDelivery = (orderId: string): boolean => {
-    try {
-      const order = purchaseOrders.find(o => o.id === orderId);
-      if (!order?.deliveryDetails?.truckId) return false;
-      
-      // Update purchase order
-      setPurchaseOrders(prev => prev.map(o => {
-        if (o.id === orderId) {
-          return {
-            ...o,
-            deliveryDetails: {
-              ...o.deliveryDetails,
-              status: 'in_transit',
-              depotDepartureTime: new Date(),
-              distanceCovered: 0,
-              totalDistance: o.deliveryDetails?.totalDistance || Math.floor(Math.random() * 100) + 50, // 50-150 km
-              expectedArrivalTime: new Date(Date.now() + 3600000 + Math.random() * 7200000) // 1-3 hours from now
-            }
-          };
-        }
-        return o;
-      }));
-      
-      return true;
-    } catch (error) {
-      console.error("Error starting delivery:", error);
-      return false;
-    }
-  };
-
-  const completeDelivery = (orderId: string): boolean => {
-    try {
-      setPurchaseOrders(prev => prev.map(order => {
-        if (order.id === orderId) {
-          const totalDistance = order.deliveryDetails?.totalDistance || 100;
-          return {
-            ...order,
-            deliveryDetails: {
-              ...order.deliveryDetails,
-              status: 'delivered',
-              destinationArrivalTime: new Date(),
-              distanceCovered: totalDistance // Complete the journey
-            }
-          };
-        }
-        return order;
-      }));
-      
-      return true;
-    } catch (error) {
-      console.error("Error completing delivery:", error);
-      return false;
-    }
-  };
-
-  const updateDeliveryStatus = (orderId: string, updates: Partial<DeliveryDetails> | string): boolean => {
-    try {
-      setPurchaseOrders(prev => prev.map(order => {
-        if (order.id === orderId) {
-          if (typeof updates === 'string') {
-            return {
-              ...order,
-              deliveryDetails: {
-                ...order.deliveryDetails,
-                status: updates as 'pending' | 'in_transit' | 'delivered'
-              }
-            };
-          } else {
-            return {
-              ...order,
-              deliveryDetails: {
-                ...order.deliveryDetails,
-                ...updates
-              }
-            };
-          }
-        }
-        return order;
-      }));
-      return true;
-    } catch (error) {
-      console.error("Error updating delivery status:", error);
-      return false;
-    }
-  };
-
-  const recordOffloadingDetails = (orderId: string, details: any): boolean => {
-    try {
-      setPurchaseOrders(prev => prev.map(order => {
-        if (order.id === orderId) {
-          // Calculate discrepancy percentage
-          const loadedVolume = details.loadedVolume || 0;
-          const deliveredVolume = details.deliveredVolume || 0;
-          const discrepancy = loadedVolume > 0 ? Math.abs((loadedVolume - deliveredVolume) / loadedVolume * 100) : 0;
-          const isDiscrepancyFlagged = discrepancy > 2; // Flag if more than 2% difference
-          
-          return {
-            ...order,
-            offloadingDetails: {
-              ...details,
-              discrepancyPercentage: discrepancy,
-              isDiscrepancyFlagged
-            }
-          };
-        }
-        return order;
-      }));
-      return true;
-    } catch (error) {
-      console.error("Error recording offloading details:", error);
-      return false;
-    }
-  };
-
-  const recordOffloadingToTank = (tankId: string, volume: number, source: string, sourceId: string): boolean => {
-    try {
-      // Update tank volume
-      setTanks(prev => prev.map(tank => {
-        if (tank.id === tankId) {
-          const currentVolume = tank.currentVolume || 0;
-          return {
-            ...tank,
-            currentVolume: currentVolume + volume,
-            lastRefillDate: new Date()
-          };
-        }
-        return tank;
-      }));
-      
-      // Log the activity
-      const tank = tanks.find(t => t.id === tankId);
-      const activityLog: ActivityLog = {
-        id: `activity-${uuidv4()}`,
-        entityType: 'tank',
-        entityId: tankId,
-        action: 'refill',
-        details: `Tank ${tank?.name} refilled with ${volume.toLocaleString()} liters from ${source} (ID: ${sourceId})`,
-        user: 'System',
-        timestamp: new Date()
-      };
-      setActivityLogs(prev => [activityLog, ...prev]);
-      
-      return true;
-    } catch (error) {
-      console.error("Error recording offloading to tank:", error);
-      return false;
-    }
-  };
-
-  const assignDriverToOrder = (orderId: string, driverId: string, truckId: string): boolean => {
-    try {
-      // Check if driver and truck exist
-      const driver = drivers.find(d => d.id === driverId);
-      const truck = trucks.find(t => t.id === truckId);
-      
-      if (!driver || !truck) {
-        toast({
-          title: "Error",
-          description: "Driver or truck not found.",
-          variant: "destructive",
         });
-        return false;
-      }
       
-      // Update purchase order
-      setPurchaseOrders(prev => prev.map(order => {
-        if (order.id === orderId) {
-          return {
-            ...order,
-            deliveryDetails: {
-              ...order.deliveryDetails,
-              driverId,
-              truckId,
-              status: 'pending'
-            }
-          };
-        }
-        return order;
-      }));
-      
+      // Update local state
+      const newOrders = purchaseOrders.filter(order => order.id !== id);
+      setPurchaseOrders(newOrders);
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
       return true;
     } catch (error) {
-      console.error("Error assigning driver to order:", error);
-      return false;
-    }
-  };
-
-  const deleteStaff = (id: string): boolean => {
-    try {
-      const staffExists = staff.some(s => s.id === id);
-      if (!staffExists) return false;
+      console.error('Error deleting purchase order:', error);
       
-      setStaff(prev => prev.filter(s => s.id !== id));
+      // Fall back to local storage only
+      const newOrders = purchaseOrders.filter(order => order.id !== id);
+      setPurchaseOrders(newOrders);
+      saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, newOrders);
       return true;
-    } catch (error) {
-      console.error("Error deleting staff:", error);
-      return false;
     }
-  };
+  }, [purchaseOrders]);
 
-  const addDispenser = (dispenserData: Omit<Dispenser, 'id'>): Dispenser => {
-    const newDispenser: Dispenser = {
-      ...dispenserData,
-      id: `dispenser-${uuidv4()}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      isActive: true,
-      totalSales: 0,
-      totalVolume: 0,
-      totalVolumeSold: 0,
-      currentShiftSales: 0,
-      currentShiftVolume: 0
-    };
-    
-    setDispensers(prev => [...prev, newDispenser]);
-    return newDispenser;
-  };
-
-  const deleteDispenser = (id: string): boolean => {
-    const exists = dispensers.some(d => d.id === id);
-    if (!exists) return false;
-    
-    setDispensers(prev => prev.filter(d => d.id !== id));
-    return true;
-  };
-
-  const getDispenserById = (id: string): Dispenser | undefined => {
-    return dispensers.find(d => d.id === id);
-  };
-
-  const getAllDispensers = (params?: PaginationParams): PaginatedResult<Dispenser> => {
-    return getPaginatedData(dispensers, params);
-  };
-
-  const setDispenserActive = (id: string, isActive: boolean): Dispenser | undefined => {
-    let updatedDispenser: Dispenser | undefined;
-    
-    setDispensers(prev => prev.map(d => {
-      if (d.id === id) {
-        updatedDispenser = { ...d, isActive };
-        return updatedDispenser;
-      }
-      return d;
-    }));
-    
-    return updatedDispenser;
-  };
-
-  const getDispenserSalesStats = (id: string, dateRange?: { start: Date, end: Date }): { volume: number, amount: number, transactions: number } => {
-    const dispenserSales = sales.filter(sale => {
-      const matchesDispenser = sale.dispenserId === id;
-      if (!dateRange) return matchesDispenser;
-      
-      const saleDate = new Date(sale.timestamp);
-      return matchesDispenser && 
-        saleDate >= dateRange.start && 
-        saleDate <= dateRange.end;
-    });
-    
-    return {
-      volume: dispenserSales.reduce((sum, sale) => sum + sale.volume, 0),
-      amount: dispenserSales.reduce((sum, sale) => sum + sale.amount, 0),
-      transactions: dispenserSales.length
-    };
-  };
-
-  const recordDispensing = (id: string, volume: number, staffId: string, shiftId: string): boolean => {
-    try {
-      const dispenser = dispensers.find(d => d.id === id);
-      if (!dispenser) return false;
-      
-      const unitPrice = dispenser.unitPrice || 0;
-      const amount = unitPrice * volume;
-      
-      // Update dispenser totals
-      setDispensers(prev => prev.map(d => {
-        if (d.id === id) {
-          return {
-            ...d,
-            totalVolumeSold: (d.totalVolumeSold || 0) + volume,
-            totalSales: (d.totalSales || 0) + amount,
-            currentShiftVolume: (d.currentShiftVolume || 0) + volume,
-            currentShiftSales: (d.currentShiftSales || 0) + amount,
-            lastActivity: new Date()
-          };
-        }
-        return d;
-      }));
-      
-      // Record sale
-      const newSale: Sale = {
-        id: `sale-${uuidv4()}`,
-        dispenserId: id,
-        staffId,
-        shiftId,
-        volume,
-        amount,
-        unitPrice,
-        timestamp: new Date(),
-        productType: dispenser.productType || 'unknown',
-        isManualEntry: false,
-        totalAmount: amount,
-        paymentMethod: 'cash', // Default payment method
-        dispenserNumber: dispenser.number || 'unknown'
-      };
-      
-      setSales(prev => [newSale, ...prev]);
-      return true;
-    } catch (error) {
-      console.error("Error recording dispensing:", error);
-      return false;
-    }
-  };
-
-  const addShift = (shiftData: Omit<Shift, 'id'>): Shift => {
-    const newShift: Shift = {
-      ...shiftData,
-      id: `shift-${uuidv4()}`,
-      salesAmount: 0,
-      salesVolume: 0,
-      status: 'active'
-    };
-    
-    setShifts(prev => [...prev, newShift]);
-    return newShift;
-  };
-
-  const updateShift = (id: string, updates: Partial<Shift>): boolean => {
-    let updated = false;
-    
-    setShifts(prev => {
-      const newShifts = prev.map(shift => {
-        if (shift.id === id) {
-          updated = true;
-          return { ...shift, ...updates };
-        }
-        return shift;
-      });
-      return newShifts;
-    });
-    
-    return updated;
-  };
-
-  const deleteShift = (id: string): boolean => {
-    let deleted = false;
-    
-    setShifts(prev => {
-      const filtered = prev.filter(shift => {
-        if (shift.id === id) {
-          deleted = true;
-          return false;
-        }
-        return true;
-      });
-      return filtered;
-    });
-    
-    return deleted;
-  };
-
-  const getShiftById = (id: string): Shift | null => {
-    return shifts.find(shift => shift.id === id) || null;
-  };
-
-  const getAllShifts = (params?: PaginationParams): PaginatedResult<Shift> => {
-    return getPaginatedData(shifts, params);
-  };
-
-  const getShiftsByStaffId = (staffId: string): Shift[] => {
-    return shifts.filter(shift => shift.staffId === staffId);
-  };
-
-  const getCurrentStaffShift = (staffId: string): Shift | null => {
-    return shifts.find(shift => shift.staffId === staffId && !shift.endTime) || null;
-  };
-
-  const addSale = (saleData: Omit<Sale, 'id'>): Sale => {
-    const newSale: Sale = {
-      ...saleData,
-      id: `sale-${uuidv4()}`,
+  // Log functions
+  const addLog = useCallback((log: Omit<LogEntry, 'id' | 'timestamp'>): LogEntry => {
+    const newLog: LogEntry = {
+      ...log,
+      id: uuidv4(),
       timestamp: new Date()
     };
     
-    setSales(prev => [...prev, newSale]);
-    return newSale;
-  };
+    const newLogs = [...logs, newLog];
+    setLogs(newLogs);
+    saveToLocalStorage(STORAGE_KEYS.LOGS, newLogs);
+    return newLog;
+  }, [logs]);
 
-  const updateSale = (id: string, updates: Partial<Sale>): boolean => {
-    let updated = false;
-    
-    setSales(prev => {
-      const newSales = prev.map(sale => {
-        if (sale.id === id) {
-          updated = true;
-          return { ...sale, ...updates };
-        }
-        return sale;
-      });
-      return newSales;
-    });
-    
-    return updated;
-  };
+  const getLogsForPO = useCallback((poId: string): LogEntry[] => {
+    return logs.filter(log => log.poId === poId);
+  }, [logs]);
 
-  const deleteSale = (id: string): boolean => {
-    let deleted = false;
-    
-    setSales(prev => {
-      const filtered = prev.filter(sale => {
-        if (sale.id === id) {
-          deleted = true;
-          return false;
-        }
-        return true;
-      });
-      return filtered;
-    });
-    
-    return deleted;
-  };
+  const getAllLogs = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<LogEntry> => {
+    return getPaginatedData(logs, params);
+  }, [logs]);
 
-  const getSaleById = (id: string): Sale | undefined => {
-    return sales.find(sale => sale.id === id);
-  };
-
-  const getAllSales = (params?: PaginationParams): PaginatedResult<Sale> => {
-    return getPaginatedData(sales, params);
-  };
-
-  const updateOrderStatusWrapper = (orderId: string, status: OrderStatus): boolean => {
-    return purchaseOrderActions.updateOrderStatus(orderId, status, `Status updated to ${status}`);
-  };
-
-  const getLogsByOrderIdWrapper = (orderId: string, params?: PaginationParams): PaginatedResult<any> => {
-    const orderLogs = logActions.getLogsByOrderId(orderId);
-    
-    return {
-      data: orderLogs,
-      totalCount: orderLogs.length,
-      totalPages: 1,
-      currentPage: 1
+  // Supplier functions
+  const addSupplier = useCallback((supplier: Omit<Supplier, 'id'>): Supplier => {
+    const newSupplier: Supplier = {
+      ...supplier,
+      id: uuidv4()
     };
-  };
+    
+    const newSuppliers = [...suppliers, newSupplier];
+    setSuppliers(newSuppliers);
+    saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
+    return newSupplier;
+  }, [suppliers]);
 
-  const generateAIInsightsWrapper = (data: any): AIInsight => {
-    aiActions.generateAIInsights(data);
-    return {
-      id: `insight-${uuidv4()}`,
-      type: 'generated',
-      description: 'AI Insights generated',
-      severity: 'low',
-      relatedEntityIds: [],
-      generatedAt: new Date(),
+  const updateSupplier = useCallback((id: string, supplierUpdate: Partial<Supplier>): Supplier | null => {
+    const supplierIndex = suppliers.findIndex(supplier => supplier.id === id);
+    if (supplierIndex === -1) return null;
+
+    const updatedSupplier = {
+      ...suppliers[supplierIndex],
+      ...supplierUpdate
+    };
+
+    const newSuppliers = [...suppliers];
+    newSuppliers[supplierIndex] = updatedSupplier;
+    setSuppliers(newSuppliers);
+    saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
+    return updatedSupplier;
+  }, [suppliers]);
+
+  const getSupplier = useCallback((id: string): Supplier | null => {
+    return suppliers.find(supplier => supplier.id === id) || null;
+  }, [suppliers]);
+
+  const getAllSuppliers = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Supplier> => {
+    return getPaginatedData(suppliers, params);
+  }, [suppliers]);
+
+  const deleteSupplier = useCallback((id: string): boolean => {
+    const supplierIndex = suppliers.findIndex(supplier => supplier.id === id);
+    if (supplierIndex === -1) return false;
+
+    const newSuppliers = suppliers.filter(supplier => supplier.id !== id);
+    setSuppliers(newSuppliers);
+    saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, newSuppliers);
+    return true;
+  }, [suppliers]);
+
+  // Driver functions
+  const addDriver = useCallback((driver: Omit<Driver, 'id' | 'createdAt' | 'updatedAt'>): Driver => {
+    const now = new Date();
+    const newDriver: Driver = {
+      ...driver,
+      id: uuidv4(),
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    const newDrivers = [...drivers, newDriver];
+    setDrivers(newDrivers);
+    saveToLocalStorage(STORAGE_KEYS.DRIVERS, newDrivers);
+    return newDriver;
+  }, [drivers]);
+
+  const updateDriver = useCallback((id: string, driverUpdate: Partial<Driver>): Driver | null => {
+    const driverIndex = drivers.findIndex(driver => driver.id === id);
+    if (driverIndex === -1) return null;
+
+    const updatedDriver = {
+      ...drivers[driverIndex],
+      ...driverUpdate,
+      updatedAt: new Date()
+    };
+
+    const newDrivers = [...drivers];
+    newDrivers[driverIndex] = updatedDriver;
+    setDrivers(newDrivers);
+    saveToLocalStorage(STORAGE_KEYS.DRIVERS, newDrivers);
+    return updatedDriver;
+  }, [drivers]);
+
+  const getDriver = useCallback((id: string): Driver | null => {
+    return drivers.find(driver => driver.id === id) || null;
+  }, [drivers]);
+
+  const getAllDrivers = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Driver> => {
+    return getPaginatedData(drivers, params);
+  }, [drivers]);
+
+  const deleteDriver = useCallback((id: string): boolean => {
+    const driverIndex = drivers.findIndex(driver => driver.id === id);
+    if (driverIndex === -1) return false;
+
+    const newDrivers = drivers.filter(driver => driver.id !== id);
+    setDrivers(newDrivers);
+    saveToLocalStorage(STORAGE_KEYS.DRIVERS, newDrivers);
+    return true;
+  }, [drivers]);
+
+  const getAvailableDrivers = useCallback((): Driver[] => {
+    return drivers.filter(driver => driver.isAvailable);
+  }, [drivers]);
+
+  // Truck functions
+  const addTruck = useCallback((truck: Omit<Truck, 'id' | 'createdAt' | 'updatedAt'>): Truck => {
+    const now = new Date();
+    const newTruck: Truck = {
+      ...truck,
+      id: uuidv4(),
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    const newTrucks = [...trucks, newTruck];
+    setTrucks(newTrucks);
+    saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
+    return newTruck;
+  }, [trucks]);
+
+  const updateTruck = useCallback((id: string, truckUpdate: Partial<Truck>): Truck | null => {
+    const truckIndex = trucks.findIndex(truck => truck.id === id);
+    if (truckIndex === -1) return null;
+
+    const updatedTruck = {
+      ...trucks[truckIndex],
+      ...truckUpdate,
+      updatedAt: new Date()
+    };
+
+    const newTrucks = [...trucks];
+    newTrucks[truckIndex] = updatedTruck;
+    setTrucks(newTrucks);
+    saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
+    return updatedTruck;
+  }, [trucks]);
+
+  const getTruck = useCallback((id: string): Truck | null => {
+    return trucks.find(truck => truck.id === id) || null;
+  }, [trucks]);
+
+  const getAllTrucks = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Truck> => {
+    return getPaginatedData(trucks, params);
+  }, [trucks]);
+
+  const deleteTruck = useCallback((id: string): boolean => {
+    const truckIndex = trucks.findIndex(truck => truck.id === id);
+    if (truckIndex === -1) return false;
+
+    const newTrucks = trucks.filter(truck => truck.id !== id);
+    setTrucks(newTrucks);
+    saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
+    return true;
+  }, [trucks]);
+
+  const getAvailableTrucks = useCallback((): Truck[] => {
+    return trucks.filter(truck => truck.isAvailable);
+  }, [trucks]);
+
+  const tagTruckWithGPS = useCallback((truckId: string, gpsDeviceId: string): boolean => {
+    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
+    if (truckIndex === -1) return false;
+
+    const updatedTruck = {
+      ...trucks[truckIndex],
+      isGPSTagged: true,
+      gpsDeviceId,
+      updatedAt: new Date()
+    };
+
+    const newTrucks = [...trucks];
+    newTrucks[truckIndex] = updatedTruck;
+    setTrucks(newTrucks);
+    saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
+    return true;
+  }, [trucks]);
+
+  const untagTruckGPS = useCallback((truckId: string): boolean => {
+    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
+    if (truckIndex === -1) return false;
+
+    const updatedTruck = {
+      ...trucks[truckIndex],
+      isGPSTagged: false,
+      gpsDeviceId: undefined,
+      updatedAt: new Date()
+    };
+
+    const newTrucks = [...trucks];
+    newTrucks[truckIndex] = updatedTruck;
+    setTrucks(newTrucks);
+    saveToLocalStorage(STORAGE_KEYS.TRUCKS, newTrucks);
+    return true;
+  }, [trucks]);
+
+  const getNonGPSTrucks = useCallback((): Truck[] => {
+    return trucks.filter(truck => !truck.isGPSTagged);
+  }, [trucks]);
+
+  // GPS Data functions
+  const addGPSData = useCallback((data: Omit<GPSData, 'id' | 'timestamp'>): GPSData => {
+    const newData: GPSData = {
+      ...data,
+      id: uuidv4(),
+      timestamp: new Date()
+    };
+    
+    const newGpsData = [...gpsData, newData];
+    setGpsData(newGpsData);
+    saveToLocalStorage(STORAGE_KEYS.GPS_DATA, newGpsData);
+    return newData;
+  }, [gpsData]);
+
+  const getGPSDataForTruck = useCallback((truckId: string, limit: number = 100): GPSData[] => {
+    return gpsData
+      .filter(data => data.truckId === truckId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit);
+  }, [gpsData]);
+
+  const getAllGPSData = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<GPSData> => {
+    return getPaginatedData(gpsData, params);
+  }, [gpsData]);
+
+  // AI Insights functions
+  const addAIInsight = useCallback((insight: Omit<AIInsight, 'id' | 'timestamp' | 'isRead'>): AIInsight => {
+    const newInsight: AIInsight = {
+      ...insight,
+      id: uuidv4(),
+      timestamp: new Date(),
       isRead: false
     };
-  };
-
-  const endShiftWrapper = (shiftId: string): boolean => {
-    const result = shiftActions.endShift(shiftId);
-    return result !== undefined;
-  };
-
-  const addPriceWrapper = (priceData: Omit<Price, 'id' | 'effectiveDate'>): Price => {
-    return priceActions.setPriceRecord(priceData);
-  };
-
-  const updatePriceWrapper = (id: string, updates: Partial<Price>): Price => {
-    const priceIndex = prices.findIndex(p => p.id === id);
-    if (priceIndex === -1) {
-      throw new Error(`Price with ID ${id} not found`);
-    }
     
-    const currentPrice = prices[priceIndex];
-    
-    const updatedPrice: Price = {
-      ...currentPrice,
-      ...updates
+    const newInsights = [...aiInsights, newInsight];
+    setAiInsights(newInsights);
+    saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, newInsights);
+    return newInsight;
+  }, [aiInsights]);
+
+  const markAIInsightAsRead = useCallback((id: string): boolean => {
+    const insightIndex = aiInsights.findIndex(insight => insight.id === id);
+    if (insightIndex === -1) return false;
+
+    const updatedInsight = {
+      ...aiInsights[insightIndex],
+      isRead: true
+    };
+
+    const newInsights = [...aiInsights];
+    newInsights[insightIndex] = updatedInsight;
+    setAiInsights(newInsights);
+    saveToLocalStorage(STORAGE_KEYS.AI_INSIGHTS, newInsights);
+    return true;
+  }, [aiInsights]);
+
+  const getUnreadAIInsights = useCallback((): AIInsight[] => {
+    return aiInsights.filter(insight => !insight.isRead);
+  }, [aiInsights]);
+
+  const getAllAIInsights = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<AIInsight> => {
+    return getPaginatedData(aiInsights, params);
+  }, [aiInsights]);
+
+  const resetAIInsights = useCallback((): boolean => {
+    setAiInsights([]);
+    return true;
+  }, []);
+
+  // Staff functions
+  const addStaff = useCallback((staffMember: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>): Staff => {
+    const now = new Date();
+    const newStaff: Staff = {
+      ...staffMember,
+      id: uuidv4(),
+      createdAt: now,
+      updatedAt: now
     };
     
-    setPrices(prev => {
-      const newPrices = [...prev];
-      newPrices[priceIndex] = updatedPrice;
-      return newPrices;
-    });
+    const newStaffList = [...staff, newStaff];
+    setStaff(newStaffList);
+    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
+    return newStaff;
+  }, [staff]);
+
+  const updateStaff = useCallback((id: string, staffUpdate: Partial<Staff>): Staff | null => {
+    const staffIndex = staff.findIndex(s => s.id === id);
+    if (staffIndex === -1) return null;
+
+    const updatedStaff = {
+      ...staff[staffIndex],
+      ...staffUpdate,
+      updatedAt: new Date()
+    };
+
+    const newStaffList = [...staff];
+    newStaffList[staffIndex] = updatedStaff;
+    setStaff(newStaffList);
+    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
+    return updatedStaff;
+  }, [staff]);
+
+  const getStaff = useCallback((id: string): Staff | null => {
+    return staff.find(s => s.id === id) || null;
+  }, [staff]);
+
+  const getAllStaff = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Staff> => {
+    return getPaginatedData(staff, params);
+  }, [staff]);
+
+  const deleteStaff = useCallback((id: string): boolean => {
+    const staffIndex = staff.findIndex(s => s.id === id);
+    if (staffIndex === -1) return false;
+
+    const newStaffList = staff.filter(s => s.id !== id);
+    setStaff(newStaffList);
+    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
+    return true;
+  }, [staff]);
+
+  const getActiveStaff = useCallback((): Staff[] => {
+    return staff.filter(s => s.isActive);
+  }, [staff]);
+
+  // Dispenser functions
+  const addDispenser = useCallback((dispenser: Omit<Dispenser, 'id' | 'createdAt' | 'updatedAt'>): Dispenser => {
+    const now = new Date();
+    const newDispenser: Dispenser = {
+      ...dispenser,
+      id: uuidv4(),
+      createdAt: now,
+      updatedAt: now
+    };
     
+    const newDispensers = [...dispensers, newDispenser];
+    setDispensers(newDispensers);
+    saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newDispensers);
+    return newDispenser;
+  }, [dispensers]);
+
+  const updateDispenser = useCallback((id: string, dispenserUpdate: Partial<Dispenser>): Dispenser | null => {
+    const dispenserIndex = dispensers.findIndex(d => d.id === id);
+    if (dispenserIndex === -1) return null;
+
+    const updatedDispenser = {
+      ...dispensers[dispenserIndex],
+      ...dispenserUpdate,
+      updatedAt: new Date()
+    };
+
+    const newDispensers = [...dispensers];
+    newDispensers[dispenserIndex] = updatedDispenser;
+    setDispensers(newDispensers);
+    saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newDispensers);
+    return updatedDispenser;
+  }, [dispensers]);
+
+  const getDispenser = useCallback((id: string): Dispenser | null => {
+    return dispensers.find(d => d.id === id) || null;
+  }, [dispensers]);
+
+  const getAllDispensers = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Dispenser> => {
+    return getPaginatedData(dispensers, params);
+  }, [dispensers]);
+
+  const deleteDispenser = useCallback((id: string): boolean => {
+    const dispenserIndex = dispensers.findIndex(d => d.id === id);
+    if (dispenserIndex === -1) return false;
+
+    const newDispensers = dispensers.filter(d => d.id !== id);
+    setDispensers(newDispensers);
+    saveToLocalStorage(STORAGE_KEYS.DISPENSERS, newDispensers);
+    return true;
+  }, [dispensers]);
+
+  const getActiveDispensers = useCallback((): Dispenser[] => {
+    return dispensers.filter(d => d.isActive);
+  }, [dispensers]);
+
+  // Shift functions
+  const addShift = useCallback((shift: Omit<Shift, 'id'>): Shift => {
+    const newShift: Shift = {
+      ...shift,
+      id: uuidv4()
+    };
+    
+    const newShifts = [...shifts, newShift];
+    setShifts(newShifts);
+    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
+    return newShift;
+  }, [shifts]);
+
+  const updateShift = useCallback((id: string, shiftUpdate: Partial<Shift>): Shift | null => {
+    const shiftIndex = shifts.findIndex(s => s.id === id);
+    if (shiftIndex === -1) return null;
+
+    const updatedShift = {
+      ...shifts[shiftIndex],
+      ...shiftUpdate
+    };
+
+    const newShifts = [...shifts];
+    newShifts[shiftIndex] = updatedShift;
+    setShifts(newShifts);
+    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
+    return updatedShift;
+  }, [shifts]);
+
+  const getShift = useCallback((id: string): Shift | null => {
+    return shifts.find(s => s.id === id) || null;
+  }, [shifts]);
+
+  const getAllShifts = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Shift> => {
+    return getPaginatedData(shifts, params);
+  }, [shifts]);
+
+  const deleteShift = useCallback((id: string): boolean => {
+    const shiftIndex = shifts.findIndex(s => s.id === id);
+    if (shiftIndex === -1) return false;
+
+    const newShifts = shifts.filter(s => s.id !== id);
+    setShifts(newShifts);
+    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
+    return true;
+  }, [shifts]);
+
+  const getCurrentShift = useCallback((): Shift | null => {
+    const now = new Date();
+    return shifts.find(shift => {
+      if (!shift.startTime || !shift.endTime) return false;
+      return shift.startTime <= now && shift.endTime >= now;
+    }) || null;
+  }, [shifts]);
+
+  // Sale functions
+  const addSale = useCallback((sale: Omit<Sale, 'id'>): Sale => {
+    const newSale: Sale = {
+      ...sale,
+      id: uuidv4()
+    };
+    
+    const newSales = [...sales, newSale];
+    setSales(newSales);
+    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
+    return newSale;
+  }, [sales]);
+
+  const updateSale = useCallback((id: string, saleUpdate: Partial<Sale>): Sale | null => {
+    const saleIndex = sales.findIndex(s => s.id === id);
+    if (saleIndex === -1) return null;
+
+    const updatedSale = {
+      ...sales[saleIndex],
+      ...saleUpdate
+    };
+
+    const newSales = [...sales];
+    newSales[saleIndex] = updatedSale;
+    setSales(newSales);
+    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
+    return updatedSale;
+  }, [sales]);
+
+  const getSale = useCallback((id: string): Sale | null => {
+    return sales.find(s => s.id === id) || null;
+  }, [sales]);
+
+  const getAllSales = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Sale> => {
+    return getPaginatedData(sales, params);
+  }, [sales]);
+
+  const deleteSale = useCallback((id: string): boolean => {
+    const saleIndex = sales.findIndex(s => s.id === id);
+    if (saleIndex === -1) return false;
+
+    const newSales = sales.filter(s => s.id !== id);
+    setSales(newSales);
+    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
+    return true;
+  }, [sales]);
+
+  const getSalesForShift = useCallback((shiftId: string): Sale[] => {
+    return sales.filter(sale => sale.shiftId === shiftId);
+  }, [sales]);
+
+  // Price functions
+  const addPrice = useCallback((price: Omit<PriceRecord, 'id'>): PriceRecord => {
+    const newPrice: PriceRecord = {
+      ...price,
+      id: uuidv4()
+    };
+    
+    const newPrices = [...prices, newPrice];
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
+    return newPrice;
+  }, [prices]);
+
+  const updatePrice = useCallback((id: string, priceUpdate: Partial<PriceRecord>): PriceRecord | null => {
+    const priceIndex = prices.findIndex(p => p.id === id);
+    if (priceIndex === -1) return null;
+
+    const updatedPrice = {
+      ...prices[priceIndex],
+      ...priceUpdate
+    };
+
+    const newPrices = [...prices];
+    newPrices[priceIndex] = updatedPrice;
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
     return updatedPrice;
-  };
+  }, [prices]);
 
-  const deletePriceWrapper = (id: string): boolean => {
-    let deleted = false;
-    setPrices(prev => {
-      const filtered = prev.filter(p => p.id !== id);
-      deleted = filtered.length < prev.length;
-      return filtered;
-    });
-    return deleted;
-  };
-
-  const getPriceByIdWrapper = (id: string): Price | null => {
+  const getPrice = useCallback((id: string): PriceRecord | null => {
     return prices.find(p => p.id === id) || null;
-  };
+  }, [prices]);
 
-  const getAllPricesWrapper = (productType: string, params?: PaginationParams): PaginatedResult<Price> => {
-    const filteredPrices = productType 
-      ? prices.filter(p => p.productType === productType)
-      : prices;
+  const getAllPrices = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<PriceRecord> => {
+    return getPaginatedData(prices, params);
+  }, [prices]);
+
+  const deletePrice = useCallback((id: string): boolean => {
+    const priceIndex = prices.findIndex(p => p.id === id);
+    if (priceIndex === -1) return false;
+
+    const newPrices = prices.filter(p => p.id !== id);
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
+    return true;
+  }, [prices]);
+
+  const getCurrentPrices = useCallback((): Record<ProductType, number> => {
+    const now = new Date();
+    const currentPrices: Partial<Record<ProductType, number>> = {};
     
-    return getPaginatedData(filteredPrices, params || { page: 1, limit: 10 });
-  };
-
-  const getTankByProductTypeWrapper = (productType: ProductType): Tank | null => {
-    return tanks.find(t => t.productType === productType && t.isActive) || null;
-  };
-
-  const getActiveDispensersByTankIdWrapper = (tankId: string): Dispenser[] => {
-    return dispensers.filter(d => d.tankId === tankId || d.connectedTankId === tankId);
-  };
-
-  const getActiveTanksByProductTypeWrapper = (productType: ProductType): Tank[] => {
-    return tanks.filter(t => t.productType === productType && t.isActive);
-  };
-
-  const updateTankWrapper = (id: string, updates: Partial<Tank>): boolean => {
-    try {
-      tankActionsMethods.updateTank(id, updates);
-      return true;
-    } catch (error) {
-      console.error("Error updating tank:", error);
-      return false;
-    }
-  };
-
-  const deleteTankWrapper = (id: string): boolean => {
-    try {
-      tankActionsMethods.deleteTank(id);
-      return true;
-    } catch (error) {
-      console.error("Error deleting tank:", error);
-      return false;
-    }
-  };
-
-  const getAllTanksWrapper = (params?: PaginationParams): PaginatedResult<Tank> => {
-    const allTanks = tankActionsMethods.getAllTanks();
-    return getPaginatedData(allTanks, params || { page: 1, limit: 10 });
-  };
-
-  const resetDatabase = async (includeSeedData?: boolean): Promise<void> => {
-    try {
-      // Call the Supabase function to reset the database
-      const { error } = await supabase.rpc('reset_database');
-      if (error) throw error;
+    // Get all active prices
+    const activePrices = prices.filter(price => 
+      price.isActive && 
+      (!price.effectiveDate || price.effectiveDate <= now) &&
+      (!price.endDate || price.endDate >= now)
+    );
+    
+    // Group by product type and get the most recent for each
+    const productTypes: ProductType[] = ['PMS', 'AGO', 'DPK'];
+    
+    productTypes.forEach(productType => {
+      const productPrices = activePrices
+        .filter(price => price.productType === productType)
+        .sort((a, b) => {
+          // Sort by effective date, most recent first
+          const dateA = a.effectiveDate ? a.effectiveDate.getTime() : 0;
+          const dateB = b.effectiveDate ? b.effectiveDate.getTime() : 0;
+          return dateB - dateA;
+        });
       
-      // Reload data
-      window.location.reload();
-    } catch (error) {
-      console.error("Error resetting database:", error);
-      toast({
-        title: "Error",
-        description: "Failed to reset the database. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const exportDatabase = (): string => {
-    try {
-      const data = {
-        purchaseOrders,
-        logs,
-        suppliers,
-        drivers,
-        trucks,
-        gpsData,
-        aiInsights,
-        staff,
-        dispensers,
-        shifts,
-        sales,
-        prices,
-        incidents,
-        activityLogs,
-        tanks
-      };
-      
-      return JSON.stringify(data, null, 2);
-    } catch (error) {
-      console.error("Error exporting database:", error);
-      toast({
-        title: "Error",
-        description: "Failed to export database. Please try again.",
-        variant: "destructive",
-      });
-      return '{}';
-    }
-  };
-  
-  const importDatabase = (jsonData: string): boolean => {
-    try {
-      const data = JSON.parse(jsonData);
-      
-      if (data.purchaseOrders) setPurchaseOrders(data.purchaseOrders);
-      if (data.logs) setLogs(data.logs);
-      if (data.suppliers) setSuppliers(data.suppliers);
-      if (data.drivers) setDrivers(data.drivers);
-      if (data.trucks) setTrucks(data.trucks);
-      if (data.gpsData) setGPSData(data.gpsData);
-      if (data.aiInsights) setAIInsights(data.aiInsights);
-      if (data.staff) setStaff(data.staff);
-      if (data.dispensers) setDispensers(data.dispensers);
-      if (data.shifts) setShifts(data.shifts);
-      if (data.sales) setSales(data.sales);
-      if (data.prices) setPrices(data.prices);
-      if (data.incidents) setIncidents(data.incidents);
-      if (data.activityLogs) setActivityLogs(data.activityLogs);
-      if (data.tanks) setTanks(data.tanks);
-      
-      return true;
-    } catch (error) {
-      console.error("Error importing database:", error);
-      toast({
-        title: "Error",
-        description: "Failed to import database. Please check the JSON format and try again.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
+      if (productPrices.length > 0) {
+        currentPrices[productType] = productPrices[0].price;
+      } else {
+        // Default prices if none are set
+        currentPrices[productType] = productType === 'PMS' ? 617 : 
+                                    productType === 'AGO' ? 950 : 
+                                    800; // DPK
+      }
+    });
+    
+    return currentPrices as Record<ProductType, number>;
+  }, [prices]);
 
+  // Incident functions
+  const addIncident = useCallback((incident: Omit<Incident, 'id'>): Incident => {
+    const newIncident: Incident = {
+      ...incident,
+      id: uuidv4()
+    };
+    
+    const newIncidents = [...incidents, newIncident];
+    setIncidents(newIncidents);
+    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newIncidents);
+    return newIncident;
+  }, [incidents]);
+
+  const updateIncident = useCallback((id: string, incidentUpdate: Partial<Incident>): Incident | null => {
+    const incidentIndex = incidents.findIndex(i => i.id === id);
+    if (incidentIndex === -1) return null;
+
+    const updatedIncident = {
+      ...incidents[incidentIndex],
+      ...incidentUpdate
+    };
+
+    const newIncidents = [...incidents];
+    newIncidents[incidentIndex] = updatedIncident;
+    setIncidents(newIncidents);
+    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newIncidents);
+    return updatedIncident;
+  }, [incidents]);
+
+  const getIncident = useCallback((id: string): Incident | null => {
+    return incidents.find(i => i.id === id) || null;
+  }, [incidents]);
+
+  const getAllIncidents = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Incident> => {
+    return getPaginatedData(incidents, params);
+  }, [incidents]);
+
+  const deleteIncident = useCallback((id: string): boolean => {
+    const incidentIndex = incidents.findIndex(i => i.id === id);
+    if (incidentIndex === -1) return false;
+
+    const newIncidents = incidents.filter(i => i.id !== id);
+    setIncidents(newIncidents);
+    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newIncidents);
+    return true;
+  }, [incidents]);
+
+  // Activity Log functions
+  const addActivityLog = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>): ActivityLog => {
+    const newLog: ActivityLog = {
+      ...log,
+      id: uuidv4(),
+      timestamp: new Date()
+    };
+    
+    const newLogs = [...activityLogs, newLog];
+    setActivityLogs(newLogs);
+    saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, newLogs);
+    return newLog;
+  }, [activityLogs]);
+
+  const getAllActivityLogs = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<ActivityLog> => {
+    return getPaginatedData(activityLogs, params);
+  }, [activityLogs]);
+
+  // Tank functions
+  const addTank = useCallback((tank: Omit<Tank, 'id'>): Tank => {
+    const newTank: Tank = {
+      ...tank,
+      id: uuidv4()
+    };
+    
+    const newTanks = [...tanks, newTank];
+    setTanks(newTanks);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
+    return newTank;
+  }, [tanks]);
+
+  const updateTank = useCallback((id: string, tankUpdate: Partial<Tank>): Tank | null => {
+    const tankIndex = tanks.findIndex(t => t.id === id);
+    if (tankIndex === -1) return null;
+
+    const updatedTank = {
+      ...tanks[tankIndex],
+      ...tankUpdate
+    };
+
+    const newTanks = [...tanks];
+    newTanks[tankIndex] = updatedTank;
+    setTanks(newTanks);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
+    return updatedTank;
+  }, [tanks]);
+
+  const getTank = useCallback((id: string): Tank | null => {
+    return tanks.find(t => t.id === id) || null;
+  }, [tanks]);
+
+  const getAllTanks = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Tank> => {
+    return getPaginatedData(tanks, params);
+  }, [tanks]);
+
+  const deleteTank = useCallback((id: string): boolean => {
+    const filteredTanks = tanks.filter(tank => tank.id !== id);
+    setTanks(filteredTanks);
+    return true;
+  }, [tanks]);
+
+  const getTanksByProduct = useCallback((productType: ProductType): Tank[] => {
+    return tanks.filter(tank => tank.productType === productType);
+  }, [tanks]);
+
+  // Company functions
+  const updateCompany = useCallback((data: Partial<typeof defaultCompany>): void => {
+    setCompany(prev => ({ ...prev, ...data }));
+  }, []);
+
+  // Create the context value object with all our functions
   const contextValue: AppContextType = {
     purchaseOrders,
+    addPurchaseOrder,
+    updatePurchaseOrder,
+    getPurchaseOrder,
+    getAllPurchaseOrders,
+    deletePurchaseOrder,
+    
     logs,
+    addLog,
+    getLogsForPO,
+    getAllLogs,
+    
     suppliers,
+    addSupplier,
+    updateSupplier,
+    getSupplier,
+    getAllSuppliers,
+    deleteSupplier,
+    
     drivers,
+    addDriver,
+    updateDriver,
+    getDriver,
+    getAllDrivers,
+    deleteDriver,
+    getAvailableDrivers,
+    
     trucks,
-    gpsData,
-    aiInsights,
-    staff,
-    dispensers,
-    shifts,
-    sales,
-    prices,
-    incidents,
-    activityLogs,
-    tanks,
-    
-    addPurchaseOrder: purchaseOrderActions.addPurchaseOrder,
-    updatePurchaseOrder: purchaseOrderActions.updatePurchaseOrder,
-    deletePurchaseOrder: purchaseOrderActions.deletePurchaseOrder,
-    getPurchaseOrderById: purchaseOrderActions.getPurchaseOrderById,
-    getAllPurchaseOrders: purchaseOrderActions.getAllPurchaseOrders,
-    updateOrderStatus: updateOrderStatusWrapper,
-    getOrderById: purchaseOrderActions.getPurchaseOrderById,
-    getOrdersWithDeliveryStatus,
-    getOrdersWithDiscrepancies,
-    
-    addLog: logActions.addLog,
-    deleteLog: logActions.deleteLog,
-    getLogById: logActions.getLogById,
-    getAllLogs: logActions.getAllLogs,
-    getLogsByOrderId: getLogsByOrderIdWrapper,
-    logAIInteraction,
-    
-    addSupplier: supplierActions.addSupplier,
-    updateSupplier: supplierActions.updateSupplier,
-    deleteSupplier: supplierActions.deleteSupplier,
-    getSupplierById: supplierActions.getSupplierById,
-    getAllSuppliers: supplierActions.getAllSuppliers,
-    
-    addDriver: driverTruckActions.addDriver,
-    updateDriver: driverTruckActions.updateDriver,
-    deleteDriver: driverTruckActions.deleteDriver, 
-    getDriverById: driverTruckActions.getDriverById,
-    getAllDrivers: driverTruckActions.getAllDrivers,
-    addTruck: driverTruckActions.addTruck,
-    updateTruck: driverTruckActions.updateTruck,
-    deleteTruck: driverTruckActions.deleteTruck,
-    getTruckById: driverTruckActions.getTruckById,
-    getAllTrucks: driverTruckActions.getAllTrucks,
-    getNonGPSTrucks,
+    addTruck,
+    updateTruck,
+    getTruck,
+    getAllTrucks,
+    deleteTruck,
+    getAvailableTrucks,
     tagTruckWithGPS,
     untagTruckGPS,
+    getNonGPSTrucks,
     
-    recordGPSData,
+    gpsData,
+    addGPSData,
     getGPSDataForTruck,
-    updateGPSData,
+    getAllGPSData,
     
-    updateDeliveryDetails,
-    markOrderAsDelivered,
-    startDelivery,
-    completeDelivery,
-    updateDeliveryStatus,
-    recordOffloadingDetails,
-    recordOffloadingToTank,
-    assignDriverToOrder,
+    aiInsights,
+    addAIInsight,
+    markAIInsightAsRead,
+    getUnreadAIInsights,
+    getAllAIInsights,
+    resetAIInsights,
     
-    generateAIInsights: generateAIInsightsWrapper,
-    getInsightsByType: aiActions.getInsightsByType,
-    
-    addStaff: staffActions.addStaff,
-    updateStaff: staffActions.updateStaff,
+    staff,
+    addStaff,
+    updateStaff,
+    getStaff,
+    getAllStaff,
     deleteStaff,
-    getStaffById: staffActions.getStaffById,
-    getAllStaff: staffActions.getAllStaff,
+    getActiveStaff,
     
+    dispensers,
     addDispenser,
     updateDispenser,
-    deleteDispenser,
-    getDispenserById,
+    getDispenser,
     getAllDispensers,
-    setDispenserActive,
-    recordManualSale: dispenserActions.recordManualSale,
-    getDispenserSalesStats,
-    recordDispensing,
+    deleteDispenser,
+    getActiveDispensers,
     
+    shifts,
     addShift,
     updateShift,
-    deleteShift,
-    getShiftById,
+    getShift,
     getAllShifts,
-    startShift: shiftActions.startShift,
-    endShift: endShiftWrapper,
-    getShiftsByStaffId,
-    getCurrentStaffShift,
+    deleteShift,
+    getCurrentShift,
     
+    sales,
     addSale,
     updateSale,
-    deleteSale,
-    getSaleById,
+    getSale,
     getAllSales,
+    deleteSale,
+    getSalesForShift,
     
-    addPrice: addPriceWrapper,
-    updatePrice: updatePriceWrapper,
-    deletePrice: deletePriceWrapper,
-    getPriceById: getPriceByIdWrapper,
-    getAllPrices: getAllPricesWrapper,
+    prices,
+    addPrice,
+    updatePrice,
+    getPrice,
+    getAllPrices,
+    deletePrice,
+    getCurrentPrices,
     
-    getTankByProductType: getTankByProductTypeWrapper,
-    getActiveDispensersByTankId: getActiveDispensersByTankIdWrapper,
-    getActiveTanksByProductType: getActiveTanksByProductTypeWrapper,
-    addTank: tankActionsMethods.addTank,
-    updateTank: updateTankWrapper,
-    deleteTank: deleteTankWrapper,
-    getAllTanks: getAllTanksWrapper,
-    connectTankToDispenser: tankActionsMethods.connectTankToDispenser,
-    disconnectTankFromDispenser: tankActionsMethods.disconnectTankFromDispenser,
-    setTankActive,
-    
+    incidents,
     addIncident,
+    updateIncident,
+    getIncident,
+    getAllIncidents,
+    deleteIncident,
     
-    resetDatabase,
-    exportDatabase,
-    importDatabase,
+    activityLogs,
+    addActivityLog,
+    getAllActivityLogs,
+    
+    tanks,
+    addTank,
+    updateTank,
+    getTank,
+    getAllTanks,
+    deleteTank,
+    getTanksByProduct,
+    
+    company,
+    updateCompany
   };
-  
+
   return (
     <AppContext.Provider value={contextValue}>
       {children}
@@ -1434,4 +1142,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
-export default AppContext;
+// Custom hook to use the app context
+export const useApp = (): AppContextType => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};

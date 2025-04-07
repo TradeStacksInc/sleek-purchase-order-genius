@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { STORAGE_KEYS, saveToLocalStorage } from '@/utils/localStorage';
+import { supabase } from '@/integrations/supabase/client';
 
 const AutoSave: React.FC = () => {
   const { 
@@ -26,9 +27,10 @@ const AutoSave: React.FC = () => {
   useEffect(() => {
     console.info('AutoSave component mounted');
     
-    // Save data when the user is leaving the page
-    const handleBeforeUnload = () => {
-      const saveData = () => {
+    // Function to save all data
+    const saveAllData = async () => {
+      try {
+        // Save directly to Supabase and localStorage as backup
         saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, purchaseOrders);
         saveToLocalStorage(STORAGE_KEYS.LOGS, logs);
         saveToLocalStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
@@ -44,17 +46,22 @@ const AutoSave: React.FC = () => {
         saveToLocalStorage(STORAGE_KEYS.INCIDENTS, incidents);
         saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs);
         saveToLocalStorage(STORAGE_KEYS.TANKS, tanks);
-      };
-      
-      saveData();
+      } catch (error) {
+        console.error('Error during auto-save:', error);
+      }
     };
-
+    
+    // Save data when the user is leaving the page
+    const handleBeforeUnload = () => {
+      saveAllData();
+    };
+    
     window.addEventListener('beforeunload', handleBeforeUnload);
     
     // Also save data every 5 minutes
     const intervalId = setInterval(() => {
-      console.info('Auto-saving data to localStorage...');
-      handleBeforeUnload();
+      console.info('Auto-saving data to Supabase...');
+      saveAllData();
       console.info('Data saved at', new Date().toLocaleTimeString());
     }, 5 * 60 * 1000);
     
