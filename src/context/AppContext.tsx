@@ -96,371 +96,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGpsData
   );
 
-  // Define missing functions
-  const getAvailableDrivers = useCallback(() => {
-    return drivers.filter(driver => driver.isAvailable);
-  }, [drivers]);
-
-  const getAvailableTrucks = useCallback(() => {
-    return trucks.filter(truck => truck.isAvailable);
-  }, [trucks]);
-
-  const getNonGPSTrucks = useCallback(() => {
-    return trucks.filter(truck => !truck.isGPSTagged);
-  }, [trucks]);
-
-  const addGPSData = useCallback((truckId: string, data: Omit<GPSData, 'id' | 'truckId'>) => {
-    const newData = {
-      ...data,
-      id: `gps-${uuidv4().substring(0, 8)}`,
-      truckId
-    };
-    
-    setGpsData(prev => [newData, ...prev]);
-    return newData;
-  }, []);
-
-  const getGPSDataForTruck = useCallback((truckId: string, limit?: number) => {
-    let truckData = gpsData.filter(data => data.truckId === truckId);
-    
-    // Sort by timestamp, newest first
-    truckData.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-    
-    if (limit) {
-      truckData = truckData.slice(0, limit);
-    }
-    
-    return truckData;
-  }, [gpsData]);
-
-  const getAllGPSData = useCallback((params?: PaginationParams): PaginatedResult<GPSData> => {
-    return getPaginatedData(gpsData, params || { page: 1, limit: 10 });
-  }, [gpsData]);
-
-  const updateGPSData = useCallback((truckId: string, latitude: number, longitude: number, speed: number) => {
-    // Update the truck's last known position
-    updateTruck(truckId, { 
-      lastLatitude: latitude, 
-      lastLongitude: longitude,
-      lastSpeed: speed,
-      updatedAt: new Date()
-    });
-    
-    // Add new GPS data entry
-    const newGpsData = {
-      id: `gps-${uuidv4().substring(0, 8)}`,
-      truckId,
-      latitude,
-      longitude,
-      speed,
-      timestamp: new Date(),
-      fuelLevel: Math.floor(Math.random() * 40) + 60, // Random fuel between 60-100%
-      location: 'En route'
-    };
-    
-    setGpsData(prev => [newGpsData, ...prev]);
-    
-    return newGpsData;
-  }, [updateTruck]);
-
-  // Define other missing functions needed by AppContext
-  const addTank = useCallback((tank: Omit<Tank, 'id'>) => {
-    const newTank = {
-      ...tank,
-      id: `tank-${uuidv4().substring(0, 8)}`
-    };
-    
-    setTanks(prev => [...prev, newTank]);
-    return newTank;
-  }, []);
-
-  const updateTank = useCallback((id: string, updates: Partial<Tank>) => {
-    let updated = false;
-    setTanks(prev => {
-      const updatedTanks = prev.map(tank => {
-        if (tank.id === id) {
-          updated = true;
-          return { ...tank, ...updates };
-        }
-        return tank;
-      });
-      return updatedTanks;
-    });
-    return updated;
-  }, []);
-
-  const deleteTank = useCallback((id: string) => {
-    let deleted = false;
-    setTanks(prev => {
-      const filteredTanks = prev.filter(tank => tank.id !== id);
-      deleted = filteredTanks.length < prev.length;
-      return filteredTanks;
-    });
-    return deleted;
-  }, []);
-
-  const getTankById = useCallback((id: string) => {
-    return tanks.find(tank => tank.id === id);
-  }, [tanks]);
-
-  const getAllTanks = useCallback(() => {
-    return tanks;
-  }, [tanks]);
-
-  const getTanksByProduct = useCallback((productType: ProductType) => {
-    return tanks.filter(tank => tank.productType === productType);
-  }, [tanks]);
-
-  const setTankActive = useCallback((id: string, active: boolean) => {
-    return updateTank(id, { isActive: active });
-  }, [updateTank]);
-
-  const addIncident = useCallback((incident: Omit<Incident, 'id'>) => {
-    const newIncident = {
-      ...incident,
-      id: `incident-${uuidv4().substring(0, 8)}`,
-      timestamp: new Date(),
-      resolved: false
-    };
-    
-    setIncidents(prev => [...prev, newIncident]);
-    return newIncident;
-  }, []);
-
-  const updateIncident = useCallback((id: string, updates: Partial<Incident>) => {
-    let updated = false;
-    setIncidents(prev => {
-      const updatedIncidents = prev.map(incident => {
-        if (incident.id === id) {
-          updated = true;
-          return { ...incident, ...updates };
-        }
-        return incident;
-      });
-      return updatedIncidents;
-    });
-    return updated;
-  }, []);
-
-  const deleteIncident = useCallback((id: string) => {
-    let deleted = false;
-    setIncidents(prev => {
-      const filteredIncidents = prev.filter(incident => incident.id !== id);
-      deleted = filteredIncidents.length < prev.length;
-      return filteredIncidents;
-    });
-    return deleted;
-  }, []);
-
-  const getIncidentById = useCallback((id: string) => {
-    return incidents.find(incident => incident.id === id);
-  }, [incidents]);
-
-  const getAllIncidents = useCallback(() => {
-    return incidents;
-  }, [incidents]);
-
-  const completeDelivery = useCallback((orderId: string) => {
-    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) return false;
-    
-    const order = purchaseOrders[orderIndex];
-    const deliveryDetails = order.deliveryDetails;
-    
-    if (!deliveryDetails) return false;
-    
-    const updatedDeliveryDetails = {
-      ...deliveryDetails,
-      status: 'delivered',
-      destinationArrivalTime: new Date()
-    };
-    
-    const updatedOrder = {
-      ...order,
-      updatedAt: new Date(),
-      deliveryDetails: updatedDeliveryDetails
-    };
-    
-    updatePurchaseOrder(orderId, updatedOrder);
-    
-    addActivityLog({
-      action: 'complete',
-      entityType: 'delivery',
-      entityId: orderId,
-      details: `Delivery for order ${order.poNumber} marked as complete`,
-      user: 'Current User'
-    });
-    
-    return true;
-  }, [purchaseOrders, updatePurchaseOrder, addActivityLog]);
-
-  const recordOffloadingDetails = useCallback((orderId: string, details: OffloadingDetails) => {
-    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) return false;
-    
-    const order = purchaseOrders[orderIndex];
-    
-    const updatedOrder = {
-      ...order,
-      updatedAt: new Date(),
-      offloadingDetails: details
-    };
-    
-    updatePurchaseOrder(orderId, updatedOrder);
-    
-    addActivityLog({
-      action: 'offload',
-      entityType: 'delivery',
-      entityId: orderId,
-      details: `Product offloaded for order ${order.poNumber}`,
-      user: 'Current User'
-    });
-    
-    return true;
-  }, [purchaseOrders, updatePurchaseOrder, addActivityLog]);
-
-  const updateDeliveryStatus = useCallback((orderId: string, status: string | Partial<DeliveryDetails>): boolean => {
-    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) return false;
-    
-    const order = purchaseOrders[orderIndex];
-    const oldStatus = order.deliveryDetails?.status || 'pending';
-    
-    const updatedDeliveryDetails = typeof status === 'string'
-      ? { ...(order.deliveryDetails || {}), status: status as any }
-      : { ...(order.deliveryDetails || {}), ...status };
-    
-    const updatedOrder = {
-      ...order,
-      updatedAt: new Date(),
-      deliveryDetails: updatedDeliveryDetails as DeliveryDetails
-    };
-    
-    // Update the purchase order
-    const updatedOrdersList = [...purchaseOrders];
-    updatedOrdersList[orderIndex] = updatedOrder;
-    setPurchaseOrders(updatedOrdersList);
-    saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, updatedOrdersList);
-    
-    const logEntry = {
-      poId: orderId,
-      action: 'update_delivery_status',
-      details: `Delivery status updated for order ${orderId}`,
-      entityType: 'delivery',
-      entityId: updatedDeliveryDetails.id || '',
-      user: 'Current User'
-    };
-    
-    addLog(logEntry);
-    
-    addActivityLog({
-      action: 'update',
-      entityType: 'delivery',
-      entityId: orderId,
-      details: `Delivery status for order ${order.poNumber} updated`,
-      user: 'Current User'
-    });
-    
-    return true;
-  }, [purchaseOrders, setPurchaseOrders, addLog, addActivityLog]);
-
-  // Extra required functions for the app context
-  const getPurchaseOrderById = useCallback((id: string) => {
-    return purchaseOrders.find(order => order.id === id);
-  }, [purchaseOrders]);
-
-  const getAllPurchaseOrders = useCallback(() => {
-    return purchaseOrders;
-  }, [purchaseOrders]);
-
-  const deletePurchaseOrder = useCallback((id: string) => {
-    let deleted = false;
-    setPurchaseOrders(prev => {
-      const filteredOrders = prev.filter(order => order.id !== id);
-      deleted = filteredOrders.length < prev.length;
-      return filteredOrders;
-    });
-    return deleted;
-  }, []);
-
-  // Placeholder functions for AppContext
-  const getOrderById = useCallback((id: string) => {
-    return purchaseOrders.find(order => order.id === id);
-  }, [purchaseOrders]);
-
-  const getOrdersWithDeliveryStatus = useCallback((status: string) => {
-    return purchaseOrders.filter(order => 
-      order.deliveryDetails && order.deliveryDetails.status === status
-    );
-  }, [purchaseOrders]);
-
-  const getOrdersWithDiscrepancies = useCallback(() => {
-    return purchaseOrders.filter(order => 
-      order.offloadingDetails && order.offloadingDetails.discrepancyPercentage > 0
-    );
-  }, [purchaseOrders]);
-
-  // More placeholder functions for AppContext completeness
-  const logAIInteraction = useCallback(() => {}, []);
-  const addSupplier = useCallback(() => {}, []);
-  const updateSupplier = useCallback(() => {}, []);
-  const deleteSupplier = useCallback(() => {}, []);
-  const getSupplierById = useCallback(() => {}, []);
-  const getAllSuppliers = useCallback(() => {}, []);
-  const getActiveStaff = useCallback(() => {}, []);
-  const addDispenser = useCallback(() => {}, []);
-  const updateDispenser = useCallback(() => {}, []);
-  const deleteDispenser = useCallback(() => {}, []);
-  const getDispenserById = useCallback(() => {}, []);
-  const getAllDispensers = useCallback(() => {}, []);
-  const getActiveDispensers = useCallback(() => {}, []);
-  const addShift = useCallback(() => {}, []);
-  const updateShift = useCallback(() => {}, []);
-  const deleteShift = useCallback(() => {}, []);
-  const getShiftById = useCallback(() => {}, []);
-  const getAllShifts = useCallback(() => {}, []);
-  const getCurrentShift = useCallback(() => {}, []);
-  const updateSale = useCallback(() => {}, []);
-  const deleteSale = useCallback(() => {}, []);
-  const getSaleById = useCallback(() => {}, []);
-  const getAllSales = useCallback(() => {}, []);
-  const getSalesForShift = useCallback(() => {}, []);
-  const deletePrice = useCallback(() => {}, []);
-  const getPriceById = useCallback(() => {}, []);
-  const getAllPrices = useCallback(() => {}, []);
-  const getCurrentPrices = useCallback(() => {}, []);
-  const addAIInsight = useCallback(() => {}, []);
-  const markAIInsightAsRead = useCallback(() => {}, []);
-  const getUnreadAIInsights = useCallback(() => {}, []);
-  const getAllAIInsights = useCallback(() => {}, []);
-  const resetAIInsights = useCallback(() => {}, []);
-  const generateAIInsights = useCallback(() => {}, []);
-  const getInsightsByType = useCallback(() => {}, []);
-  const getStaffById = useCallback(() => {}, []);
-  const getAllStaff = useCallback(() => {}, []);
-  const updateCompany = useCallback(() => {}, []);
-  const startDelivery = useCallback(() => {}, []);
-
-  useEffect(() => {
-    setPurchaseOrders(getFromLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, []));
-    setLogs(getFromLocalStorage(STORAGE_KEYS.LOGS, []));
-    setSuppliers(getFromLocalStorage(STORAGE_KEYS.SUPPLIERS, []));
-    setDrivers(getFromLocalStorage(STORAGE_KEYS.DRIVERS, []));
-    setTrucks(getFromLocalStorage(STORAGE_KEYS.TRUCKS, []));
-    setGpsData(getFromLocalStorage(STORAGE_KEYS.GPS_DATA, []));
-    setAiInsights(getFromLocalStorage(STORAGE_KEYS.AI_INSIGHTS, []));
-    setStaff(getFromLocalStorage(STORAGE_KEYS.STAFF, []));
-    setDispensers(getFromLocalStorage(STORAGE_KEYS.DISPENSERS, []));
-    setShifts(getFromLocalStorage(STORAGE_KEYS.SHIFTS, []));
-    setSales(getFromLocalStorage(STORAGE_KEYS.SALES, []));
-    setPrices(getFromLocalStorage(STORAGE_KEYS.PRICES, []));
-    setIncidents(getFromLocalStorage(STORAGE_KEYS.INCIDENTS, []));
-    setActivityLogs(getFromLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, []));
-    setTanks(getFromLocalStorage(STORAGE_KEYS.TANKS, []));
-  }, []);
-
+  // Define purchase order functions first
   const addPurchaseOrder = useCallback(async (order: Omit<PurchaseOrder, 'id'>): Promise<PurchaseOrder> => {
     const now = new Date();
     const newOrder: PurchaseOrder = {
@@ -562,6 +198,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [purchaseOrders, addActivityLog]);
 
+  const deletePurchaseOrder = useCallback((id: string): boolean => {
+    let deleted = false;
+    setPurchaseOrders(prev => {
+      const filteredOrders = prev.filter(order => order.id !== id);
+      deleted = filteredOrders.length < prev.length;
+      return filteredOrders;
+    });
+    return deleted;
+  }, []);
+
+  const getPurchaseOrderById = useCallback((id: string): PurchaseOrder | undefined => {
+    return purchaseOrders.find(order => order.id === id);
+  }, [purchaseOrders]);
+
+  const getAllPurchaseOrders = useCallback((params?: PaginationParams): PaginatedResult<PurchaseOrder> => {
+    return getPaginatedData(purchaseOrders, params || { page: 1, limit: 10 });
+  }, [purchaseOrders]);
+
+  // Define missing functions needed by AppContext
+  const getOrderById = useCallback((id: string): PurchaseOrder | undefined => {
+    return purchaseOrders.find(order => order.id === id);
+  }, [purchaseOrders]);
+
+  const getOrdersWithDeliveryStatus = useCallback((status: string): PurchaseOrder[] => {
+    return purchaseOrders.filter(order => 
+      order.deliveryDetails && order.deliveryDetails.status === status
+    );
+  }, [purchaseOrders]);
+
+  const getOrdersWithDiscrepancies = useCallback((): PurchaseOrder[] => {
+    return purchaseOrders.filter(order => 
+      order.offloadingDetails && order.offloadingDetails.discrepancyPercentage > 0
+    );
+  }, [purchaseOrders]);
+
   const updateOrderStatus = useCallback(async (id: string, status: OrderStatus): Promise<boolean> => {
     const orderIndex = purchaseOrders.findIndex(order => order.id === id);
     if (orderIndex === -1) return false;
@@ -579,6 +250,275 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     return true;
   }, [purchaseOrders, updatePurchaseOrder, addActivityLog]);
+
+  // Define required functions for the app context
+  const getAvailableDrivers = useCallback((): Driver[] => {
+    return drivers.filter(driver => driver.isAvailable);
+  }, [drivers]);
+
+  const getAvailableTrucks = useCallback((): Truck[] => {
+    return trucks.filter(truck => truck.isAvailable);
+  }, [trucks]);
+
+  const getNonGPSTrucks = useCallback((): Truck[] => {
+    return trucks.filter(truck => !truck.isGPSTagged);
+  }, [trucks]);
+
+  const addGPSData = useCallback((data: Omit<GPSData, "id" | "timestamp">): GPSData => {
+    const newData: GPSData = {
+      ...data,
+      id: `gps-${uuidv4().substring(0, 8)}`,
+      timestamp: new Date()
+    };
+    
+    setGpsData(prev => [newData, ...prev]);
+    return newData;
+  }, []);
+
+  const getGPSDataForTruck = useCallback((truckId: string, limit?: number): GPSData[] => {
+    let truckData = gpsData.filter(data => data.truckId === truckId);
+    
+    // Sort by timestamp, newest first
+    truckData.sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    
+    if (limit) {
+      truckData = truckData.slice(0, limit);
+    }
+    
+    return truckData;
+  }, [gpsData]);
+
+  const getAllGPSData = useCallback((params?: PaginationParams): PaginatedResult<GPSData> => {
+    return getPaginatedData(gpsData, params || { page: 1, limit: 10 });
+  }, [gpsData]);
+
+  const updateGPSData = useCallback((truckId: string, latitude: number, longitude: number, speed: number): GPSData => {
+    // Update the truck's last known position
+    updateTruck(truckId, { 
+      lastLatitude: latitude, 
+      lastLongitude: longitude,
+      lastSpeed: speed,
+      updatedAt: new Date()
+    });
+    
+    // Add new GPS data entry
+    const newGpsData: GPSData = {
+      id: `gps-${uuidv4().substring(0, 8)}`,
+      truckId,
+      latitude,
+      longitude,
+      speed,
+      timestamp: new Date(),
+      fuelLevel: Math.floor(Math.random() * 40) + 60, // Random fuel between 60-100%
+      location: 'En route'
+    };
+    
+    setGpsData(prev => [newGpsData, ...prev]);
+    
+    return newGpsData;
+  }, [updateTruck]);
+
+  const addTank = useCallback((tank: Omit<Tank, 'id'>): Tank => {
+    const newTank: Tank = {
+      ...tank,
+      id: `tank-${uuidv4().substring(0, 8)}`
+    };
+    
+    setTanks(prev => [...prev, newTank]);
+    return newTank;
+  }, []);
+
+  const updateTank = useCallback((id: string, updates: Partial<Tank>): Tank | null => {
+    let updatedTank: Tank | null = null;
+    setTanks(prev => {
+      const updatedTanks = prev.map(tank => {
+        if (tank.id === id) {
+          updatedTank = { ...tank, ...updates };
+          return updatedTank;
+        }
+        return tank;
+      });
+      return updatedTanks;
+    });
+    return updatedTank;
+  }, []);
+
+  const deleteTank = useCallback((id: string): boolean => {
+    let deleted = false;
+    setTanks(prev => {
+      const filteredTanks = prev.filter(tank => tank.id !== id);
+      deleted = filteredTanks.length < prev.length;
+      return filteredTanks;
+    });
+    return deleted;
+  }, []);
+
+  const getTankById = useCallback((id: string): Tank | undefined => {
+    return tanks.find(tank => tank.id === id);
+  }, [tanks]);
+
+  const getAllTanks = useCallback((params?: PaginationParams): PaginatedResult<Tank> => {
+    return getPaginatedData(tanks, params || { page: 1, limit: 10 });
+  }, [tanks]);
+
+  const getTanksByProduct = useCallback((productType: ProductType): Tank[] => {
+    return tanks.filter(tank => tank.productType === productType);
+  }, [tanks]);
+
+  const setTankActive = useCallback((id: string, active: boolean): Tank | null => {
+    return updateTank(id, { isActive: active });
+  }, [updateTank]);
+
+  const addIncident = useCallback((incident: Omit<Incident, 'id'>): Incident => {
+    const newIncident: Incident = {
+      ...incident,
+      id: `incident-${uuidv4().substring(0, 8)}`,
+      timestamp: new Date(),
+      resolved: false
+    };
+    
+    setIncidents(prev => [...prev, newIncident]);
+    return newIncident;
+  }, []);
+
+  const updateIncident = useCallback((id: string, updates: Partial<Incident>): Incident | null => {
+    let updatedIncident: Incident | null = null;
+    setIncidents(prev => {
+      const updatedIncidents = prev.map(incident => {
+        if (incident.id === id) {
+          updatedIncident = { ...incident, ...updates };
+          return updatedIncident;
+        }
+        return incident;
+      });
+      return updatedIncidents;
+    });
+    return updatedIncident;
+  }, []);
+
+  const deleteIncident = useCallback((id: string): boolean => {
+    let deleted = false;
+    setIncidents(prev => {
+      const filteredIncidents = prev.filter(incident => incident.id !== id);
+      deleted = filteredIncidents.length < prev.length;
+      return filteredIncidents;
+    });
+    return deleted;
+  }, []);
+
+  const getIncidentById = useCallback((id: string): Incident | undefined => {
+    return incidents.find(incident => incident.id === id);
+  }, [incidents]);
+
+  const getAllIncidents = useCallback((params?: PaginationParams): PaginatedResult<Incident> => {
+    return getPaginatedData(incidents, params || { page: 1, limit: 10 });
+  }, [incidents]);
+
+  const completeDelivery = useCallback(async (orderId: string): Promise<boolean> => {
+    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const order = purchaseOrders[orderIndex];
+    const deliveryDetails = order.deliveryDetails;
+    
+    if (!deliveryDetails) return false;
+    
+    const updatedDeliveryDetails: DeliveryDetails = {
+      ...deliveryDetails,
+      status: "delivered",
+      destinationArrivalTime: new Date()
+    };
+    
+    const updatedOrder = {
+      ...order,
+      updatedAt: new Date(),
+      deliveryDetails: updatedDeliveryDetails
+    };
+    
+    await updatePurchaseOrder(orderId, updatedOrder);
+    
+    addActivityLog({
+      action: 'complete',
+      entityType: 'delivery',
+      entityId: orderId,
+      details: `Delivery for order ${order.poNumber} marked as complete`,
+      user: 'Current User'
+    });
+    
+    return true;
+  }, [purchaseOrders, updatePurchaseOrder, addActivityLog]);
+
+  const recordOffloadingDetails = useCallback((orderId: string, details: OffloadingDetails): boolean => {
+    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const order = purchaseOrders[orderIndex];
+    
+    const updatedOrder = {
+      ...order,
+      updatedAt: new Date(),
+      offloadingDetails: details
+    };
+    
+    updatePurchaseOrder(orderId, updatedOrder);
+    
+    addActivityLog({
+      action: 'offload',
+      entityType: 'delivery',
+      entityId: orderId,
+      details: `Product offloaded for order ${order.poNumber}`,
+      user: 'Current User'
+    });
+    
+    return true;
+  }, [purchaseOrders, updatePurchaseOrder, addActivityLog]);
+
+  const updateDeliveryStatus = useCallback((orderId: string, status: string | Partial<DeliveryDetails>): boolean => {
+    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const order = purchaseOrders[orderIndex];
+    const oldStatus = order.deliveryDetails?.status || 'pending';
+    
+    const updatedDeliveryDetails = typeof status === 'string'
+      ? { ...(order.deliveryDetails || {}), status: status as "pending" | "delivered" | "in_transit" }
+      : { ...(order.deliveryDetails || {}), ...status };
+    
+    const updatedOrder = {
+      ...order,
+      updatedAt: new Date(),
+      deliveryDetails: updatedDeliveryDetails as DeliveryDetails
+    };
+    
+    // Update the purchase order
+    const updatedOrdersList = [...purchaseOrders];
+    updatedOrdersList[orderIndex] = updatedOrder;
+    setPurchaseOrders(updatedOrdersList);
+    saveToLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, updatedOrdersList);
+    
+    const logEntry = {
+      poId: orderId,
+      action: 'update_delivery_status',
+      details: `Delivery status updated for order ${orderId}`,
+      entityType: 'delivery',
+      entityId: updatedDeliveryDetails.id || '',
+      user: 'Current User'
+    };
+    
+    addLog(logEntry);
+    
+    addActivityLog({
+      action: 'update',
+      entityType: 'delivery',
+      entityId: orderId,
+      details: `Delivery status for order ${order.poNumber} updated`,
+      user: 'Current User'
+    });
+    
+    return true;
+  }, [purchaseOrders, setPurchaseOrders, addLog, addActivityLog]);
 
   const assignDriverToOrder = useCallback((orderId: string, driverId: string, truckId: string): boolean => {
     const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
@@ -857,6 +797,326 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [getTruckById, addActivityLog]);
 
+  // Additional stub implementations to match the interface requirements
+  const getStaffById = useCallback((id: string): Staff | undefined => {
+    return staff.find(s => s.id === id);
+  }, [staff]);
+
+  const getAllStaff = useCallback((params?: PaginationParams): PaginatedResult<Staff> => {
+    return getPaginatedData(staff, params || { page: 1, limit: 10 });
+  }, [staff]);
+
+  const getActiveStaff = useCallback((): Staff[] => {
+    return staff.filter(s => s.isActive);
+  }, [staff]);
+
+  const addDispenser = useCallback((dispenser: Omit<Dispenser, 'id'>): Dispenser => {
+    const newDispenser: Dispenser = {
+      ...dispenser,
+      id: uuidv4()
+    };
+    setDispensers(prev => [...prev, newDispenser]);
+    return newDispenser;
+  }, []);
+
+  const updateDispenser = useCallback((id: string, dispenser: Partial<Dispenser>): Dispenser | null => {
+    let updatedDispenser: Dispenser | null = null;
+    setDispensers(prev => {
+      return prev.map(d => {
+        if (d.id === id) {
+          updatedDispenser = { ...d, ...dispenser };
+          return updatedDispenser;
+        }
+        return d;
+      });
+    });
+    return updatedDispenser;
+  }, []);
+
+  const deleteDispenser = useCallback((id: string): boolean => {
+    let deleted = false;
+    setDispensers(prev => {
+      const filtered = prev.filter(d => d.id !== id);
+      deleted = filtered.length < prev.length;
+      return filtered;
+    });
+    return deleted;
+  }, []);
+
+  const getDispenserById = useCallback((id: string): Dispenser | undefined => {
+    return dispensers.find(d => d.id === id);
+  }, [dispensers]);
+
+  const getAllDispensers = useCallback((params?: PaginationParams): PaginatedResult<Dispenser> => {
+    return getPaginatedData(dispensers, params || { page: 1, limit: 10 });
+  }, [dispensers]);
+
+  const getActiveDispensers = useCallback((): Dispenser[] => {
+    return dispensers.filter(d => d.isActive);
+  }, [dispensers]);
+
+  const addShift = useCallback((shift: Omit<Shift, 'id'>): Shift => {
+    const newShift: Shift = {
+      ...shift,
+      id: uuidv4()
+    };
+    setShifts(prev => [...prev, newShift]);
+    return newShift;
+  }, []);
+
+  const updateShift = useCallback((id: string, shift: Partial<Shift>): Shift | null => {
+    let updatedShift: Shift | null = null;
+    setShifts(prev => {
+      return prev.map(s => {
+        if (s.id === id) {
+          updatedShift = { ...s, ...shift };
+          return updatedShift;
+        }
+        return s;
+      });
+    });
+    return updatedShift;
+  }, []);
+
+  const deleteShift = useCallback((id: string): boolean => {
+    let deleted = false;
+    setShifts(prev => {
+      const filtered = prev.filter(s => s.id !== id);
+      deleted = filtered.length < prev.length;
+      return filtered;
+    });
+    return deleted;
+  }, []);
+
+  const getShiftById = useCallback((id: string): Shift | undefined => {
+    return shifts.find(s => s.id === id);
+  }, [shifts]);
+
+  const getAllShifts = useCallback((params?: PaginationParams): PaginatedResult<Shift> => {
+    return getPaginatedData(shifts, params || { page: 1, limit: 10 });
+  }, [shifts]);
+
+  const getCurrentShift = useCallback((): Shift | undefined => {
+    const now = new Date();
+    return shifts.find(s => s.status === 'active');
+  }, [shifts]);
+
+  const updateSale = useCallback((id: string, sale: Partial<Sale>): Sale | null => {
+    let updatedSale: Sale | null = null;
+    setSales(prev => {
+      return prev.map(s => {
+        if (s.id === id) {
+          updatedSale = { ...s, ...sale };
+          return updatedSale;
+        }
+        return s;
+      });
+    });
+    return updatedSale;
+  }, []);
+
+  const deleteSale = useCallback((id: string): boolean => {
+    let deleted = false;
+    setSales(prev => {
+      const filtered = prev.filter(s => s.id !== id);
+      deleted = filtered.length < prev.length;
+      return filtered;
+    });
+    return deleted;
+  }, []);
+
+  const getSaleById = useCallback((id: string): Sale | undefined => {
+    return sales.find(s => s.id === id);
+  }, [sales]);
+
+  const getAllSales = useCallback((params?: PaginationParams): PaginatedResult<Sale> => {
+    return getPaginatedData(sales, params || { page: 1, limit: 10 });
+  }, [sales]);
+
+  const getSalesForShift = useCallback((shiftId: string): Sale[] => {
+    return sales.filter(s => s.shiftId === shiftId);
+  }, [sales]);
+
+  const deletePrice = useCallback((id: string): boolean => {
+    let deleted = false;
+    setPrices(prev => {
+      const filtered = prev.filter(p => p.id !== id);
+      deleted = filtered.length < prev.length;
+      return filtered;
+    });
+    return deleted;
+  }, []);
+
+  const getPriceById = useCallback((id: string): Price | undefined => {
+    return prices.find(p => p.id === id);
+  }, [prices]);
+
+  const getAllPrices = useCallback((params?: PaginationParams): PaginatedResult<Price> => {
+    return getPaginatedData(prices, params || { page: 1, limit: 10 });
+  }, [prices]);
+
+  const getCurrentPrices = useCallback((): Record<string, number> => {
+    const currentPriceMap: Record<string, number> = {};
+    prices.forEach(price => {
+      if (price.isActive) {
+        currentPriceMap[price.productType] = price.price;
+      }
+    });
+    return currentPriceMap;
+  }, [prices]);
+
+  const startDelivery = useCallback(async (orderId: string): Promise<boolean> => {
+    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const order = purchaseOrders[orderIndex];
+    const deliveryDetails = order.deliveryDetails;
+    
+    if (!deliveryDetails) return false;
+    
+    const updatedDeliveryDetails: DeliveryDetails = {
+      ...deliveryDetails,
+      status: "in_transit",
+      depotDepartureTime: new Date()
+    };
+    
+    const updatedOrder = {
+      ...order,
+      updatedAt: new Date(),
+      deliveryDetails: updatedDeliveryDetails
+    };
+    
+    await updatePurchaseOrder(orderId, updatedOrder);
+    
+    addActivityLog({
+      action: 'start',
+      entityType: 'delivery',
+      entityId: orderId,
+      details: `Delivery for order ${order.poNumber} started`,
+      user: 'Current User'
+    });
+    
+    return true;
+  }, [purchaseOrders, updatePurchaseOrder, addActivityLog]);
+
+  const updateCompany = useCallback((updates: Partial<typeof defaultCompany>): void => {
+    setCompany(prev => ({ ...prev, ...updates }));
+  }, []);
+
+  const resetAIInsights = useCallback((): boolean => {
+    setAiInsights([]);
+    return true;
+  }, []);
+
+  const generateAIInsights = useCallback((data: any): AIInsight => {
+    const insight: AIInsight = {
+      id: uuidv4(),
+      type: 'general',
+      description: 'AI insight generated',
+      isRead: false,
+      severity: 'low',
+      timestamp: new Date()
+    };
+    setAiInsights(prev => [...prev, insight]);
+    return insight;
+  }, []);
+
+  const getInsightsByType = useCallback((type: string): AIInsight[] => {
+    return aiInsights.filter(insight => insight.type === type);
+  }, [aiInsights]);
+
+  const getUnreadAIInsights = useCallback((): AIInsight[] => {
+    return aiInsights.filter(insight => !insight.isRead);
+  }, [aiInsights]);
+
+  const getAllAIInsights = useCallback((params?: PaginationParams): PaginatedResult<AIInsight> => {
+    return getPaginatedData(aiInsights, params || { page: 1, limit: 10 });
+  }, [aiInsights]);
+
+  const markAIInsightAsRead = useCallback((id: string): boolean => {
+    let updated = false;
+    setAiInsights(prev => {
+      return prev.map(insight => {
+        if (insight.id === id) {
+          updated = true;
+          return { ...insight, isRead: true };
+        }
+        return insight;
+      });
+    });
+    return updated;
+  }, []);
+
+  const logAIInteraction = useCallback((interaction: string): void => {
+    addActivityLog({
+      action: 'interact',
+      entityType: 'ai',
+      entityId: 'system',
+      details: `AI interaction: ${interaction}`,
+      user: 'Current User'
+    });
+  }, [addActivityLog]);
+
+  const addSupplier = useCallback((supplier: Omit<Supplier, "id">): Supplier => {
+    const newSupplier: Supplier = {
+      ...supplier,
+      id: uuidv4(),
+      createdAt: new Date()
+    };
+    setSuppliers(prev => [...prev, newSupplier]);
+    return newSupplier;
+  }, []);
+
+  const updateSupplier = useCallback((id: string, supplier: Partial<Supplier>): Supplier | null => {
+    let updatedSupplier: Supplier | null = null;
+    setSuppliers(prev => {
+      return prev.map(s => {
+        if (s.id === id) {
+          updatedSupplier = { ...s, ...supplier, updatedAt: new Date() };
+          return updatedSupplier;
+        }
+        return s;
+      });
+    });
+    return updatedSupplier;
+  }, []);
+
+  const deleteSupplier = useCallback((id: string): boolean => {
+    let deleted = false;
+    setSuppliers(prev => {
+      const filtered = prev.filter(s => s.id !== id);
+      deleted = filtered.length < prev.length;
+      return filtered;
+    });
+    return deleted;
+  }, []);
+
+  const getSupplierById = useCallback((id: string): Supplier | undefined => {
+    return suppliers.find(s => s.id === id);
+  }, [suppliers]);
+
+  const getAllSuppliers = useCallback((params?: PaginationParams): PaginatedResult<Supplier> => {
+    return getPaginatedData(suppliers, params || { page: 1, limit: 10 });
+  }, [suppliers]);
+
+  useEffect(() => {
+    setPurchaseOrders(getFromLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, []));
+    setLogs(getFromLocalStorage(STORAGE_KEYS.LOGS, []));
+    setSuppliers(getFromLocalStorage(STORAGE_KEYS.SUPPLIERS, []));
+    setDrivers(getFromLocalStorage(STORAGE_KEYS.DRIVERS, []));
+    setTrucks(getFromLocalStorage(STORAGE_KEYS.TRUCKS, []));
+    setGpsData(getFromLocalStorage(STORAGE_KEYS.GPS_DATA, []));
+    setAiInsights(getFromLocalStorage(STORAGE_KEYS.AI_INSIGHTS, []));
+    setStaff(getFromLocalStorage(STORAGE_KEYS.STAFF, []));
+    setDispensers(getFromLocalStorage(STORAGE_KEYS.DISPENSERS, []));
+    setShifts(getFromLocalStorage(STORAGE_KEYS.SHIFTS, []));
+    setSales(getFromLocalStorage(STORAGE_KEYS.SALES, []));
+    setPrices(getFromLocalStorage(STORAGE_KEYS.PRICES, []));
+    setIncidents(getFromLocalStorage(STORAGE_KEYS.INCIDENTS, []));
+    setActivityLogs(getFromLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, []));
+    setTanks(getFromLocalStorage(STORAGE_KEYS.TANKS, []));
+  }, []);
+
   const contextValue: AppContextType = {
     purchaseOrders,
     logs,
@@ -913,7 +1173,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getGPSDataForTruck,
     getAllGPSData,
     updateGPSData,
-    addAIInsight,
+    addAIInsight: generateAIInsights,
     markAIInsightAsRead,
     getUnreadAIInsights,
     getAllAIInsights,

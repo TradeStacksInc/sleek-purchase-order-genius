@@ -138,6 +138,9 @@ export const useDriverTruckActions = (
     gpsDeviceId: string
   ): boolean => {
     if (!truckId) return false;
+    
+    const truck = getTruckById(truckId);
+    if (!truck) return false;
 
     let success = false;
     const initialLatitude = 6.5244;
