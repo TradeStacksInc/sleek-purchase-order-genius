@@ -456,7 +456,7 @@ export const useTankActions = (
     }
   };
 
-  const setTankActive = (tankId: string, isActive: boolean): Tank | undefined => {
+  const setTankActive = (tankId: string, isActive: boolean): boolean => {
     try {
       const tank = tanks.find(t => t.id === tankId);
       
@@ -466,10 +466,10 @@ export const useTankActions = (
           description: "Tank not found.",
           variant: "destructive",
         });
-        return undefined;
+        return false;
       }
       
-      return updateTank(tankId, { isActive });
+      return !!updateTank(tankId, { isActive });
     } catch (error) {
       console.error("Error setting tank active state:", error);
       toast({
@@ -477,7 +477,7 @@ export const useTankActions = (
         description: "Failed to update tank state. Please try again.",
         variant: "destructive",
       });
-      return undefined;
+      return false;
     }
   };
 

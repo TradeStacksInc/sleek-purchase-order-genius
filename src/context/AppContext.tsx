@@ -1011,7 +1011,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     activityLogs,
     tanks,
     
-    purchaseOrderActions,
+    // Add individual methods from purchaseOrderActions
+    addPurchaseOrder: purchaseOrderActions.addPurchaseOrder,
+    updatePurchaseOrder: purchaseOrderActions.updatePurchaseOrder,
+    deletePurchaseOrder: purchaseOrderActions.deletePurchaseOrder,
+    getPurchaseOrderById: purchaseOrderActions.getPurchaseOrderById,
+    getAllPurchaseOrders: purchaseOrderActions.getAllPurchaseOrders,
+    updateOrderStatus: purchaseOrderActions.updateOrderStatus,
     getOrderById,
     getOrdersWithDeliveryStatus,
     getOrdersWithDiscrepancies,

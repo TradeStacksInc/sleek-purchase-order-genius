@@ -20,7 +20,7 @@ export const fromSupabaseFormat = {
     return {
       id: dbPurchaseOrder.id,
       poNumber: dbPurchaseOrder.po_number || '',
-      status: (dbPurchaseOrder.status as OrderStatus) || 'draft',
+      status: (dbPurchaseOrder.status as OrderStatus) || 'pending',
       supplier: dbPurchaseOrder.supplier_id || '',
       deliveryDate: dbPurchaseOrder.delivery_date ? new Date(dbPurchaseOrder.delivery_date) : new Date(),
       notes: dbPurchaseOrder.notes || '',
@@ -107,18 +107,18 @@ export const fromSupabaseFormat = {
   incident: (dbIncident: DbIncident): Incident => {
     return {
       id: dbIncident.id,
-      type: (dbIncident.type || 'general') as 'delay' | 'mechanical' | 'accident' | 'feedback' | 'other',
+      type: (dbIncident.type as 'delay' | 'mechanical' | 'accident' | 'feedback' | 'other') || 'other',
       description: dbIncident.description,
       location: dbIncident.location,
       timestamp: dbIncident.timestamp ? new Date(dbIncident.timestamp) : new Date(),
-      status: (dbIncident.status || 'reported') as 'open' | 'closed' | 'in_progress',
-      severity: (dbIncident.severity || 'medium') as 'low' | 'medium' | 'high',
-      orderId: dbIncident.order_id || undefined,
+      status: (dbIncident.status as 'open' | 'closed' | 'in_progress') || 'open',
+      severity: (dbIncident.severity as 'low' | 'medium' | 'high') || 'medium',
+      orderId: dbIncident.order_id,
       deliveryId: dbIncident.delivery_id || undefined,
       staffInvolved: dbIncident.staff_involved || [],
       reportedBy: dbIncident.reported_by || '',
       resolution: dbIncident.resolution || '',
-      impact: (dbIncident.impact || 'neutral') as 'positive' | 'negative' | 'neutral'
+      impact: (dbIncident.impact as 'positive' | 'negative' | 'neutral') || 'neutral'
     };
   }
 };

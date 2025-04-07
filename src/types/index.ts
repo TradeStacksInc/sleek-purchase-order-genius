@@ -52,7 +52,7 @@ export interface Company {
 }
 
 // Order Status
-export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled';
+export type OrderStatus = 'pending' | 'approved' | 'rejected' | 'delivered' | 'active' | 'fulfilled' | 'draft';
 export type PaymentTerm = 'net_7' | 'net_15' | 'net_30' | 'net_60' | 'cod' | '50% Advance' | '100% Advance' | 'Credit';
 
 export interface StatusHistoryEntry {
@@ -313,6 +313,7 @@ export interface Incident {
   staffInvolved: string[];
   deliveryId?: string;
   impact?: 'positive' | 'negative' | 'neutral';
+  orderId?: string;
 }
 
 // Activity Log
