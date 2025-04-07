@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { 
   Driver, Truck, PurchaseOrder, GPSData
@@ -133,12 +134,14 @@ export const useDriverTruckActions = (
   };
 
   const tagTruckWithGPS = (
-    truckId: string, 
-    gpsDeviceId: string,
-    initialLatitude: number,
-    initialLongitude: number
-  ) => {
+    truckId: string | null, 
+    gpsDeviceId: string
+  ): boolean => {
+    if (!truckId) return false;
+
     let success = false;
+    const initialLatitude = 6.5244;
+    const initialLongitude = 3.3792;
     
     setTrucks(prev => {
       const index = prev.findIndex(t => t.id === truckId);
@@ -191,7 +194,7 @@ export const useDriverTruckActions = (
     return success;
   };
 
-  const untagTruckGPS = (truckId: string) => {
+  const untagTruckGPS = (truckId: string): boolean => {
     let success = false;
     
     setTrucks(prev => {
