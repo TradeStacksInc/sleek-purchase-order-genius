@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -321,8 +320,8 @@ const PODetail = () => {
         <StatusUpdateDialog 
           orderId={id!} 
           currentStatus={purchaseOrder.status} 
-          onOpenChange={setIsDialogOpen}
           open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
         />
       )}
     </div>

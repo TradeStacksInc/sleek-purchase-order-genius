@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -163,7 +164,7 @@ const Analytics = () => {
         <h1 className="text-2xl font-bold mb-4 md:mb-0">Analytics</h1>
         <DateRangePicker 
           date={dateRange}
-          onSelect={setDateRange}
+          onDateChange={setDateRange}
         />
       </div>
 
