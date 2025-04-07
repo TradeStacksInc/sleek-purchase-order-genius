@@ -617,7 +617,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(truckGPSData, params || { page: 1, limit: 10 });
   };
   
-  // Add missing delivery methods
   const updateDeliveryDetails = (orderId: string, driverId: string, truckId: string, deliveryDate: Date): boolean => {
     const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
     if (orderIndex === -1) return false;
@@ -811,6 +810,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getPaginatedData(sales, params || { page: 1, limit: 10 });
   };
 
+  const addPrice = (price: Omit<Price, 'id'>): Price => {
+    const newPrice = {
+      ...price,
+      id: `price-${uuidv4().substring(0, 8)}`,
+    };
+    
+    persistentSetPrices(prev => [...prev, newPrice]);
+    return newPrice;
+  };
+
+  const updatePrice = (id: string, updates: Partial<Price>): boolean => {
+    let updated = false;
+    setPrices(prev => {
+      const index = prev.findIndex(p => p.id === id);
+      if (index === -1) return prev;
+      
+      const newPrices = [...prev];
+      newPrices[index] = { ...newPrices[index], ...updates };
+      updated = true;
+      return newPrices;
+    });
+    return updated;
+  };
+
+  const deletePrice = (id: string): boolean => {
+    let deleted = false;
+    setPrices(prev => {
+      const filtered = prev.filter(p => p.id !== id);
+      deleted = filtered.length < prev.length;
+      return filtered;
+    });
+    return deleted;
+  };
+
+  const getPriceById = (id: string): Price | undefined => {
+    return prices.find(p => p.id === id);
+  };
+
+  const getAllPrices = (params?: PaginationParams): PaginatedResult<Price> => {
+    return getPaginatedData(prices, params || { page: 1, limit: 10 });
+  };
+
   const contextValue: AppContextType = {
     purchaseOrders,
     logs,
@@ -884,7 +925,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateSale,
     deleteSale,
     getSaleById,
-    getAllSales
+    getAllSales,
+    addPrice,
+    updatePrice,
+    deletePrice,
+    getPriceById,
+    getAllPrices
   };
 
   return (

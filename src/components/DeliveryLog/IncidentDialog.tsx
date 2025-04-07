@@ -158,7 +158,7 @@ const IncidentDialog: React.FC<IncidentDialogProps> = ({ children, orderId }) =>
             />
             {form.formState.errors.type && (
               <p className="text-sm text-red-500 mt-1">{form.formState.errors.type.message}</p>
-              )}
+            )}
           </div>
           
           <div>
