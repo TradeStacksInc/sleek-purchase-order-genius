@@ -1,505 +1,328 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useApp } from '@/context/AppContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { format } from 'date-fns';
-import { 
-  ArrowLeft, 
-  Truck, 
-  Calendar, 
-  DollarSign, 
-  FileText, 
-  User, 
-  Clock, 
-  CheckCircle2, 
-  XCircle,
-  AlertTriangle,
-  BarChart3,
-  MapPin,
-  Droplet
-} from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PurchaseOrder, LogEntry, Supplier } from '@/types';
-import { getStatusColor, formatCurrency } from '@/utils/formatters';
-import DeliveryStatusBadge from '@/components/DeliveryStatusBadge';
-import { toast } from '@/hooks/use-toast';
+import { useApp } from '@/context/AppContext';
+import StatusTracker from '@/components/PurchaseOrder/StatusTracker';
+import StatusUpdateDialog from '@/components/PurchaseOrder/StatusUpdateDialog';
+import { CalendarIcon, TruckIcon, FileTextIcon, BarChart3Icon } from 'lucide-react';
+import { formatCurrency } from '@/utils/formatters';
 
-const PODetail: React.FC = () => {
+const PODetail = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { getPurchaseOrderById, getLogsByOrderId, getSupplierById } = useApp();
+  const { toast } = useToast();
+  const { getPurchaseOrderById, getSupplierById, getLogsByOrderId } = useApp();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('details');
   
-  const [order, setOrder] = useState<any | null>(null);
-  const [supplier, setSupplier] = useState<any | null>(null);
-  const [logs, setLogs] = useState<any[]>([]);
-  
-  useEffect(() => {
-    if (id) {
-      const purchaseOrder = getPurchaseOrderById(id);
-      setOrder(purchaseOrder || null);
-      
-      if (purchaseOrder?.supplierId) {
-        const supplierData = getSupplierById(purchaseOrder.supplierId);
-        setSupplier(supplierData || null);
-      }
-      
-      // Get logs for this order
-      const orderLogs = getLogsByOrderId(id);
-      setLogs(orderLogs || []);
-    }
-  }, [id, getPurchaseOrderById, getSupplierById, getLogsByOrderId]);
+  const purchaseOrder = id ? getPurchaseOrderById(id) : undefined;
+  const supplier = purchaseOrder?.supplierId ? getSupplierById(purchaseOrder.supplierId) : undefined;
+  const logs = id ? getLogsByOrderId(id) : [];
 
-  // Access logs directly without .data property
-  console.log("Logs:", logs);
-  
-  if (!order) {
+  useEffect(() => {
+    if (!purchaseOrder && id) {
+      toast({
+        title: "Error",
+        description: `Purchase Order with ID ${id} not found.`,
+        variant: "destructive",
+      });
+    }
+  }, [purchaseOrder, id, toast]);
+
+  if (!purchaseOrder) {
     return (
-      <div className="flex flex-col items-center justify-center h-[70vh]">
-        <AlertTriangle className="h-16 w-16 text-amber-500 mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Purchase Order Not Found</h2>
-        <p className="text-muted-foreground mb-6">The purchase order you're looking for doesn't exist or has been deleted.</p>
-        <Button onClick={() => navigate('/purchase-orders')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Purchase Orders
+      <div className="container mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-4">Purchase Order Not Found</h1>
+        <p>The purchase order you're looking for doesn't exist.</p>
+        <Button asChild className="mt-4">
+          <Link to="/orders">Back to Orders</Link>
         </Button>
       </div>
     );
   }
 
-  const getStatusBadge = (status: string) => {
-    const statusColors: Record<string, string> = {
-      draft: 'bg-gray-200 text-gray-800',
-      active: 'bg-green-100 text-green-800',
-      completed: 'bg-blue-100 text-blue-800',
-      cancelled: 'bg-red-100 text-red-800',
-      pending: 'bg-amber-100 text-amber-800',
-    };
-
-    return (
-      <Badge className={statusColors[status] || 'bg-gray-200'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
-  };
-
-  const getPaymentStatusBadge = (status: string) => {
-    const statusColors: Record<string, string> = {
-      unpaid: 'bg-red-100 text-red-800',
-      partial: 'bg-amber-100 text-amber-800',
-      paid: 'bg-green-100 text-green-800',
-    };
-
-    return (
-      <Badge className={statusColors[status] || 'bg-gray-200'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
-  };
-
-  const formatDate = (date: Date | string | undefined) => {
-    if (!date) return 'N/A';
-    return format(new Date(date), 'PPP');
-  };
-
-  const formatTime = (date: Date | string | undefined) => {
-    if (!date) return 'N/A';
-    return format(new Date(date), 'p');
-  };
-
-  const formatDateTime = (date: Date | string | undefined) => {
-    if (!date) return 'N/A';
-    return format(new Date(date), 'PPp');
-  };
-
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex justify-between items-center">
-        <Button variant="outline" onClick={() => navigate('/purchase-orders')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Purchase Orders
-        </Button>
-        
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Status:</span>
-          {getStatusBadge(order.status)}
-          
-          <span className="text-sm text-muted-foreground ml-4">Payment:</span>
-          {getPaymentStatusBadge(order.paymentStatus || 'unpaid')}
+    <div className="container mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Purchase Order {purchaseOrder.poNumber || id}</h1>
+          <p className="text-gray-500">Created on {purchaseOrder.createdAt?.toLocaleDateString()}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsDialogOpen(true)} variant="outline">
+            Update Status
+          </Button>
+          <Button asChild>
+            <Link to={`/orders/edit/${id}`}>Edit Order</Link>
+          </Button>
         </div>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex justify-between items-center">
-              <span>Purchase Order #{order.poNumber || 'Draft'}</span>
-              {order.deliveryDetails && (
-                <DeliveryStatusBadge status={order.deliveryDetails.status} />
-              )}
-            </CardTitle>
-            <CardDescription>
-              Created on {formatDateTime(order.createdAt)}
-            </CardDescription>
+            <CardTitle>Status</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Order Date</h3>
-                <p className="flex items-center mt-1">
-                  <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                  {formatDate(order.orderDate)}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Expected Delivery</h3>
-                <p className="flex items-center mt-1">
-                  <Truck className="h-4 w-4 mr-2 text-muted-foreground" />
-                  {formatDate(order.expectedDeliveryDate)}
-                </p>
-              </div>
-            </div>
-            
-            <Separator />
-            
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Supplier</h3>
-              <div className="mt-1 rounded-md border p-3">
-                <p className="font-medium">{supplier?.name || order.supplierName || 'Unknown Supplier'}</p>
-                {supplier && (
-                  <>
-                    <p className="text-sm text-muted-foreground">{supplier.contactName}</p>
-                    <p className="text-sm text-muted-foreground">{supplier.email}</p>
-                    <p className="text-sm text-muted-foreground">{supplier.phone}</p>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            <Separator />
-            
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Delivery Location</h3>
-              <p className="flex items-start mt-1">
-                <MapPin className="h-4 w-4 mr-2 text-muted-foreground mt-1" />
-                <span>{order.deliveryAddress || 'No delivery address specified'}</span>
-              </p>
-            </div>
-            
-            <Separator />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Payment Terms</h3>
-                <p className="flex items-center mt-1">
-                  <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
-                  {order.paymentTerms || 'Not specified'}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Payment Status</h3>
-                <p className="mt-1">
-                  {getPaymentStatusBadge(order.paymentStatus || 'unpaid')}
-                </p>
-              </div>
+          <CardContent>
+            <Badge className={`${purchaseOrder.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                              purchaseOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                              'bg-blue-100 text-blue-800'}`}>
+              {purchaseOrder.status.charAt(0).toUpperCase() + purchaseOrder.status.slice(1)}
+            </Badge>
+            <div className="mt-4">
+              <StatusTracker status={purchaseOrder.status} />
             </div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader>
-            <CardTitle>Order Details</CardTitle>
-            <CardDescription>
-              Products, quantities, and pricing information
-            </CardDescription>
+            <CardTitle>Supplier</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <ScrollArea className="h-[200px] rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {order.items && order.items.map((item: any, index: number) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <div className="font-medium">{item.productName}</div>
-                        <div className="text-sm text-muted-foreground">{item.productType}</div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.quantity.toLocaleString()} {item.unit || 'liters'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(item.unitPrice)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(item.totalPrice)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-            
-            <Separator />
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(order.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Tax ({order.taxRate || 0}%):</span>
-                <span>{formatCurrency(order.taxAmount)}</span>
-              </div>
-              {order.discountAmount > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>Discount:</span>
-                  <span>-{formatCurrency(order.discountAmount)}</span>
-                </div>
-              )}
-              <Separator />
-              <div className="flex justify-between font-bold">
-                <span>Grand Total:</span>
-                <span>{formatCurrency(order.grandTotal)}</span>
-              </div>
-            </div>
-            
-            {order.notes && (
+          <CardContent>
+            {supplier ? (
               <>
-                <Separator />
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Notes</h3>
-                  <p className="mt-1 text-sm">{order.notes}</p>
-                </div>
+                <h3 className="font-medium">{supplier.name}</h3>
+                <p className="text-sm text-gray-500">{supplier.contact || supplier.contactName || 'No contact information'}</p>
+                <p className="text-sm text-gray-500">{supplier.email || supplier.contactEmail}</p>
               </>
+            ) : (
+              <p>No supplier information available</p>
             )}
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Financial Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between mb-2">
+              <span>Total Amount:</span>
+              <span className="font-semibold">{formatCurrency(purchaseOrder.grandTotal || 0)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Payment Status:</span>
+              <Badge className={`${purchaseOrder.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                {purchaseOrder.paymentStatus || 'Pending'}
+              </Badge>
+            </div>
           </CardContent>
         </Card>
       </div>
       
-      <Tabs defaultValue="delivery" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="delivery">Delivery Information</TabsTrigger>
-          <TabsTrigger value="logs">Activity Logs</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList>
+          <TabsTrigger value="details">
+            <FileTextIcon className="mr-2 h-4 w-4" />
+            Order Details
+          </TabsTrigger>
+          <TabsTrigger value="delivery">
+            <TruckIcon className="mr-2 h-4 w-4" />
+            Delivery
+          </TabsTrigger>
+          <TabsTrigger value="logs">
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            Activity Log
+          </TabsTrigger>
+          <TabsTrigger value="analytics">
+            <BarChart3Icon className="mr-2 h-4 w-4" />
+            Analytics
+          </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="delivery" className="space-y-4">
+        <TabsContent value="details">
           <Card>
             <CardHeader>
-              <CardTitle>Delivery Status</CardTitle>
-              <CardDescription>
-                Track the current status of this delivery
-              </CardDescription>
+              <CardTitle>Order Details</CardTitle>
             </CardHeader>
             <CardContent>
-              {order.deliveryDetails ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Driver</h3>
-                      <p className="flex items-center mt-1">
-                        <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {order.deliveryDetails.driverName || 'Not assigned'}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Vehicle</h3>
-                      <p className="flex items-center mt-1">
-                        <Truck className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {order.deliveryDetails.vehicleDetails || 'Not assigned'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Depot Departure</h3>
-                      <p className="flex items-center mt-1">
-                        <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {order.deliveryDetails.depotDepartureTime 
-                          ? formatDateTime(order.deliveryDetails.depotDepartureTime) 
-                          : 'Not departed'}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Expected Arrival</h3>
-                      <p className="flex items-center mt-1">
-                        <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {order.deliveryDetails.expectedArrivalTime 
-                          ? formatDateTime(order.deliveryDetails.expectedArrivalTime) 
-                          : 'Not available'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Actual Arrival</h3>
-                      <p className="flex items-center mt-1">
-                        <CheckCircle2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {order.deliveryDetails.actualArrivalTime 
-                          ? formatDateTime(order.deliveryDetails.actualArrivalTime) 
-                          : 'Not arrived'}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Distance</h3>
-                      <p className="flex items-center mt-1">
-                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {order.deliveryDetails.totalDistance 
-                          ? `${order.deliveryDetails.totalDistance} km` 
-                          : 'Not available'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {order.offloadingDetails && (
-                    <>
-                      <Separator />
-                      
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Offloading Details</h3>
-                        <div className="mt-2 rounded-md border p-3 space-y-2">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Loaded Volume</p>
-                              <p className="font-medium">{order.offloadingDetails.loadedVolume.toLocaleString()} liters</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Delivered Volume</p>
-                              <p className="font-medium">{order.offloadingDetails.deliveredVolume.toLocaleString()} liters</p>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <p className="text-xs text-muted-foreground">Discrepancy</p>
-                            <div className="flex items-center">
-                              <p className={`font-medium ${order.offloadingDetails.isDiscrepancyFlagged ? 'text-red-600' : 'text-green-600'}`}>
-                                {order.offloadingDetails.discrepancyPercentage.toFixed(2)}%
-                              </p>
-                              {order.offloadingDetails.isDiscrepancyFlagged && (
-                                <AlertTriangle className="h-4 w-4 ml-2 text-red-600" />
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <p className="text-xs text-muted-foreground">Tank Information</p>
-                            <p className="font-medium">
-                              <Droplet className="h-4 w-4 inline mr-1 text-blue-500" />
-                              Initial: {order.offloadingDetails.initialTankVolume.toLocaleString()} liters
-                              {' → '}
-                              Final: {order.offloadingDetails.finalTankVolume.toLocaleString()} liters
-                            </p>
-                          </div>
-                          
-                          {order.offloadingDetails.notes && (
-                            <div>
-                              <p className="text-xs text-muted-foreground">Notes</p>
-                              <p className="text-sm">{order.offloadingDetails.notes}</p>
-                            </div>
-                          )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Order Information</h3>
+                  <p className="text-sm"><span className="font-medium">PO Number:</span> {purchaseOrder.poNumber || 'Not assigned'}</p>
+                  <p className="text-sm"><span className="font-medium">Date Created:</span> {purchaseOrder.createdAt?.toLocaleDateString()}</p>
+                  <p className="text-sm"><span className="font-medium">Last Updated:</span> {purchaseOrder.updatedAt?.toLocaleDateString()}</p>
+                  <p className="text-sm"><span className="font-medium">Payment Terms:</span> {purchaseOrder.paymentTerm || 'Not specified'}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">Order Items</h3>
+                  {purchaseOrder.items && purchaseOrder.items.length > 0 ? (
+                    <div className="space-y-2">
+                      {purchaseOrder.items.map((item, index) => (
+                        <div key={index} className="text-sm">
+                          <span className="font-medium">{item.productName || item.product}</span>
+                          <p>Quantity: {item.quantity} × {formatCurrency(item.unitPrice)}</p>
                         </div>
-                      </div>
-                    </>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No items in this order</p>
                   )}
                 </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Truck className="h-12 w-12 mx-auto text-muted-foreground opacity-20 mb-2" />
-                  <h3 className="text-lg font-medium">No Delivery Assigned</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    This purchase order doesn't have delivery information yet.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="logs" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity Logs</CardTitle>
-              <CardDescription>
-                History of all activities related to this purchase order
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {logs.length > 0 ? (
-                <ScrollArea className="h-[300px]">
-                  <div className="space-y-4">
-                    {logs.map((log) => (
-                      <div key={log.id} className="flex">
-                        <div className="mr-4 flex flex-col items-center">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                            <FileText className="h-5 w-5" />
-                          </div>
-                          <div className="h-full w-px bg-border" />
-                        </div>
-                        <div className="space-y-1 pt-1">
-                          <p className="text-sm font-medium leading-none">
-                            {log.action.replace(/_/g, ' ')}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {log.details}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDateTime(log.timestamp)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              ) : (
-                <div className="text-center py-6">
-                  <FileText className="h-12 w-12 mx-auto text-muted-foreground opacity-20 mb-2" />
-                  <h3 className="text-lg font-medium">No Activity Logs</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    There are no activity logs for this purchase order yet.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="documents" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Documents</CardTitle>
-              <CardDescription>
-                Related documents and attachments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-6">
-                <FileText className="h-12 w-12 mx-auto text-muted-foreground opacity-20 mb-2" />
-                <h3 className="text-lg font-medium">No Documents</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  There are no documents attached to this purchase order.
-                </p>
               </div>
+              
+              {purchaseOrder.notes && (
+                <div className="mt-4">
+                  <h3 className="font-semibold mb-2">Notes</h3>
+                  <p className="text-sm">{purchaseOrder.notes}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="delivery">
+          <Card>
+            <CardHeader>
+              <CardTitle>Delivery Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {purchaseOrder.deliveryDetails ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="font-semibold mb-2">Delivery Status</h3>
+                    <Badge className={`${
+                      purchaseOrder.deliveryDetails.status === 'delivered' ? 'bg-green-100 text-green-800' : 
+                      purchaseOrder.deliveryDetails.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {purchaseOrder.deliveryDetails.status?.charAt(0).toUpperCase() + purchaseOrder.deliveryDetails.status?.slice(1) || 'Pending'}
+                    </Badge>
+                    
+                    <div className="mt-4 space-y-1">
+                      <p className="text-sm"><span className="font-medium">Expected Delivery:</span> {purchaseOrder.deliveryDate?.toLocaleDateString() || 'Not specified'}</p>
+                      {purchaseOrder.deliveryDetails.depotDepartureTime && (
+                        <p className="text-sm"><span className="font-medium">Departed Depot:</span> {new Date(purchaseOrder.deliveryDetails.depotDepartureTime).toLocaleString()}</p>
+                      )}
+                      {purchaseOrder.deliveryDetails.expectedArrivalTime && (
+                        <p className="text-sm"><span className="font-medium">Expected Arrival:</span> {new Date(purchaseOrder.deliveryDetails.expectedArrivalTime).toLocaleString()}</p>
+                      )}
+                      {purchaseOrder.deliveryDetails.actualArrivalTime && (
+                        <p className="text-sm"><span className="font-medium">Actual Arrival:</span> {new Date(purchaseOrder.deliveryDetails.actualArrivalTime).toLocaleString()}</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-semibold mb-2">Transport Details</h3>
+                    <div className="space-y-1">
+                      <p className="text-sm"><span className="font-medium">Driver:</span> {purchaseOrder.deliveryDetails.driverName || 'Not assigned'}</p>
+                      <p className="text-sm"><span className="font-medium">Vehicle:</span> {purchaseOrder.deliveryDetails.vehicleDetails || 'Not assigned'}</p>
+                      {purchaseOrder.deliveryDetails.totalDistance && (
+                        <p className="text-sm"><span className="font-medium">Total Distance:</span> {purchaseOrder.deliveryDetails.totalDistance} km</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-gray-500">No delivery information available</p>
+                  <Button className="mt-4" asChild>
+                    <Link to={`/assign-driver/${id}`}>Assign Driver & Truck</Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          {purchaseOrder.offloadingDetails && (
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle>Offloading Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="font-semibold mb-2">Volume Information</h3>
+                    <div className="space-y-1">
+                      <p className="text-sm"><span className="font-medium">Initial Tank Volume:</span> {purchaseOrder.offloadingDetails.initialTankVolume} liters</p>
+                      <p className="text-sm"><span className="font-medium">Final Tank Volume:</span> {purchaseOrder.offloadingDetails.finalTankVolume} liters</p>
+                      <p className="text-sm"><span className="font-medium">Loaded Volume:</span> {purchaseOrder.offloadingDetails.loadedVolume} liters</p>
+                      <p className="text-sm"><span className="font-medium">Delivered Volume:</span> {purchaseOrder.offloadingDetails.deliveredVolume} liters</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-semibold mb-2">Discrepancy Information</h3>
+                    <Badge className={purchaseOrder.offloadingDetails.isDiscrepancyFlagged ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
+                      {purchaseOrder.offloadingDetails.isDiscrepancyFlagged ? 'Discrepancy Detected' : 'No Discrepancy'}
+                    </Badge>
+                    
+                    {purchaseOrder.offloadingDetails.isDiscrepancyFlagged && (
+                      <p className="text-sm mt-2"><span className="font-medium">Discrepancy Percentage:</span> {purchaseOrder.offloadingDetails.discrepancyPercentage}%</p>
+                    )}
+                    
+                    <div className="mt-4 space-y-1">
+                      <p className="text-sm"><span className="font-medium">Measured By:</span> {purchaseOrder.offloadingDetails.measuredBy}</p>
+                      <p className="text-sm"><span className="font-medium">Role:</span> {purchaseOrder.offloadingDetails.measuredByRole}</p>
+                      <p className="text-sm"><span className="font-medium">Time:</span> {new Date(purchaseOrder.offloadingDetails.timestamp).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {purchaseOrder.offloadingDetails.notes && (
+                  <div className="mt-4">
+                    <h3 className="font-semibold mb-2">Notes</h3>
+                    <p className="text-sm">{purchaseOrder.offloadingDetails.notes}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="logs">
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Log</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {logs && logs.length > 0 ? (
+                <div className="space-y-4">
+                  {logs.map((log) => (
+                    <div key={log.id} className="border-b pb-3">
+                      <p className="font-medium">{log.action}</p>
+                      <p className="text-sm text-gray-500">{log.details}</p>
+                      <p className="text-xs text-gray-400">
+                        {log.timestamp instanceof Date 
+                          ? log.timestamp.toLocaleString() 
+                          : new Date(log.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 py-4">No activity logs for this order</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="analytics">
+          <Card>
+            <CardHeader>
+              <CardTitle>Order Analytics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-center text-gray-500 py-4">Analytics for this order are not available yet</p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {isDialogOpen && (
+        <StatusUpdateDialog 
+          orderId={id!} 
+          currentStatus={purchaseOrder.status} 
+          isOpen={isDialogOpen} 
+          onClose={() => setIsDialogOpen(false)} 
+        />
+      )}
     </div>
   );
 };

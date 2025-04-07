@@ -1,121 +1,71 @@
 
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Sale, Shift, Dispenser, ActivityLog } from '@/types';
-import { STORAGE_KEYS, saveToLocalStorage, getFromLocalStorage, PaginationParams, PaginatedResult } from '@/utils/localStorage';
+import { Sale } from '@/types';
+import { STORAGE_KEYS } from '@/utils/localStorage/constants';
 import { getPaginatedData } from '@/utils/localStorage';
-import { useToast } from '@/hooks/use-toast';
+import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
+import { saveToLocalStorage } from '@/utils/localStorage';
 
 export const useSaleActions = (
   sales: Sale[],
-  setSales: React.Dispatch<React.SetStateAction<Sale[]>>,
-  shifts: Shift[],
-  setShifts: React.Dispatch<React.SetStateAction<Shift[]>>,
-  dispensers: Dispenser[],
-  setDispensers: React.Dispatch<React.SetStateAction<Dispenser[]>>,
-  setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>
+  setSales: React.Dispatch<React.SetStateAction<Sale[]>>
 ) => {
-  const { toast } = useToast();
-
-  const recordSale = (saleData: Omit<Sale, 'id' | 'timestamp'>): Sale => {
-    try {
-      console.log("Recording sale:", saleData);
-      
-      // Validate that staff has an active shift
-      const activeShift = shifts.find(
-        shift => shift.staffId === saleData.staffId && shift.status === 'active'
-      );
-      
-      if (!activeShift) {
-        throw new Error("Staff does not have an active shift");
-      }
-      
-      // Validate dispenser exists
-      const dispenser = dispensers.find(d => d.id === saleData.dispenserId);
-      if (!dispenser) {
-        throw new Error("Dispenser not found");
-      }
-      
-      const newSale: Sale = {
-        ...saleData,
-        id: `sale-${uuidv4().substring(0, 8)}`,
-        timestamp: new Date(),
-        shiftId: activeShift.id
-      };
-      
-      setSales(prev => [newSale, ...prev]);
-      
-      // Update dispenser total volume sold
-      setDispensers(prev => prev.map(d => {
-        if (d.id === saleData.dispenserId) {
-          return {
-            ...d,
-            totalVolumeSold: (d.totalVolumeSold || 0) + saleData.volume
-          };
-        }
-        return d;
-      }));
-      
-      // Update shift sales data
-      setShifts(prev => prev.map(shift => {
-        if (shift.id === activeShift.id) {
-          return {
-            ...shift,
-            salesVolume: (shift.salesVolume || 0) + saleData.volume,
-            salesAmount: (shift.salesAmount || 0) + saleData.totalAmount
-          };
-        }
-        return shift;
-      }));
-      
-      // Log the action
-      const newActivityLog: ActivityLog = {
-        id: `log-${uuidv4()}`,
-        entityType: 'sale',
-        entityId: newSale.id,
-        action: 'create',
-        details: `Recorded sale of ${newSale.volume} liters of ${newSale.productType} for ₦${newSale.totalAmount}`,
-        user: 'Current User',
-        timestamp: new Date()
-      };
-      
-      setActivityLogs(prev => [newActivityLog, ...prev]);
-      
-      toast({
-        title: "Sale Recorded",
-        description: `Sale of ${newSale.volume} liters has been recorded successfully.`,
-      });
-      
-      return newSale;
-    } catch (error) {
-      console.error("Error recording sale:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to record sale. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const getSaleById = (id: string): Sale | undefined => {
-    return sales.find(sale => sale.id === id);
-  };
-
-  const getSalesByStaffId = (staffId: string, params?: PaginationParams): PaginatedResult<Sale> => {
-    const staffSales = sales.filter(sale => sale.staffId === staffId);
-    return getPaginatedData(staffSales, params || { page: 1, limit: 10 });
-  };
-
-  const getSalesByProductType = (productType: string, params?: PaginationParams): PaginatedResult<Sale> => {
-    const filteredSales = sales.filter(sale => sale.productType === productType);
-    return getPaginatedData(filteredSales, params || { page: 1, limit: 10 });
-  };
-
+  const addSale = useCallback((sale: Omit<Sale, 'id'>): Sale => {
+    const newSale: Sale = {
+      ...sale,
+      id: uuidv4()
+    };
+    
+    setSales(prev => [...prev, newSale]);
+    saveToLocalStorage(STORAGE_KEYS.SALES, [...sales, newSale]);
+    return newSale;
+  }, [sales, setSales]);
+  
+  const updateSale = useCallback((id: string, saleUpdate: Partial<Sale>): Sale | null => {
+    const saleIndex = sales.findIndex(s => s.id === id);
+    if (saleIndex === -1) return null;
+    
+    const updatedSale = {
+      ...sales[saleIndex],
+      ...saleUpdate
+    };
+    
+    const newSales = [...sales];
+    newSales[saleIndex] = updatedSale;
+    setSales(newSales);
+    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
+    return updatedSale;
+  }, [sales, setSales]);
+  
+  const deleteSale = useCallback((id: string): boolean => {
+    const saleIndex = sales.findIndex(s => s.id === id);
+    if (saleIndex === -1) return false;
+    
+    const newSales = sales.filter(s => s.id !== id);
+    setSales(newSales);
+    saveToLocalStorage(STORAGE_KEYS.SALES, newSales);
+    return true;
+  }, [sales, setSales]);
+  
+  const getSaleById = useCallback((id: string): Sale | undefined => {
+    return sales.find(s => s.id === id);
+  }, [sales]);
+  
+  const getAllSales = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Sale> => {
+    return getPaginatedData(sales, params);
+  }, [sales]);
+  
+  const getSalesForShift = useCallback((shiftId: string): Sale[] => {
+    return sales.filter(sale => sale.shiftId === shiftId);
+  }, [sales]);
+  
   return {
-    recordSale,
+    addSale,
+    updateSale,
+    deleteSale,
     getSaleById,
-    getSalesByStaffId,
-    getSalesByProductType
+    getAllSales,
+    getSalesForShift
   };
 };

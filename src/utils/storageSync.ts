@@ -1,6 +1,4 @@
 
-import { formatBytes as formatSizeBytes } from './formatBytes';
-
 // Event name for broadcasting storage updates
 const STORAGE_UPDATE_EVENT = 'PO_SYSTEM_STORAGE_UPDATE';
 
@@ -10,9 +8,15 @@ interface StorageUpdateEvent {
   timestamp: number;
 }
 
-// Format bytes to human readable format
+// Export the formatBytes function directly
 export const formatBytes = (bytes: number): string => {
-  return formatSizeBytes(bytes);
+  if (bytes === 0) return '0 Bytes';
+  
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
 // Broadcast a storage update to other components/tabs

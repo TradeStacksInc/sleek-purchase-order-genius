@@ -1,161 +1,75 @@
 
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Staff, ActivityLog } from '@/types';
-import { STORAGE_KEYS, saveToLocalStorage, getFromLocalStorage, PaginationParams, PaginatedResult } from '@/utils/localStorage';
+import { Staff } from '@/types';
+import { STORAGE_KEYS } from '@/utils/localStorage/constants';
 import { getPaginatedData } from '@/utils/localStorage';
-import { useToast } from '@/hooks/use-toast';
+import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
+import { saveToLocalStorage } from '@/utils/localStorage';
 
 export const useStaffActions = (
   staff: Staff[],
-  setStaff: React.Dispatch<React.SetStateAction<Staff[]>>,
-  setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>
+  setStaff: React.Dispatch<React.SetStateAction<Staff[]>>
 ) => {
-  const { toast } = useToast();
-
-  const addStaff = (staffData: Omit<Staff, 'id'>): Staff => {
-    try {
-      console.log("Adding staff:", staffData);
-      
-      const newStaff: Staff = {
-        ...staffData,
-        id: `staff-${uuidv4().substring(0, 8)}`
-      };
-      
-      setStaff(prev => [newStaff, ...prev]);
-      
-      // Log the action
-      const newActivityLog: ActivityLog = {
-        id: `log-${uuidv4()}`,
-        entityType: 'staff',
-        entityId: newStaff.id,
-        action: 'create',
-        details: `Added new staff member: ${newStaff.name}`,
-        user: 'Current User',
-        timestamp: new Date()
-      };
-      
-      setActivityLogs(prev => [newActivityLog, ...prev]);
-      
-      toast({
-        title: "Staff Added",
-        description: `${newStaff.name} has been added successfully.`,
-      });
-      
-      return newStaff;
-    } catch (error) {
-      console.error("Error adding staff:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add staff. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const updateStaff = (id: string, data: Partial<Staff>): boolean => {
-    try {
-      let updated = false;
-      
-      setStaff(prev => {
-        const updatedStaffList = prev.map(s => {
-          if (s.id === id) {
-            updated = true;
-            return { ...s, ...data };
-          }
-          return s;
-        });
-        
-        // If staff not found, return unmodified list
-        if (!updated) return prev;
-        
-        return updatedStaffList;
-      });
-      
-      if (updated) {
-        // Log the action
-        const staffMember = staff.find(s => s.id === id);
-        const newActivityLog: ActivityLog = {
-          id: `log-${uuidv4()}`,
-          entityType: 'staff',
-          entityId: id,
-          action: 'update',
-          details: `Updated staff member: ${staffMember?.name || id}`,
-          user: 'Current User',
-          timestamp: new Date()
-        };
-        
-        setActivityLogs(prev => [newActivityLog, ...prev]);
-        
-        toast({
-          title: "Staff Updated",
-          description: `Staff member has been updated successfully.`,
-        });
-      }
-      
-      return updated;
-    } catch (error) {
-      console.error("Error updating staff:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update staff. Please try again.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const removeStaff = (id: string): boolean => {
-    try {
-      const staffToRemove = staff.find(s => s.id === id);
-      if (!staffToRemove) return false;
-      
-      setStaff(prev => prev.filter(s => s.id !== id));
-      
-      // Log the action
-      const newActivityLog: ActivityLog = {
-        id: `log-${uuidv4()}`,
-        entityType: 'staff',
-        entityId: id,
-        action: 'delete',
-        details: `Removed staff member: ${staffToRemove.name}`,
-        user: 'Current User',
-        timestamp: new Date()
-      };
-      
-      setActivityLogs(prev => [newActivityLog, ...prev]);
-      
-      toast({
-        title: "Staff Removed",
-        description: `${staffToRemove.name} has been removed successfully.`,
-      });
-      
-      return true;
-    } catch (error) {
-      console.error("Error removing staff:", error);
-      toast({
-        title: "Error",
-        description: "Failed to remove staff. Please try again.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const getStaffById = (id: string): Staff | undefined => {
+  const addStaff = useCallback((staffMember: Omit<Staff, 'id'>): Staff => {
+    const now = new Date();
+    const newStaff: Staff = {
+      ...staffMember,
+      id: uuidv4(),
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    setStaff(prev => [...prev, newStaff]);
+    saveToLocalStorage(STORAGE_KEYS.STAFF, [...staff, newStaff]);
+    return newStaff;
+  }, [staff, setStaff]);
+  
+  const updateStaff = useCallback((id: string, staffUpdate: Partial<Staff>): Staff | null => {
+    const staffIndex = staff.findIndex(s => s.id === id);
+    if (staffIndex === -1) return null;
+    
+    const updatedStaff = {
+      ...staff[staffIndex],
+      ...staffUpdate,
+      updatedAt: new Date()
+    };
+    
+    const newStaffList = [...staff];
+    newStaffList[staffIndex] = updatedStaff;
+    setStaff(newStaffList);
+    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
+    return updatedStaff;
+  }, [staff, setStaff]);
+  
+  const deleteStaff = useCallback((id: string): boolean => {
+    const staffIndex = staff.findIndex(s => s.id === id);
+    if (staffIndex === -1) return false;
+    
+    const newStaffList = staff.filter(s => s.id !== id);
+    setStaff(newStaffList);
+    saveToLocalStorage(STORAGE_KEYS.STAFF, newStaffList);
+    return true;
+  }, [staff, setStaff]);
+  
+  const getStaffById = useCallback((id: string): Staff | undefined => {
     return staff.find(s => s.id === id);
-  };
-
-  const getAllStaff = (params?: PaginationParams): PaginatedResult<Staff> => {
-    return getPaginatedData(staff, params || { page: 1, limit: 10 });
-  };
-
+  }, [staff]);
+  
+  const getAllStaff = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Staff> => {
+    return getPaginatedData(staff, params);
+  }, [staff]);
+  
+  const getActiveStaff = useCallback((): Staff[] => {
+    return staff.filter(s => s.isActive);
+  }, [staff]);
+  
   return {
     addStaff,
     updateStaff,
-    removeStaff,
+    deleteStaff,
     getStaffById,
-    getAllStaff
+    getAllStaff,
+    getActiveStaff
   };
 };

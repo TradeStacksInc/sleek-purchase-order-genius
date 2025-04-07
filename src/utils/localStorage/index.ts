@@ -29,8 +29,29 @@ export const getPaginatedData = <T>(data: T[], params: { page: number; limit: nu
   };
 };
 
+// Define a type for valid Supabase tables
+export type ValidSupabaseTable = 
+  | 'logs'
+  | 'suppliers'
+  | 'drivers'
+  | 'trucks'
+  | 'staff'
+  | 'dispensers'
+  | 'shifts'
+  | 'sales'
+  | 'prices'
+  | 'incidents'
+  | 'tanks'
+  | 'activity_logs'
+  | 'ai_insights'
+  | 'delivery_details'
+  | 'purchase_orders'
+  | 'gps_data'
+  | 'offloading_details'
+  | 'purchase_order_items';
+
 // Fix the function signature based on the VALID_SUPABASE_TABLES
-export const isValidSupabaseTable = (tableName: string): boolean => {
+export const isValidSupabaseTable = (tableName: string): tableName is ValidSupabaseTable => {
   const validTables = [
     'logs',
     'suppliers',
@@ -50,12 +71,12 @@ export const isValidSupabaseTable = (tableName: string): boolean => {
     'gps_data',
     'offloading_details',
     'purchase_order_items'
-  ];
+  ] as const;
   
-  return validTables.includes(tableName);
+  return validTables.includes(tableName as any);
 };
 
-export function getTableFromSupabase<T>(tableName: string, supabase: any): Promise<T[]> {
+export function getTableFromSupabase<T>(tableName: ValidSupabaseTable, supabase: any): Promise<T[]> {
   return new Promise(async (resolve, reject) => {
     try {
       if (!isValidSupabaseTable(tableName)) {

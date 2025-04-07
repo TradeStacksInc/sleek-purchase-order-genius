@@ -1,166 +1,71 @@
+
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Shift, Staff, ActivityLog } from '../types';
-import { STORAGE_KEYS, saveToLocalStorage, getFromLocalStorage, PaginationParams, PaginatedResult } from '../utils/localStorage';
-import { getPaginatedData } from '../utils/localStorage/appState';
-import { useToast } from '@/hooks/use-toast';
+import { Shift } from '@/types';
+import { STORAGE_KEYS } from '@/utils/localStorage/constants';
+import { getPaginatedData } from '@/utils/localStorage';
+import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
+import { saveToLocalStorage } from '@/utils/localStorage';
 
 export const useShiftActions = (
   shifts: Shift[],
-  setShifts: React.Dispatch<React.SetStateAction<Shift[]>>,
-  staff: Staff[],
-  setStaff: React.Dispatch<React.SetStateAction<Staff[]>>,
-  setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>
+  setShifts: React.Dispatch<React.SetStateAction<Shift[]>>
 ) => {
-  const { toast } = useToast();
-
-  const startShift = (staffId: string): Shift => {
-    // Find the staff member
-    const staffMember = staff.find(s => s.id === staffId);
-    if (!staffMember) {
-      throw new Error(`No staff member found with ID: ${staffId}`);
-    }
-    
-    // Check if there's already an active shift for this staff
-    const existingActiveShift = shifts.find(shift => 
-      shift.staffId === staffId && 
-      shift.status === 'active'
-    );
-    
-    if (existingActiveShift) {
-      toast({
-        title: "Shift Already Active",
-        description: `${staffMember.name} already has an active shift.`,
-        variant: "destructive",
-      });
-      return existingActiveShift;
-    }
-    
-    // Create a new shift with all required fields
+  const addShift = useCallback((shift: Omit<Shift, 'id'>): Shift => {
     const newShift: Shift = {
-      id: `shift-${uuidv4().substring(0, 8)}`,
-      name: `${staffMember.name}'s Shift`,
-      startTime: new Date(),
-      endTime: new Date(new Date().getTime() + (8 * 60 * 60 * 1000)), // Default 8-hour shift
-      staffMembers: [staffId],
-      staffId: staffId,
-      status: 'active',
-      salesVolume: 0,
-      salesAmount: 0
+      ...shift,
+      id: uuidv4()
     };
     
-    setShifts(prev => [newShift, ...prev]);
-    
-    // Log the action
-    const newActivityLog: ActivityLog = {
-      id: `log-${uuidv4()}`,
-      entityType: 'shift',
-      entityId: newShift.id,
-      action: 'create',
-      details: `Shift started by ${staffMember.name}`,
-      user: staffMember.name,
-      timestamp: new Date()
-    };
-    
-    setActivityLogs(prev => [newActivityLog, ...prev]);
-    
-    toast({
-      title: "Shift Started",
-      description: `${staffMember.name} has started a new shift.`,
-    });
-    
+    setShifts(prev => [...prev, newShift]);
+    saveToLocalStorage(STORAGE_KEYS.SHIFTS, [...shifts, newShift]);
     return newShift;
-  };
-
-  const endShift = (shiftId: string): Shift | undefined => {
-    try {
-      const shiftToEnd = shifts.find(shift => shift.id === shiftId);
-      if (!shiftToEnd) {
-        toast({
-          title: "Error",
-          description: "Shift not found.",
-          variant: "destructive",
-        });
-        return undefined;
-      }
-      
-      // Find the staff member
-      const staffMember = staff.find(s => s.id === shiftToEnd.staffId);
-      if (!staffMember) {
-        throw new Error(`No staff member found with ID: ${shiftToEnd.staffId}`);
-      }
-      
-      // Update the shift
-      let updatedShift: Shift | undefined;
-      setShifts(prev =>
-        prev.map(shift => {
-          if (shift.id === shiftId) {
-            updatedShift = {
-              ...shift,
-              endTime: new Date(),
-              status: 'completed'
-            };
-            return updatedShift;
-          }
-          return shift;
-        })
-      );
-      
-      if (!updatedShift) {
-        toast({
-          title: "Error",
-          description: "Failed to end shift. Please try again.",
-          variant: "destructive",
-        });
-        return undefined;
-      }
-      
-      // Log the action
-      const newActivityLog: ActivityLog = {
-        id: `log-${uuidv4()}`,
-        entityType: 'shift',
-        entityId: shiftId,
-        action: 'update',
-        details: `Shift ended by ${staffMember.name}`,
-        user: staffMember.name,
-        timestamp: new Date()
-      };
-      
-      setActivityLogs(prev => [newActivityLog, ...prev]);
-      
-      toast({
-        title: "Shift Ended",
-        description: `Shift for ${staffMember.name} has been ended.`,
-      });
-      
-      return updatedShift;
-    } catch (error) {
-      console.error("Error ending shift:", error);
-      toast({
-        title: "Error",
-        description: "Failed to end shift. Please try again.",
-        variant: "destructive",
-      });
-      return undefined;
-    }
-  };
-
-  const getShiftById = (id: string): Shift | undefined => {
-    return shifts.find(shift => shift.id === id);
-  };
-
-  const getShiftsByStaffId = (staffId: string, params?: PaginationParams): PaginatedResult<Shift> => {
-    const filteredShifts = shifts
-      .filter(shift => shift.staffId === staffId)
-      .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
-      
-    return getPaginatedData(filteredShifts, params || { page: 1, limit: 10 });
-  };
+  }, [shifts, setShifts]);
+  
+  const updateShift = useCallback((id: string, shiftUpdate: Partial<Shift>): Shift | null => {
+    const shiftIndex = shifts.findIndex(s => s.id === id);
+    if (shiftIndex === -1) return null;
+    
+    const updatedShift = {
+      ...shifts[shiftIndex],
+      ...shiftUpdate
+    };
+    
+    const newShifts = [...shifts];
+    newShifts[shiftIndex] = updatedShift;
+    setShifts(newShifts);
+    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
+    return updatedShift;
+  }, [shifts, setShifts]);
+  
+  const deleteShift = useCallback((id: string): boolean => {
+    const shiftIndex = shifts.findIndex(s => s.id === id);
+    if (shiftIndex === -1) return false;
+    
+    const newShifts = shifts.filter(s => s.id !== id);
+    setShifts(newShifts);
+    saveToLocalStorage(STORAGE_KEYS.SHIFTS, newShifts);
+    return true;
+  }, [shifts, setShifts]);
+  
+  const getShiftById = useCallback((id: string): Shift | undefined => {
+    return shifts.find(s => s.id === id);
+  }, [shifts]);
+  
+  const getAllShifts = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Shift> => {
+    return getPaginatedData(shifts, params);
+  }, [shifts]);
+  
+  const getCurrentShift = useCallback((): Shift | null => {
+    return shifts.find(s => s.status === 'active') || null;
+  }, [shifts]);
   
   return {
-    startShift,
-    endShift,
+    addShift,
+    updateShift,
+    deleteShift,
     getShiftById,
-    getShiftsByStaffId
+    getAllShifts,
+    getCurrentShift
   };
 };

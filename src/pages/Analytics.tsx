@@ -1,299 +1,244 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApp } from '@/context/AppContext';
-import { subMonths, isSameDay, format } from 'date-fns';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Download, Calendar, TrendingUp, TrendingDown, ThumbsUp, ThumbsDown, AlertTriangle, Check } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Dialog } from "@/components/ui/dialog";
-import { exportDataToFile } from "@/utils/localStorage/export";
+import { 
+  BarChart, 
+  Bar, 
+  PieChart, 
+  Pie, 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  Cell
+} from 'recharts';
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { addDays } from 'date-fns';
 
-interface AnalyticsData {
-  period: string;
-  generatedAt: string;
-  stats: {
-    totalDeliveries: number;
-    completedDeliveries: number;
-    inTransitDeliveries: number;
-    pendingDeliveries: number;
-    flaggedDeliveries: number;
-    onTimeDeliveries: number;
-    onTimeRate: number;
-    avgDeliveryTime: number;
-  };
-  deliveryStatusBreakdown: {
-    status: string;
-    count: number;
-    color: string;
-  }[];
-  discrepancyAnalysis: {
-    flaggedOrders: number;
-    averageDiscrepancy: number;
-  };
-  customerSatisfaction: {
-    positiveFeedback: number;
-    negativeFeedback: number;
-  };
-}
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-
-const Analytics: React.FC = () => {
-  const { purchaseOrders, getOrdersWithDeliveryStatus, getOrdersWithDiscrepancies } = useApp();
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<number>(3); // Default to 3 months
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
+const Analytics = () => {
+  const { purchaseOrders, sales, incidents, generateAIInsights } = useApp();
+  const [activeTab, setActiveTab] = useState('orders');
+  const [dateRange, setDateRange] = useState({
+    from: addDays(new Date(), -30),
+    to: new Date(),
+  });
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  
   useEffect(() => {
-    generateAnalyticsData(selectedPeriod);
-  }, [purchaseOrders, selectedPeriod]);
+    generateAnalyticsData();
+  }, [dateRange, purchaseOrders]);
 
-  const generateAnalyticsData = (months: number) => {
-    const endDate = new Date();
-    const startDate = subMonths(endDate, months);
-
-    const relevantOrders = purchaseOrders.filter(order => {
-      if (!order.createdAt) return false;
-      const orderDate = new Date(order.createdAt);
-      return orderDate >= startDate && orderDate <= endDate;
+  const generateAnalyticsData = () => {
+    // Filter orders by date range
+    const filteredOrders = purchaseOrders.filter(order => {
+      const orderDate = order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt);
+      return (
+        orderDate >= dateRange.from &&
+        orderDate <= dateRange.to
+      );
     });
-
-    const totalDeliveries = relevantOrders.length;
-    const completedDeliveries = getOrdersWithDeliveryStatus('delivered').length;
-    const inTransitDeliveries = getOrdersWithDeliveryStatus('in_transit').length;
-    const pendingDeliveries = getOrdersWithDeliveryStatus('pending').length;
-    const flaggedDeliveries = getOrdersWithDiscrepancies().length;
-
-    // Mock on-time deliveries and average delivery time
-    const onTimeDeliveries = Math.floor(completedDeliveries * 0.8); // Assuming 80% on-time
-    const onTimeRate = totalDeliveries > 0 ? (onTimeDeliveries / totalDeliveries) * 100 : 0;
-    const avgDeliveryTime = 72; // Mock average delivery time in hours
-
-    const deliveryStatusBreakdown = [
-      { status: 'Completed', count: completedDeliveries, color: '#0088FE' },
-      { status: 'In Transit', count: inTransitDeliveries, color: '#00C49F' },
-      { status: 'Pending', count: pendingDeliveries, color: '#FFBB28' },
-      { status: 'Flagged', count: flaggedDeliveries, color: '#FF8042' },
+    
+    // Calculate order metrics
+    const totalOrders = filteredOrders.length;
+    const totalOrderValue = filteredOrders.reduce((sum, order) => sum + (order.grandTotal || 0), 0);
+    const completedOrders = filteredOrders.filter(order => order.status === 'completed').length;
+    const pendingOrders = filteredOrders.filter(order => order.status === 'pending').length;
+    const cancelledOrders = filteredOrders.filter(order => order.status === 'cancelled').length;
+    
+    // Order status breakdown for pie chart
+    const orderStatusBreakdown = [
+      { name: 'Completed', value: completedOrders },
+      { name: 'Pending', value: pendingOrders },
+      { name: 'Cancelled', value: cancelledOrders },
     ];
-
-    const totalDiscrepancies = getOrdersWithDiscrepancies().length;
-    const averageDiscrepancy = totalDiscrepancies > 0 ? 3.5 : 0; // Mock discrepancy percentage
-
-    // Mock customer satisfaction
-    const positiveFeedback = Math.floor(completedDeliveries * 0.9);
-    const negativeFeedback = completedDeliveries - positiveFeedback;
-
-    const data: AnalyticsData = {
-      period: `${format(startDate, 'MMM yyyy')} - ${format(endDate, 'MMM yyyy')}`,
+    
+    // Calculate delivery metrics
+    const deliveries = filteredOrders.filter(order => order.deliveryDetails);
+    const completedDeliveries = deliveries.filter(order => order.deliveryDetails?.status === 'delivered').length;
+    const inTransitDeliveries = deliveries.filter(order => order.deliveryDetails?.status === 'in_transit').length;
+    const pendingDeliveries = deliveries.filter(order => order.deliveryDetails?.status === 'pending').length;
+    const flaggedDeliveries = deliveries.filter(order => order.offloadingDetails?.isDiscrepancyFlagged).length;
+    
+    // Calculate on-time deliveries
+    const onTimeDeliveries = deliveries.filter(order => {
+      if (order.deliveryDetails?.actualArrivalTime && order.deliveryDetails?.expectedArrivalTime) {
+        const actual = new Date(order.deliveryDetails.actualArrivalTime);
+        const expected = new Date(order.deliveryDetails.expectedArrivalTime);
+        return actual <= expected;
+      }
+      return false;
+    }).length;
+    
+    const onTimeRate = deliveries.length > 0 ? (onTimeDeliveries / completedDeliveries) * 100 : 0;
+    
+    // Calculate average delivery time
+    const avgDeliveryTime = deliveries
+      .filter(order => order.deliveryDetails?.actualArrivalTime && order.deliveryDetails?.depotDepartureTime)
+      .reduce((sum, order) => {
+        const start = new Date(order.deliveryDetails!.depotDepartureTime!);
+        const end = new Date(order.deliveryDetails!.actualArrivalTime!);
+        return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Hours
+      }, 0) / completedDeliveries || 0;
+    
+    // Delivery status breakdown for pie chart
+    const deliveryStatusBreakdown = [
+      { name: 'Completed', value: completedDeliveries },
+      { name: 'In Transit', value: inTransitDeliveries },
+      { name: 'Pending', value: pendingDeliveries },
+    ];
+    
+    // Discrepancy analysis
+    const ordersWithDiscrepancies = filteredOrders.filter(order => order.offloadingDetails?.isDiscrepancyFlagged);
+    const discrepancyRate = filteredOrders.length > 0 ? (ordersWithDiscrepancies.length / filteredOrders.length) * 100 : 0;
+    const averageDiscrepancyPercentage = ordersWithDiscrepancies.reduce((sum, order) => {
+      return sum + (order.offloadingDetails?.discrepancyPercentage || 0);
+    }, 0) / ordersWithDiscrepancies.length || 0;
+    
+    // Monthly trend for time series
+    const montlyTrend = Array.from({ length: 6 }).map((_, i) => {
+      const month = new Date();
+      month.setMonth(month.getMonth() - 5 + i);
+      const monthName = month.toLocaleString('default', { month: 'short' });
+      
+      return {
+        name: monthName,
+        orders: Math.floor(Math.random() * 20) + 10, // Mock data
+        deliveries: Math.floor(Math.random() * 15) + 5, // Mock data
+        revenue: Math.floor(Math.random() * 5000) + 2000 // Mock data
+      };
+    });
+    
+    const data = {
+      period: `${dateRange.from.toLocaleDateString()} - ${dateRange.to.toLocaleDateString()}`,
       generatedAt: new Date().toLocaleString(),
       stats: {
-        totalDeliveries,
+        totalOrders,
+        totalOrderValue,
+        completedOrders,
+        pendingOrders,
+        cancelledOrders,
+        totalDeliveries: deliveries.length,
         completedDeliveries,
         inTransitDeliveries,
         pendingDeliveries,
         flaggedDeliveries,
         onTimeDeliveries,
         onTimeRate,
-        avgDeliveryTime,
+        avgDeliveryTime
       },
+      orderStatusBreakdown,
       deliveryStatusBreakdown,
       discrepancyAnalysis: {
-        flaggedOrders: totalDiscrepancies,
-        averageDiscrepancy,
+        ordersWithDiscrepancies: ordersWithDiscrepancies.length,
+        discrepancyRate,
+        averageDiscrepancyPercentage
       },
-      customerSatisfaction: {
-        positiveFeedback,
-        negativeFeedback,
-      },
+      montlyTrend
     };
-
+    
     setAnalyticsData(data);
+    
+    // Generate AI insights based on the analytics data
+    generateAIInsights(data);
   };
 
-  const deliveryStatusData = analyticsData?.deliveryStatusBreakdown || [];
-  const customerSatisfactionData = [
-    { name: 'Positive', value: analyticsData?.customerSatisfaction.positiveFeedback || 0 },
-    { name: 'Negative', value: analyticsData?.customerSatisfaction.negativeFeedback || 0 },
-  ];
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-  // In exportAnalyticsData function, update the call to exportDataToFile
-  const exportAnalyticsData = () => {
-    // Convert the analytics data to array format for export
-    const dataForExport = [analyticsData];
-    exportDataToFile(dataForExport, 'fuel-delivery-analytics', 'json');
-  };
+  if (!analyticsData) {
+    return (
+      <div className="container mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-6">Analytics</h1>
+        <p>Loading analytics data...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto p-4">
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Export Analytics Data</DialogTitle>
-            <DialogDescription>
-              Would you like to export the current analytics data to a JSON file?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <p>Confirm to download the analytics data.</p>
-          </div>
-          <DialogFooter>
-            <Button type="button" onClick={() => {
-              exportAnalyticsData();
-              setIsDialogOpen(false);
-            }}>
-              Confirm Export
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <h1 className="text-2xl font-bold mb-4">Fuel Delivery Analytics</h1>
+    <div className="container mx-auto p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <h1 className="text-2xl font-bold mb-4 md:mb-0">Analytics</h1>
+        <DateRangePicker date={dateRange} onChange={setDateRange} />
+      </div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="deliveries">Deliveries</TabsTrigger>
-          <TabsTrigger value="discrepancies">Discrepancies</TabsTrigger>
-          <TabsTrigger value="satisfaction">Customer Satisfaction</TabsTrigger>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader className="p-4">
+            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold">{analyticsData.stats.totalOrders}</div>
+            <p className="text-xs text-muted-foreground">Period: {analyticsData.period}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="p-4">
+            <CardTitle className="text-sm font-medium">Order Value</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold">₦{analyticsData.stats.totalOrderValue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Total value of all orders</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="p-4">
+            <CardTitle className="text-sm font-medium">Completed Orders</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold">{analyticsData.stats.completedOrders}</div>
+            <p className="text-xs text-muted-foreground">
+              {analyticsData.stats.totalOrders > 0 
+                ? `${((analyticsData.stats.completedOrders / analyticsData.stats.totalOrders) * 100).toFixed(1)}% of total orders`
+                : 'No orders available'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="p-4">
+            <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold">{analyticsData.stats.pendingOrders}</div>
+            <p className="text-xs text-muted-foreground">
+              {analyticsData.stats.totalOrders > 0 
+                ? `${((analyticsData.stats.pendingOrders / analyticsData.stats.totalOrders) * 100).toFixed(1)}% of total orders`
+                : 'No orders available'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList className="grid grid-cols-3 mb-4">
+          <TabsTrigger value="orders">Order Analytics</TabsTrigger>
+          <TabsTrigger value="delivery">Delivery Analytics</TabsTrigger>
+          <TabsTrigger value="financial">Financial Analytics</TabsTrigger>
         </TabsList>
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>
-              <Download className="mr-2 h-4 w-4" />
-              Export Data
-            </Button>
-          </div>
-          <div className="space-x-2">
-            <Button
-              variant={selectedPeriod === 1 ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedPeriod(1)}
-            >
-              1 Month
-            </Button>
-            <Button
-              variant={selectedPeriod === 3 ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedPeriod(3)}
-            >
-              3 Months
-            </Button>
-            <Button
-              variant={selectedPeriod === 6 ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedPeriod(6)}
-            >
-              6 Months
-            </Button>
-          </div>
-        </div>
-
-        <TabsContent value="overview">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        <TabsContent value="orders">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Total Deliveries</CardTitle>
-                <CardDescription>Number of deliveries in the selected period</CardDescription>
+                <CardTitle>Order Status Distribution</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{analyticsData?.stats.totalDeliveries || 0}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>On-Time Delivery Rate</CardTitle>
-                <CardDescription>Percentage of deliveries completed on time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{analyticsData?.stats.onTimeRate?.toFixed(1) || 0}%</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Avg. Delivery Time</CardTitle>
-                <CardDescription>Average time taken for deliveries (hours)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{analyticsData?.stats.avgDeliveryTime || 0} hrs</div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="deliveries">
-          <Card>
-            <CardHeader>
-              <CardTitle>Delivery Status Breakdown</CardTitle>
-              <CardDescription>Distribution of delivery statuses</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {deliveryStatusData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={deliveryStatusData}>
-                    <XAxis dataKey="status" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count">
-                      {deliveryStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-center py-4">No delivery data available for the selected period.</div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="discrepancies">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Flagged Orders</CardTitle>
-                <CardDescription>Orders with discrepancies</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{analyticsData?.discrepancyAnalysis.flaggedOrders || 0}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Avg. Discrepancy</CardTitle>
-                <CardDescription>Average discrepancy percentage in flagged orders</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{analyticsData?.discrepancyAnalysis.averageDiscrepancy?.toFixed(1) || 0}%</div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="satisfaction">
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Satisfaction</CardTitle>
-              <CardDescription>Positive vs. Negative feedback</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {customerSatisfactionData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      dataKey="value"
-                      isAnimationActive={false}
-                      data={customerSatisfactionData}
+                      data={analyticsData.orderStatusBreakdown}
                       cx="50%"
                       cy="50%"
+                      labelLine={false}
+                      label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       outerRadius={80}
                       fill="#8884d8"
-                      label
+                      dataKey="value"
                     >
-                      {customerSatisfactionData.map((entry, index) => (
+                      {analyticsData.orderStatusBreakdown.map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -301,13 +246,209 @@ const Analytics: React.FC = () => {
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="text-center py-4">No customer satisfaction data available.</div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Order Trends</CardTitle>
+              </CardHeader>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={analyticsData.montlyTrend}
+                    margin={{
+                      top: 5,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
+                    }}
+                  >
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="orders" stroke="#8884d8" activeDot={{ r: 8 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Total Orders</p>
+                    <p className="text-2xl font-bold">{analyticsData.stats.totalOrders}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Completed</p>
+                    <p className="text-2xl font-bold">{analyticsData.stats.completedOrders}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Pending</p>
+                    <p className="text-2xl font-bold">{analyticsData.stats.pendingOrders}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Cancelled</p>
+                    <p className="text-2xl font-bold">{analyticsData.stats.cancelledOrders}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="delivery">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Delivery Status Distribution</CardTitle>
+              </CardHeader>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={analyticsData.deliveryStatusBreakdown}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {analyticsData.deliveryStatusBreakdown.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Delivery Trends</CardTitle>
+              </CardHeader>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={analyticsData.montlyTrend}
+                    margin={{
+                      top: 5,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
+                    }}
+                  >
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="deliveries" stroke="#82ca9d" activeDot={{ r: 8 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Delivery Performance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium">On-Time Delivery Rate</p>
+                    <p className="text-2xl font-bold">{analyticsData.stats.onTimeRate.toFixed(1)}%</p>
+                    <p className="text-xs text-muted-foreground">{analyticsData.stats.onTimeDeliveries} out of {analyticsData.stats.completedDeliveries} deliveries were on time</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Average Delivery Time</p>
+                    <p className="text-2xl font-bold">{analyticsData.stats.avgDeliveryTime.toFixed(1)} hours</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Discrepancy Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium">Discrepancy Rate</p>
+                    <p className="text-2xl font-bold">{analyticsData.discrepancyAnalysis.discrepancyRate.toFixed(1)}%</p>
+                    <p className="text-xs text-muted-foreground">{analyticsData.discrepancyAnalysis.ordersWithDiscrepancies} orders had discrepancies</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Average Discrepancy</p>
+                    <p className="text-2xl font-bold">{analyticsData.discrepancyAnalysis.averageDiscrepancyPercentage.toFixed(1)}%</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="financial">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Revenue Trend</CardTitle>
+              </CardHeader>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={analyticsData.montlyTrend}
+                    margin={{
+                      top: 5,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
+                    }}
+                  >
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value: any) => [`₦${value.toLocaleString()}`, 'Revenue']} />
+                    <Legend />
+                    <Bar dataKey="revenue" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Financial Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium">Total Order Value</p>
+                    <p className="text-2xl font-bold">₦{analyticsData.stats.totalOrderValue.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Average Order Value</p>
+                    <p className="text-2xl font-bold">
+                      ₦{(analyticsData.stats.totalOrderValue / analyticsData.stats.totalOrders || 0).toLocaleString(undefined, {maximumFractionDigits: 2})}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Analysis Period: {analyticsData.period}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Analytics report generated at {analyticsData.generatedAt}</p>
+        </CardContent>
+      </Card>
     </div>
   );
 };

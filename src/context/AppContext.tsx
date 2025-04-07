@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -847,3 +848,456 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     
     const newIncidents = [...incidents];
+    newIncidents[incidentIndex] = updatedIncident;
+    setIncidents(newIncidents);
+    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newIncidents);
+    return updatedIncident;
+  }, [incidents]);
+  
+  const deleteIncident = useCallback((id: string): boolean => {
+    const incidentIndex = incidents.findIndex(i => i.id === id);
+    if (incidentIndex === -1) return false;
+    
+    const newIncidents = incidents.filter(i => i.id !== id);
+    setIncidents(newIncidents);
+    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, newIncidents);
+    return true;
+  }, [incidents]);
+  
+  const getIncidentById = useCallback((id: string): Incident | undefined => {
+    return incidents.find(i => i.id === id);
+  }, [incidents]);
+  
+  const getAllIncidents = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Incident> => {
+    return getPaginatedData(incidents, params);
+  }, [incidents]);
+  
+  // Activity Log functions
+  const addActivityLog = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>): ActivityLog => {
+    const newLog: ActivityLog = {
+      ...log,
+      id: uuidv4(),
+      timestamp: new Date()
+    };
+    
+    setActivityLogs(prev => [...prev, newLog]);
+    saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, [...activityLogs, newLog]);
+    return newLog;
+  }, [activityLogs]);
+  
+  const getAllActivityLogs = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<ActivityLog> => {
+    return getPaginatedData(activityLogs, params);
+  }, [activityLogs]);
+  
+  // Tank functions
+  const addTank = useCallback((tank: Omit<Tank, 'id'>): Tank => {
+    const newTank: Tank = {
+      ...tank,
+      id: uuidv4()
+    };
+    
+    setTanks(prev => [...prev, newTank]);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, [...tanks, newTank]);
+    return newTank;
+  }, [tanks]);
+  
+  const updateTank = useCallback((id: string, tankUpdate: Partial<Tank>): Tank | null => {
+    const tankIndex = tanks.findIndex(t => t.id === id);
+    if (tankIndex === -1) return null;
+    
+    const updatedTank = {
+      ...tanks[tankIndex],
+      ...tankUpdate
+    };
+    
+    const newTanks = [...tanks];
+    newTanks[tankIndex] = updatedTank;
+    setTanks(newTanks);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
+    return updatedTank;
+  }, [tanks]);
+  
+  const deleteTank = useCallback((id: string): boolean => {
+    const tankIndex = tanks.findIndex(t => t.id === id);
+    if (tankIndex === -1) return false;
+    
+    const newTanks = tanks.filter(t => t.id !== id);
+    setTanks(newTanks);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
+    return true;
+  }, [tanks]);
+  
+  const getTankById = useCallback((id: string): Tank | undefined => {
+    return tanks.find(t => t.id === id);
+  }, [tanks]);
+  
+  const getAllTanks = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Tank> => {
+    return getPaginatedData(tanks, params);
+  }, [tanks]);
+  
+  const getTanksByProduct = useCallback((productType: ProductType): Tank[] => {
+    return tanks.filter(t => t.productType === productType);
+  }, [tanks]);
+  
+  const setTankActive = useCallback((id: string, isActive: boolean): boolean => {
+    const tankIndex = tanks.findIndex(t => t.id === id);
+    if (tankIndex === -1) return false;
+    
+    const updatedTank = {
+      ...tanks[tankIndex],
+      isActive
+    };
+    
+    const newTanks = [...tanks];
+    newTanks[tankIndex] = updatedTank;
+    setTanks(newTanks);
+    saveToLocalStorage(STORAGE_KEYS.TANKS, newTanks);
+    return true;
+  }, [tanks]);
+  
+  // Company functions
+  const updateCompany = useCallback((data: Partial<typeof defaultCompany>): void => {
+    setCompany(prev => ({ ...prev, ...data }));
+  }, []);
+  
+  // Delivery functions
+  const completeDelivery = useCallback(async (orderId: string): Promise<boolean> => {
+    const order = purchaseOrders.find(o => o.id === orderId);
+    if (!order) return false;
+    
+    const updatedOrder = {
+      ...order,
+      updatedAt: new Date(),
+      deliveryDetails: {
+        ...order.deliveryDetails,
+        status: 'delivered' as const,
+        actualArrivalTime: new Date()
+      }
+    };
+    
+    await updatePurchaseOrder(orderId, updatedOrder);
+    return true;
+  }, [purchaseOrders, updatePurchaseOrder]);
+  
+  const recordOffloadingDetails = useCallback((orderId: string, details: any): boolean => {
+    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const offloadingDetails: OffloadingDetails = {
+      id: uuidv4(),
+      poId: orderId,
+      tankId: details.tankId,
+      initialTankVolume: details.initialTankVolume,
+      finalTankVolume: details.finalTankVolume,
+      loadedVolume: details.loadedVolume,
+      deliveredVolume: details.deliveredVolume,
+      isDiscrepancyFlagged: details.isDiscrepancyFlagged || false,
+      discrepancyPercentage: details.discrepancyPercentage,
+      productType: details.productType,
+      measuredBy: details.measuredBy,
+      measuredByRole: details.measuredByRole,
+      timestamp: new Date(),
+      notes: details.notes
+    };
+    
+    const updatedOrder = {
+      ...purchaseOrders[orderIndex],
+      offloadingDetails
+    };
+    
+    updatePurchaseOrder(orderId, updatedOrder);
+    
+    // Maybe add a log entry
+    const logEntry = {
+      poId: orderId,
+      action: 'record_offloading',
+      details: `Offloading details recorded for order ${orderId}`,
+      entityType: 'offloading',
+      entityId: offloadingDetails.id,
+      user: 'Current User'
+    };
+    
+    addLog(logEntry);
+    
+    // If discrepancy, maybe add an incident
+    if (offloadingDetails.isDiscrepancyFlagged) {
+      const incident = {
+        orderId: orderId,
+        type: 'discrepancy',
+        severity: 'medium',
+        description: `Discrepancy detected during offloading of order ${orderId}. Percentage: ${offloadingDetails.discrepancyPercentage}%`,
+        location: 'Tank Area',
+        reportedBy: 'System'
+      };
+      
+      addIncident(incident);
+    }
+    
+    return true;
+  }, [purchaseOrders, updatePurchaseOrder, addLog, addIncident]);
+  
+  const recordOffloadingToTank = useCallback((tankId: string, volume: number, source: string, sourceId: string): boolean => {
+    const tankIndex = tanks.findIndex(t => t.id === tankId);
+    if (tankIndex === -1) return false;
+    
+    const tank = tanks[tankIndex];
+    const updatedTank = {
+      ...tank,
+      currentVolume: (tank.currentVolume || 0) + volume,
+      currentLevel: ((tank.currentVolume || 0) + volume) / tank.capacity * 100,
+      lastRefillDate: new Date()
+    };
+    
+    updateTank(tankId, updatedTank);
+    
+    // Add an activity log
+    const log = {
+      action: 'tank_refill',
+      entityType: 'tank',
+      entityId: tankId,
+      details: `Tank ${tank.name} refilled with ${volume} liters from ${source} ${sourceId}`,
+      user: 'Current User'
+    };
+    
+    addActivityLog(log);
+    
+    return true;
+  }, [tanks, updateTank, addActivityLog]);
+  
+  const startDelivery = useCallback(async (orderId: string): Promise<boolean> => {
+    const order = purchaseOrders.find(o => o.id === orderId);
+    if (!order || !order.deliveryDetails) return false;
+    
+    const updatedOrder = {
+      ...order,
+      updatedAt: new Date(),
+      deliveryDetails: {
+        ...order.deliveryDetails,
+        status: 'in_transit' as const,
+        depotDepartureTime: new Date()
+      }
+    };
+    
+    await updatePurchaseOrder(orderId, updatedOrder);
+    return true;
+  }, [purchaseOrders, updatePurchaseOrder]);
+  
+  const updateDeliveryStatus = useCallback((orderId: string, status: 'pending' | 'delivered' | 'in_transit'): boolean => {
+    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const order = purchaseOrders[orderIndex];
+    
+    const updatedDeliveryDetails = {
+      ...(order.deliveryDetails || {}),
+      status
+    };
+    
+    const updatedOrder = {
+      ...order,
+      updatedAt: new Date(),
+      deliveryDetails: updatedDeliveryDetails as DeliveryDetails
+    };
+    
+    updatePurchaseOrder(orderId, updatedOrder);
+    
+    // Add log entry
+    const logEntry = {
+      poId: orderId,
+      action: 'update_delivery_status',
+      details: `Delivery status updated to ${status} for order ${orderId}`,
+      entityType: 'delivery',
+      entityId: updatedDeliveryDetails.id || '',
+      user: 'Current User'
+    };
+    
+    addLog(logEntry);
+    
+    return true;
+  }, [purchaseOrders, updatePurchaseOrder, addLog]);
+  
+  const assignDriverToOrder = useCallback((orderId: string, driverId: string, truckId: string): boolean => {
+    const orderIndex = purchaseOrders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return false;
+    
+    const driverData = getDriverById(driverId);
+    const truckData = getTruckById(truckId);
+    
+    if (!driverData || !truckData) return false;
+    
+    const order = purchaseOrders[orderIndex];
+    
+    const deliveryDetails: DeliveryDetails = {
+      ...(order.deliveryDetails || {}),
+      driverId,
+      truckId,
+      driverName: driverData.name,
+      vehicleDetails: `${truckData.model} - ${truckData.plateNumber}`,
+      status: 'pending'
+    };
+    
+    const updatedOrder = {
+      ...order,
+      updatedAt: new Date(),
+      deliveryDetails
+    };
+    
+    updatePurchaseOrder(orderId, updatedOrder);
+    
+    // Update driver and truck availability
+    updateDriver(driverId, { isAvailable: false });
+    updateTruck(truckId, { isAvailable: false, driverId });
+    
+    // Add log entry
+    const logEntry = {
+      poId: orderId,
+      action: 'assign_driver',
+      details: `Driver ${driverData.name} with truck ${truckData.plateNumber} assigned to order ${orderId}`,
+      entityType: 'delivery',
+      entityId: '',
+      user: 'Current User'
+    };
+    
+    addLog(logEntry);
+    
+    return true;
+  }, [
+    purchaseOrders, 
+    updatePurchaseOrder, 
+    getDriverById, 
+    getTruckById,
+    updateDriver,
+    updateTruck,
+    addLog
+  ]);
+
+  const contextValue = {
+    purchaseOrders,
+    logs,
+    suppliers,
+    drivers,
+    trucks,
+    gpsData,
+    aiInsights,
+    staff,
+    dispensers,
+    shifts,
+    sales,
+    prices,
+    incidents,
+    activityLogs,
+    tanks,
+    company,
+    addPurchaseOrder,
+    updatePurchaseOrder,
+    deletePurchaseOrder,
+    getPurchaseOrderById,
+    getAllPurchaseOrders,
+    updateOrderStatus,
+    getOrderById,
+    getOrdersWithDeliveryStatus,
+    getOrdersWithDiscrepancies,
+    addLog,
+    deleteLog,
+    getLogById,
+    getAllLogs,
+    getLogsByOrderId,
+    logAIInteraction,
+    addSupplier,
+    updateSupplier,
+    deleteSupplier,
+    getSupplierById,
+    getAllSuppliers,
+    addDriver,
+    updateDriver,
+    deleteDriver,
+    getDriverById,
+    getAllDrivers,
+    getAvailableDrivers,
+    addTruck,
+    updateTruck,
+    deleteTruck,
+    getTruckById,
+    getAllTrucks,
+    getAvailableTrucks,
+    tagTruckWithGPS,
+    untagTruckGPS,
+    getNonGPSTrucks,
+    addGPSData,
+    getGPSDataForTruck,
+    getAllGPSData,
+    updateGPSData,
+    addAIInsight,
+    markAIInsightAsRead,
+    getUnreadAIInsights,
+    getAllAIInsights,
+    resetAIInsights,
+    generateAIInsights,
+    getInsightsByType,
+    addStaff,
+    updateStaff,
+    deleteStaff,
+    getStaffById,
+    getAllStaff,
+    getActiveStaff,
+    addDispenser,
+    updateDispenser,
+    deleteDispenser,
+    getDispenserById,
+    getAllDispensers,
+    getActiveDispensers,
+    addShift,
+    updateShift,
+    deleteShift,
+    getShiftById,
+    getAllShifts,
+    getCurrentShift,
+    addSale,
+    updateSale,
+    deleteSale,
+    getSaleById,
+    getAllSales,
+    getSalesForShift,
+    addPrice,
+    updatePrice,
+    deletePrice,
+    getPriceById,
+    getAllPrices,
+    getCurrentPrices,
+    addIncident,
+    updateIncident,
+    deleteIncident,
+    getIncidentById,
+    getAllIncidents,
+    addActivityLog,
+    getAllActivityLogs,
+    addTank,
+    updateTank,
+    deleteTank,
+    getTankById,
+    getAllTanks,
+    getTanksByProduct,
+    setTankActive,
+    updateCompany,
+    completeDelivery,
+    recordOffloadingDetails,
+    recordOffloadingToTank,
+    startDelivery,
+    updateDeliveryStatus,
+    assignDriverToOrder
+  };
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = (): AppContextType => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};

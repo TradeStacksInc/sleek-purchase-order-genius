@@ -1,93 +1,79 @@
 
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Price, ProductType, ActivityLog } from '@/types';
-import { STORAGE_KEYS, saveToLocalStorage, getFromLocalStorage, PaginationParams, PaginatedResult } from '@/utils/localStorage';
+import { Price, ProductType } from '@/types';
+import { STORAGE_KEYS } from '@/utils/localStorage/constants';
 import { getPaginatedData } from '@/utils/localStorage';
-import { useToast } from '@/hooks/use-toast';
+import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
+import { saveToLocalStorage } from '@/utils/localStorage';
 
 export const usePriceActions = (
   prices: Price[],
-  setPrices: React.Dispatch<React.SetStateAction<Price[]>>,
-  setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>
+  setPrices: React.Dispatch<React.SetStateAction<Price[]>>
 ) => {
-  const { toast } = useToast();
-
-  const setPriceRecord = (priceData: Omit<Price, 'id' | 'effectiveDate'>): Price => {
-    try {
-      console.log("Setting price record:", priceData);
-      
-      // Deactivate existing active price records for this product
-      const updatedPrices = prices.map(price => {
-        // Compare product types as strings to avoid type issues
-        if (String(price.productType) === String(priceData.productType) && price.isActive) {
-          return {
-            ...price,
-            isActive: false,
-            endDate: new Date()
-          };
-        }
-        return price;
-      });
-      
-      // Create the new price record
-      const newPrice: Price = {
-        ...priceData,
-        id: `price-${uuidv4().substring(0, 8)}`,
-        effectiveDate: new Date(),
-        isActive: true
-      };
-      
-      // Save both the updated old prices and the new price
-      setPrices([newPrice, ...updatedPrices]);
-      
-      // Log the action
-      const newActivityLog: ActivityLog = {
-        id: `log-${uuidv4()}`,
-        entityType: 'price',
-        entityId: newPrice.id,
-        action: 'create',
-        details: `Set new price for ${String(newPrice.productType)}: ${newPrice.price.toFixed(2)}`,
-        user: 'Current User',
-        timestamp: new Date()
-      };
-      
-      setActivityLogs(prev => [newActivityLog, ...prev]);
-      
-      toast({
-        title: "Price Updated",
-        description: `${String(newPrice.productType)} price has been updated successfully.`,
-      });
-      
-      return newPrice;
-    } catch (error) {
-      console.error("Error setting price:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update price. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const getCurrentPrice = (productType: string): Price | undefined => {
-    return prices.find(price => 
-      String(price.productType) === String(productType) && price.isActive
-    );
-  };
-
-  const getPriceHistory = (productType: string, params?: PaginationParams): PaginatedResult<Price> => {
-    const filteredPrices = prices
-      .filter(price => String(price.productType) === String(productType))
-      .sort((a, b) => b.effectiveDate.getTime() - a.effectiveDate.getTime());
-      
-    return getPaginatedData(filteredPrices, params || { page: 1, limit: 10 });
-  };
-
+  const addPrice = useCallback((price: Omit<Price, 'id'>): Price => {
+    const newPrice: Price = {
+      ...price,
+      id: uuidv4()
+    };
+    
+    setPrices(prev => [...prev, newPrice]);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, [...prices, newPrice]);
+    return newPrice;
+  }, [prices, setPrices]);
+  
+  const updatePrice = useCallback((id: string, priceUpdate: Partial<Price>): Price | null => {
+    const priceIndex = prices.findIndex(p => p.id === id);
+    if (priceIndex === -1) return null;
+    
+    const updatedPrice = {
+      ...prices[priceIndex],
+      ...priceUpdate
+    };
+    
+    const newPrices = [...prices];
+    newPrices[priceIndex] = updatedPrice;
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
+    return updatedPrice;
+  }, [prices, setPrices]);
+  
+  const deletePrice = useCallback((id: string): boolean => {
+    const priceIndex = prices.findIndex(p => p.id === id);
+    if (priceIndex === -1) return false;
+    
+    const newPrices = prices.filter(p => p.id !== id);
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
+    return true;
+  }, [prices, setPrices]);
+  
+  const getPriceById = useCallback((id: string): Price | undefined => {
+    return prices.find(p => p.id === id);
+  }, [prices]);
+  
+  const getAllPrices = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Price> => {
+    return getPaginatedData(prices, params);
+  }, [prices]);
+  
+  const getCurrentPrices = useCallback((): Record<ProductType, number> => {
+    const currentPrices: Partial<Record<ProductType, number>> = {};
+    
+    prices.forEach(price => {
+      if (price.isActive) {
+        currentPrices[price.productType as ProductType] = price.price;
+      }
+    });
+    
+    return currentPrices as Record<ProductType, number>;
+  }, [prices]);
+  
   return {
-    setPriceRecord,
-    getCurrentPrice,
-    getPriceHistory
+    addPrice,
+    updatePrice,
+    deletePrice,
+    getPriceById,
+    getAllPrices,
+    getCurrentPrices
   };
 };
