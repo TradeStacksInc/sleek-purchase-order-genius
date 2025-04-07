@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -19,7 +18,7 @@ const PODetail: React.FC = () => {
   
   const order = getOrderById(id!);
   const logsResult = getLogsByOrderId(id!);
-  const logs = Array.isArray(logsResult) ? logsResult : (logsResult?.data || []);
+  const logs = logsResult?.data || [];
   
   if (!order) {
     return (

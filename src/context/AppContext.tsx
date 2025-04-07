@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { 
   PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight, Staff, 
   Dispenser, Shift, Sale, Incident, ActivityLog, Tank, Price, 
-  ProductType, DeliveryDetails
+  ProductType, DeliveryDetails, OrderStatus
 } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -984,6 +984,99 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   const getAllSales = (params?: PaginationParams): PaginatedResult<Sale> => {
     return getPaginatedData(sales, params || { page: 1, limit: 10 });
+  };
+
+  const updateOrderStatusWrapper = (orderId: string, status: OrderStatus): boolean => {
+    return purchaseOrderActions.updateOrderStatus(orderId, status, `Status updated to ${status}`);
+  };
+
+  const getLogsByOrderIdWrapper = (orderId: string, params?: PaginationParams): PaginatedResult<any> => {
+    const logs = logActions.getLogsByOrderId(orderId);
+    
+    return {
+      data: logs,
+      totalCount: logs.length,
+      totalPages: 1,
+      currentPage: 1
+    };
+  };
+
+  const generateAIInsightsWrapper = (data: any): AIInsight => {
+    aiActions.generateAIInsights(data);
+    return {
+      id: `insight-${uuidv4()}`,
+      type: 'generated',
+      description: 'AI Insights generated',
+      severity: 'low',
+      relatedEntityIds: [],
+      generatedAt: new Date(),
+      isRead: false
+    };
+  };
+
+  const endShiftWrapper = (shiftId: string): boolean => {
+    const result = shiftActions.endShift(shiftId);
+    return result !== undefined;
+  };
+
+  const addPriceWrapper = (price: Omit<Price, 'id'>): Price => {
+    return priceActions.setPriceRecord(price);
+  };
+
+  const updatePriceWrapper = (id: string, updates: Partial<Price>): boolean => {
+    const priceIndex = prices.findIndex(p => p.id === id);
+    if (priceIndex === -1) return false;
+
+    setPrices(prev => {
+      const updatedPrices = [...prev];
+      updatedPrices[priceIndex] = { ...updatedPrices[priceIndex], ...updates };
+      return updatedPrices;
+    });
+    
+    return true;
+  };
+
+  const deletePriceWrapper = (id: string): boolean => {
+    let deleted = false;
+    setPrices(prev => {
+      const filtered = prev.filter(p => p.id !== id);
+      deleted = filtered.length < prev.length;
+      return filtered;
+    });
+    return deleted;
+  };
+
+  const getPriceByIdWrapper = (id: string): Price | undefined => {
+    return prices.find(p => p.id === id);
+  };
+
+  const getAllPricesWrapper = (params?: PaginationParams): PaginatedResult<Price> => {
+    return getPaginatedData(prices, params || { page: 1, limit: 10 });
+  };
+
+  const getTankByProductTypeWrapper = (productType: ProductType): Tank | undefined => {
+    return tanks.find(t => t.productType === productType && t.isActive);
+  };
+
+  const getActiveDispensersByTankIdWrapper = (tankId: string): Dispenser[] => {
+    return dispensers.filter(d => d.tankId === tankId || d.connectedTankId === tankId);
+  };
+
+  const getActiveTanksByProductTypeWrapper = (productType: ProductType): Tank[] => {
+    return tanks.filter(t => t.productType === productType && t.isActive);
+  };
+
+  const updateTankWrapper = (id: string, updates: Partial<Tank>): boolean => {
+    return tankActionsMethods.updateTank(id, updates).then(result => result).catch(() => false);
+  };
+
+  const deleteTankWrapper = (id: string): boolean => {
+    return tankActionsMethods.deleteTank(id).then(result => result).catch(() => false);
+  };
+
+  const getAllTanksWrapper = (params?: PaginationParams): PaginatedResult<Tank> => {
+    const allTanks = tankActionsMethods.getAllTanks();
+    return getPaginatedData(allTanks, params || { page: 1, limit: 10 });
   };
 
   const contextValue: AppContextType = {

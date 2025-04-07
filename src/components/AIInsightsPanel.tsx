@@ -16,7 +16,7 @@ export const AIInsightsPanel: React.FC = () => {
   // Generate insights on initial load
   useEffect(() => {
     if (aiInsights.length === 0) {
-      // Pass empty object as parameter to fix the error
+      // Pass empty object as parameter
       generateAIInsights({});
     }
   }, [aiInsights.length, generateAIInsights]);
