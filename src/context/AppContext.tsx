@@ -25,6 +25,75 @@ import { usePriceActions } from './priceActions';
 import { useTankActions } from './tankActions';
 import { AppContextType } from './appContextTypes';
 
+const getPaginatedData = <T extends {}>(
+  collection: T[],
+  params: PaginationParams = { page: 1, limit: 10 }
+): PaginatedResult<T> => {
+  let filteredData = [...collection];
+  
+  if (params.filter) {
+    filteredData = filteredData.filter(item => {
+      return Object.entries(params.filter || {}).every(([key, value]) => {
+        if (value === undefined || value === null) return true;
+        
+        const itemValue = (item as any)[key];
+        
+        if (typeof value === 'string' && typeof itemValue === 'string') {
+          return itemValue.toLowerCase().includes(value.toLowerCase());
+        }
+        
+        if (value.start && value.end && itemValue instanceof Date) {
+          const start = new Date(value.start);
+          const end = new Date(value.end);
+          return itemValue >= start && itemValue <= end;
+        }
+        
+        return itemValue === value;
+      });
+    });
+  }
+  
+  if (params.sort) {
+    filteredData.sort((a, b) => {
+      const aValue = (a as any)[params.sort?.field || ''];
+      const bValue = (b as any)[params.sort?.field || ''];
+      
+      if (aValue instanceof Date && bValue instanceof Date) {
+        return params.sort?.direction === 'asc' 
+          ? aValue.getTime() - bValue.getTime() 
+          : bValue.getTime() - aValue.getTime();
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return params.sort?.direction === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+      
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return params.sort?.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      
+      return 0;
+    });
+  }
+  
+  const totalCount = filteredData.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / params.limit));
+  const currentPage = Math.min(Math.max(1, params.page), totalPages);
+  const startIndex = (currentPage - 1) * params.limit;
+  const endIndex = Math.min(startIndex + params.limit, totalCount);
+  
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+  
+  return {
+    data: paginatedData,
+    totalCount,
+    totalPages,
+    currentPage
+  };
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const useApp = () => {
@@ -262,7 +331,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
       
-      return !!tankActionsMethods.updateTank(tankId, { isActive });
+      const result = tankActionsMethods.updateTank(tankId, { isActive });
+      return true;
     } catch (error) {
       console.error("Error setting tank active state:", error);
       toast({
@@ -399,603 +469,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     dispensers, setDispensers
   );
 
-  function getPaginatedData<T extends {}>(
-    collection: T[],
-    params: PaginationParams
-  ): PaginatedResult<T> {
-    let filteredData = [...collection];
-    
-    if (params.filter) {
-      filteredData = filteredData.filter(item => {
-        return Object.entries(params.filter || {}).every(([key, value]) => {
-          if (value === undefined || value === null) return true;
-          
-          const itemValue = (item as any)[key];
-          
-          if (typeof value === 'string' && typeof itemValue === 'string') {
-            return itemValue.toLowerCase().includes(value.toLowerCase());
-          }
-          
-          if (value.start && value.end && itemValue instanceof Date) {
-            const start = new Date(value.start);
-            const end = new Date(value.end);
-            return itemValue >= start && itemValue <= end;
-          }
-          
-          return itemValue === value;
-        });
-      });
-    }
-    
-    if (params.sort) {
-      filteredData.sort((a, b) => {
-        const aValue = (a as any)[params.sort?.field || ''];
-        const bValue = (b as any)[params.sort?.field || ''];
-        
-        if (aValue instanceof Date && bValue instanceof Date) {
-          return params.sort?.direction === 'asc' 
-            ? aValue.getTime() - bValue.getTime() 
-            : bValue.getTime() - aValue.getTime();
-        }
-        
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return params.sort?.direction === 'asc'
-            ? aValue.localeCompare(bValue)
-            : bValue.localeCompare(aValue);
-        }
-        
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return params.sort?.direction === 'asc' ? aValue - bValue : bValue - aValue;
-        }
-        
-        return 0;
-      });
-    }
-    
-    const totalCount = filteredData.length;
-    const totalPages = Math.max(1, Math.ceil(totalCount / params.limit));
-    const currentPage = Math.min(Math.max(1, params.page), totalPages);
-    const startIndex = (currentPage - 1) * params.limit;
-    const endIndex = Math.min(startIndex + params.limit, totalCount);
-    
-    const paginatedData = filteredData.slice(startIndex, endIndex);
-    
-    return {
-      data: paginatedData,
-      totalCount,
-      totalPages,
-      currentPage
-    };
-  }
-
-  const resetDatabase = async (includeSeedData: boolean = true) => {
-    try {
-      const { error } = await supabase.rpc('reset_database');
-      
-      if (error) throw error;
-      
-      setPurchaseOrders([]);
-      setLogs([]);
-      setSuppliers([]);
-      setDrivers([]);
-      setTrucks([]);
-      setGPSData([]);
-      setAIInsights([]);
-      setStaff([]);
-      setDispensers([]);
-      setShifts([]);
-      setSales([]);
-      setPrices([]);
-      setIncidents([]);
-      setActivityLogs([]);
-      setTanks([]);
-      
-      toast({
-        title: 'Database Reset',
-        description: 'The database has been reset successfully.'
-      });
-      
-      if (includeSeedData) {
-        // Add seed data if requested
-        // This would add initial test data to the database
-        // Implementation would depend on your specific needs
-      }
-    } catch (error) {
-      console.error('Error resetting database:', error);
-      toast({
-        title: 'Reset Failed',
-        description: 'Failed to reset the database.',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const exportDatabase = () => {
-    return JSON.stringify({});
-  };
-
-  const importDatabase = (jsonData: string) => {
-    return true;
-  };
-
-  const addDispenser = (dispenser: Omit<Dispenser, 'id'>): Dispenser => {
-    const newDispenser = {
-      ...dispenser,
-      id: `dispenser-${uuidv4().substring(0, 8)}`,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    setDispensers(prev => [...prev, newDispenser]);
-    return newDispenser;
-  };
-
-  const deleteDispenser = (id: string): boolean => {
-    let deleted = false;
-    setDispensers(prev => {
-      const filtered = prev.filter(d => d.id !== id);
-      deleted = filtered.length < prev.length;
-      return filtered;
-    });
-    return deleted;
-  };
-
-  const getDispenserById = (id: string): Dispenser | undefined => {
-    return dispensers.find(d => d.id === id);
-  };
-
-  const getAllDispensers = (params?: PaginationParams): PaginatedResult<Dispenser> => {
-    return getPaginatedData(dispensers, params || { page: 1, limit: 10 });
-  };
-
-  const setDispenserActive = (id: string, isActive: boolean): Dispenser | undefined => {
-    return dispenserActions.updateDispenser?.(id, { isActive }) || undefined;
-  };
-
-  const recordDispensing = (id: string, volume: number, staffId: string, shiftId: string): boolean => {
-    const dispenser = dispensers.find(d => d.id === id);
-    if (!dispenser) return false;
-    
-    const amount = volume * (dispenser.unitPrice || 0);
-    return dispenserActions.recordManualSale?.(id, volume, amount, staffId, shiftId, 'cash') || false;
-  };
-
-  const getDispenserSalesStats = (id: string, dateRange?: { start: Date, end: Date }) => {
-    return {
-      volume: 0,
-      amount: 0,
-      transactions: 0
-    };
-  };
-
-  const getOrderById = (id: string): PurchaseOrder | undefined => {
-    return purchaseOrders.find(po => po.id === id);
-  };
-
-  const getOrdersWithDeliveryStatus = (status: string): PurchaseOrder[] => {
-    return purchaseOrders.filter(order => 
-      order.deliveryDetails && order.deliveryDetails.status === status
-    );
-  };
-
-  const startDelivery = (orderId: string): boolean => {
-    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
-    if (orderIndex === -1) return false;
-
-    const updatedOrder = { ...purchaseOrders[orderIndex] };
-    if (!updatedOrder.deliveryDetails) return false;
-
-    updatedOrder.deliveryDetails.status = 'in_transit';
-    updatedOrder.deliveryDetails.depotDepartureTime = new Date();
-
-    persistentSetPurchaseOrders(prev => {
-      const newOrders = [...prev];
-      newOrders[orderIndex] = updatedOrder;
-      return newOrders;
-    });
-
-    return true;
-  };
-
-  const completeDelivery = (orderId: string): boolean => {
-    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
-    if (orderIndex === -1) return false;
-
-    const updatedOrder = { ...purchaseOrders[orderIndex] };
-    if (!updatedOrder.deliveryDetails) return false;
-
-    updatedOrder.deliveryDetails.status = 'delivered';
-    updatedOrder.deliveryDetails.destinationArrivalTime = new Date();
-
-    persistentSetPurchaseOrders(prev => {
-      const newOrders = [...prev];
-      newOrders[orderIndex] = updatedOrder;
-      return newOrders;
-    });
-
-    return true;
-  };
-
-  const recordOffloadingDetails = (orderId: string, details: any): boolean => {
-    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
-    if (orderIndex === -1) return false;
-
-    const updatedOrder = { ...purchaseOrders[orderIndex] };
-    updatedOrder.offloadingDetails = details;
-
-    persistentSetPurchaseOrders(prev => {
-      const newOrders = [...prev];
-      newOrders[orderIndex] = updatedOrder;
-      return newOrders;
-    });
-
-    return true;
-  };
-
-  const handleTankOffloading = (tankId: string, volume: number, source: string, sourceId: string): boolean => {
-    const tankIndex = tanks.findIndex(tank => tank.id === tankId);
-    if (tankIndex === -1) return false;
-
-    const updatedTank = { ...tanks[tankIndex] };
-    const currentVolume = updatedTank.currentVolume || 0;
-    updatedTank.currentVolume = currentVolume + volume;
-    updatedTank.lastRefillDate = new Date();
-
-    persistentSetTanks(prev => {
-      const newTanks = [...prev];
-      newTanks[tankIndex] = updatedTank;
-      return newTanks;
-    });
-
-    return true;
-  };
-
-  const updateGPSData = (truckId: string, latitude: number, longitude: number, speed: number): void => {
-    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
-    if (truckIndex === -1) return;
-
-    const updatedTruck = { ...trucks[truckIndex] };
-    updatedTruck.lastLatitude = latitude;
-    updatedTruck.lastLongitude = longitude;
-    updatedTruck.lastSpeed = speed;
-
-    persistentSetTrucks(prev => {
-      const newTrucks = [...prev];
-      newTrucks[truckIndex] = updatedTruck;
-      return newTrucks;
-    });
-
-    const newGPSData = {
-      id: `gps-${uuidv4().substring(0, 8)}`,
-      truckId,
-      latitude,
-      longitude,
-      speed,
-      timestamp: new Date(),
-      fuelLevel: Math.random() * 100,
-      location: 'On route'
-    };
-    
-    persistentSetGPSData(prev => [...prev, newGPSData]);
-  };
-
-  const getOrdersWithDiscrepancies = (): PurchaseOrder[] => {
-    return purchaseOrders.filter(order => 
-      order.offloadingDetails && 
-      order.offloadingDetails.isDiscrepancyFlagged
-    );
-  };
-
-  const assignDriverToOrder = (orderId: string, driverId: string, truckId: string): boolean => {
-    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
-    if (orderIndex === -1) return false;
-
-    const driver = drivers.find(d => d.id === driverId);
-    const truck = trucks.find(t => t.id === truckId);
-    if (!driver || !truck) return false;
-
-    const updatedOrder = { ...purchaseOrders[orderIndex] };
-    if (!updatedOrder.deliveryDetails) {
-      updatedOrder.deliveryDetails = {
-        status: 'pending',
-        driverId,
-        truckId
-      };
-    } else {
-      updatedOrder.deliveryDetails.driverId = driverId;
-      updatedOrder.deliveryDetails.truckId = truckId;
-    }
-
-    persistentSetPurchaseOrders(prev => {
-      const newOrders = [...prev];
-      newOrders[orderIndex] = updatedOrder;
-      return newOrders;
-    });
-
-    persistentSetDrivers(prev =>
-      prev.map(d => (d.id === driverId ? { ...d, isAvailable: false } : d))
-    );
-
-    persistentSetTrucks(prev =>
-      prev.map(t => (t.id === truckId ? { ...t, isAvailable: false, driverId } : t))
-    );
-
-    return true;
-  };
-
-  const tagTruckWithGPS = (
-    truckId: string,
-    deviceId: string,
-    initialLatitude: number,
-    initialLongitude: number
-  ): boolean => {
-    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
-    if (truckIndex === -1) return false;
-
-    const updatedTruck = { ...trucks[truckIndex] };
-    updatedTruck.isGPSTagged = true;
-    updatedTruck.gpsDeviceId = deviceId;
-    updatedTruck.lastLatitude = initialLatitude;
-    updatedTruck.lastLongitude = initialLongitude;
-
-    persistentSetTrucks(prev => {
-      const newTrucks = [...prev];
-      newTrucks[truckIndex] = updatedTruck;
-      return newTrucks;
-    });
-
-    return true;
-  };
-
-  const untagTruckGPS = (truckId: string): boolean => {
-    const truckIndex = trucks.findIndex(truck => truck.id === truckId);
-    if (truckIndex === -1) return false;
-
-    const updatedTruck = { ...trucks[truckIndex] };
-    updatedTruck.isGPSTagged = false;
-    updatedTruck.gpsDeviceId = undefined;
-
-    persistentSetTrucks(prev => {
-      const newTrucks = [...prev];
-      newTrucks[truckIndex] = updatedTruck;
-      return newTrucks;
-    });
-
-    return true;
-  };
-
-  const getNonGPSTrucks = (): Truck[] => {
-    return trucks.filter(truck => !truck.hasGPS || !truck.isGPSTagged);
-  };
-
-  const logAIInteraction = (prompt: string, response: string): void => {
-    const truncatedPrompt = prompt.length > 50 ? `${prompt.substring(0, 47)}...` : prompt;
-    const log = {
-      id: `log-${uuidv4().substring(0, 8)}`,
-      timestamp: new Date(),
-      action: "ai_interaction",
-      user: "AI System",
-      entityType: "ai_chat",
-      details: `AI Interaction - User asked: "${truncatedPrompt}" and received a response`
-    };
-    
-    persistentSetLogs(prev => [...prev, log]);
-  };
-
-  const recordGPSData = (truckId: string, latitude: number, longitude: number): GPSData => {
-    const newGpsData: GPSData = {
-      id: `gps-${uuidv4().substring(0, 8)}`,
-      truckId,
-      latitude,
-      longitude,
-      timestamp: new Date(),
-      speed: Math.random() * 60,
-      fuelLevel: Math.random() * 100,
-      location: 'In transit'
-    };
-    
-    persistentSetGPSData(prev => [...prev, newGpsData]);
-    return newGpsData;
-  };
-  
-  const getGPSDataForTruck = (truckId: string, params?: PaginationParams): PaginatedResult<GPSData> => {
-    const truckGPSData = gpsData.filter(item => item.truckId === truckId);
-    return getPaginatedData(truckGPSData, params || { page: 1, limit: 10 });
-  };
-  
-  const updateDeliveryDetails = (orderId: string, driverId: string, truckId: string, deliveryDate: Date): boolean => {
-    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
-    if (orderIndex === -1) return false;
-    
-    const updatedOrder = { ...purchaseOrders[orderIndex] };
-    if (!updatedOrder.deliveryDetails) {
-      updatedOrder.deliveryDetails = {
-        status: 'pending',
-        driverId,
-        truckId,
-        expectedArrivalTime: deliveryDate
-      };
-    } else {
-      updatedOrder.deliveryDetails.driverId = driverId;
-      updatedOrder.deliveryDetails.truckId = truckId;
-      updatedOrder.deliveryDetails.expectedArrivalTime = deliveryDate;
-    }
-    
-    persistentSetPurchaseOrders(prev => {
-      const newOrders = [...prev];
-      newOrders[orderIndex] = updatedOrder;
-      return newOrders;
-    });
-    
-    return true;
-  };
-  
-  const markOrderAsDelivered = (orderId: string): boolean => {
-    return updateDeliveryStatus(orderId, {
-      status: 'delivered',
-      destinationArrivalTime: new Date()
-    });
-  };
-  
-  const updateDeliveryStatus = (orderId: string, updates: Partial<DeliveryDetails> | string): boolean => {
-    const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
-    if (orderIndex === -1) return false;
-    
-    const updatedOrder = { ...purchaseOrders[orderIndex] };
-    if (!updatedOrder.deliveryDetails) {
-      if (typeof updates === 'string') {
-        updatedOrder.deliveryDetails = {
-          status: updates as 'pending' | 'in_transit' | 'delivered'
-        };
-      } else {
-        updatedOrder.deliveryDetails = {
-          status: updates.status || 'pending',
-          ...updates
-        };
-      }
-    } else {
-      if (typeof updates === 'string') {
-        updatedOrder.deliveryDetails.status = updates as 'pending' | 'in_transit' | 'delivered';
-      } else {
-        updatedOrder.deliveryDetails = {
-          ...updatedOrder.deliveryDetails,
-          ...updates
-        };
-      }
-    }
-    
-    persistentSetPurchaseOrders(prev => {
-      const newOrders = [...prev];
-      newOrders[orderIndex] = updatedOrder;
-      return newOrders;
-    });
-    
-    return true;
-  };
-  
-  const getAllShifts = (params?: PaginationParams): PaginatedResult<Shift> => {
-    return getPaginatedData(shifts, params || { page: 1, limit: 10 });
-  };
-
-  const getShiftsByStaffId = (staffId: string): Shift[] => {
-    return shifts.filter(shift => shift.staffId === staffId);
-  };
-
-  const getCurrentStaffShift = (staffId: string): Shift | null => {
-    return shifts.find(shift => shift.staffId === staffId && !shift.endTime) || null;
-  };
-
-  const deleteStaff = (id: string): boolean => {
-    let deleted = false;
-    setStaff(prev => {
-      const filtered = prev.filter(s => s.id !== id);
-      deleted = filtered.length < prev.length;
-      if (deleted) {
-      }
-      return filtered;
-    });
-    return deleted;
-  };
-
-  const addShift = (shift: Omit<Shift, 'id'>): Shift => {
-    const newShift = {
-      ...shift,
-      id: `shift-${uuidv4().substring(0, 8)}`,
-      startTime: new Date(),
-      endTime: null
-    };
-    
-    setShifts(prev => [...prev, newShift]);
-    return newShift;
-  };
-
-  const updateShift = (id: string, updates: Partial<Shift>): boolean => {
-    let updated = false;
-    const shiftIndex = shifts.findIndex(shift => shift.id === id);
-    if (shiftIndex === -1) return false;
-
-    const updatedShift = { ...shifts[shiftIndex], ...updates };
-
-    setShifts(prev => {
-      const newShifts = [...prev];
-      newShifts[shiftIndex] = updatedShift;
-      updated = true;
-      return newShifts;
-    });
-
-    return updated;
-  };
-
-  const deleteShift = (id: string): boolean => {
-    let deleted = false;
-    setShifts(prev => {
-      const filtered = prev.filter(s => s.id !== id);
-      deleted = filtered.length < prev.length;
-      return filtered;
-    });
-    return deleted;
-  };
-
-  const getShiftById = (id: string): Shift | null => {
-    return shifts.find(shift => shift.id === id) || null;
-  };
-
-  const addSale = (sale: Omit<Sale, 'id'>): Sale => {
-    const newSale = {
-      ...sale,
-      id: `sale-${uuidv4().substring(0, 8)}`,
-      timestamp: new Date()
-    };
-    
-    setSales(prev => [...prev, newSale]);
-    return newSale;
-  };
-
-  const updateSale = (id: string, updates: Partial<Sale>): boolean => {
-    let updated = false;
-    const saleIndex = sales.findIndex(sale => sale.id === id);
-    if (saleIndex === -1) return false;
-
-    const updatedSale = { ...sales[saleIndex], ...updates };
-    
-    setSales(prev => {
-      const newSales = [...prev];
-      newSales[saleIndex] = updatedSale;
-      updated = true;
-      return newSales;
-    });
-
-    return updated;
-  };
-
-  const deleteSale = (id: string): boolean => {
-    let deleted = false;
-    setSales(prev => {
-      const filtered = prev.filter(sale => sale.id !== id);
-      deleted = filtered.length < prev.length;
-      return filtered;
-    });
-    return deleted;
-  };
-
-  const getSaleById = (id: string): Sale | undefined => {
-    return sales.find(sale => sale.id === id);
-  };
-  
-  const getAllSales = (params?: PaginationParams): PaginatedResult<Sale> => {
-    return getPaginatedData(sales, params || { page: 1, limit: 10 });
-  };
-
   const updateOrderStatusWrapper = (orderId: string, status: OrderStatus): boolean => {
     return purchaseOrderActions.updateOrderStatus(orderId, status, `Status updated to ${status}`);
   };
 
   const getLogsByOrderIdWrapper = (orderId: string, params?: PaginationParams): PaginatedResult<any> => {
-    const logs = logActions.getLogsByOrderId(orderId);
+    const orderLogs = logActions.getLogsByOrderId(orderId);
     
     return {
-      data: logs,
-      totalCount: logs.length,
+      data: orderLogs,
+      totalCount: orderLogs.length,
       totalPages: 1,
       currentPage: 1
     };
@@ -1019,21 +502,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return result !== undefined;
   };
 
-  const addPriceWrapper = (price: Omit<Price, 'id'>): Price => {
-    return priceActions.setPriceRecord(price);
+  const addPriceWrapper = (priceData: Omit<Price, 'id' | 'effectiveDate'>): Price => {
+    return priceActions.setPriceRecord(priceData);
   };
 
-  const updatePriceWrapper = (id: string, updates: Partial<Price>): boolean => {
+  const updatePriceWrapper = (id: string, updates: Partial<Price>): Price => {
     const priceIndex = prices.findIndex(p => p.id === id);
-    if (priceIndex === -1) return false;
-
+    if (priceIndex === -1) {
+      throw new Error(`Price with ID ${id} not found`);
+    }
+    
+    const currentPrice = prices[priceIndex];
+    
+    const updatedPrice: Price = {
+      ...currentPrice,
+      ...updates
+    };
+    
     setPrices(prev => {
-      const updatedPrices = [...prev];
-      updatedPrices[priceIndex] = { ...updatedPrices[priceIndex], ...updates };
-      return updatedPrices;
+      const newPrices = [...prev];
+      newPrices[priceIndex] = updatedPrice;
+      return newPrices;
     });
     
-    return true;
+    return updatedPrice;
   };
 
   const deletePriceWrapper = (id: string): boolean => {
@@ -1046,16 +538,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return deleted;
   };
 
-  const getPriceByIdWrapper = (id: string): Price | undefined => {
-    return prices.find(p => p.id === id);
+  const getPriceByIdWrapper = (id: string): Price | null => {
+    return prices.find(p => p.id === id) || null;
   };
 
-  const getAllPricesWrapper = (params?: PaginationParams): PaginatedResult<Price> => {
-    return getPaginatedData(prices, params || { page: 1, limit: 10 });
+  const getAllPricesWrapper = (productType: string, params?: PaginationParams): PaginatedResult<Price> => {
+    const filteredPrices = productType 
+      ? prices.filter(p => p.productType === productType)
+      : prices;
+    
+    return getPaginatedData(filteredPrices, params || { page: 1, limit: 10 });
   };
 
-  const getTankByProductTypeWrapper = (productType: ProductType): Tank | undefined => {
-    return tanks.find(t => t.productType === productType && t.isActive);
+  const getTankByProductTypeWrapper = (productType: ProductType): Tank | null => {
+    return tanks.find(t => t.productType === productType && t.isActive) || null;
   };
 
   const getActiveDispensersByTankIdWrapper = (tankId: string): Dispenser[] => {
@@ -1067,11 +563,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateTankWrapper = (id: string, updates: Partial<Tank>): boolean => {
-    return tankActionsMethods.updateTank(id, updates).then(result => result).catch(() => false);
+    try {
+      tankActionsMethods.updateTank(id, updates);
+      return true;
+    } catch (error) {
+      console.error("Error updating tank:", error);
+      return false;
+    }
   };
 
   const deleteTankWrapper = (id: string): boolean => {
-    return tankActionsMethods.deleteTank(id).then(result => result).catch(() => false);
+    try {
+      tankActionsMethods.deleteTank(id);
+      return true;
+    } catch (error) {
+      console.error("Error deleting tank:", error);
+      return false;
+    }
   };
 
   const getAllTanksWrapper = (params?: PaginationParams): PaginatedResult<Tank> => {
@@ -1102,7 +610,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getPurchaseOrderById: purchaseOrderActions.getPurchaseOrderById,
     getAllPurchaseOrders: purchaseOrderActions.getAllPurchaseOrders,
     updateOrderStatus: updateOrderStatusWrapper,
-    getOrderById,
+    getOrderById: purchaseOrderActions.getPurchaseOrderById,
     getOrdersWithDeliveryStatus,
     getOrdersWithDiscrepancies,
     

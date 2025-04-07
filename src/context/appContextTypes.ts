@@ -2,7 +2,7 @@
 import { 
   PurchaseOrder, Supplier, Driver, Truck, GPSData, AIInsight,
   Staff, Dispenser, Shift, Sale, Incident, ActivityLog, Tank,
-  Price, ProductType, DeliveryDetails
+  Price, ProductType, DeliveryDetails, OrderStatus
 } from '@/types';
 import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
 
@@ -30,7 +30,7 @@ export interface AppContextType {
   deletePurchaseOrder: (id: string) => boolean;
   getPurchaseOrderById: (id: string) => PurchaseOrder | undefined;
   getAllPurchaseOrders: (params?: PaginationParams) => PaginatedResult<PurchaseOrder>;
-  updateOrderStatus: (id: string, status: string) => boolean;
+  updateOrderStatus: (id: string, status: OrderStatus) => boolean;
   getOrderById: (id: string) => PurchaseOrder | undefined;
   getOrdersWithDeliveryStatus: (status: string) => PurchaseOrder[];
   getOrdersWithDiscrepancies: () => PurchaseOrder[];
@@ -124,15 +124,15 @@ export interface AppContextType {
   
   // Price methods
   addPrice: (priceData: Omit<Price, 'id' | 'effectiveDate'>) => Price;
-  updatePrice: (productType: string) => Price;
+  updatePrice: (id: string, updates: Partial<Price>) => Price;
   deletePrice: (id: string) => boolean;
   getPriceById: (id: string) => Price | null;
   getAllPrices: (productType: string, params?: PaginationParams) => PaginatedResult<Price>;
   
   // Tank methods
-  getTankByProductType: (productType: string) => Tank | null;
+  getTankByProductType: (productType: ProductType) => Tank | null;
   getActiveDispensersByTankId: (tankId: string) => Dispenser[];
-  getActiveTanksByProductType: (productType: string) => Tank[];
+  getActiveTanksByProductType: (productType: ProductType) => Tank[];
   addTank: (tankData: Omit<Tank, "id">) => Promise<Tank>;
   updateTank: (id: string, updates: Partial<Tank>) => boolean;
   deleteTank: (id: string) => boolean;

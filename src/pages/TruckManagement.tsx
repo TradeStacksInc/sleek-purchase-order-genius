@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Truck } from '@/types';
+import { PaginationParams } from '@/utils/localStorage/types';
 
 const TruckManagement: React.FC = () => {
   const { 
-    getAllTrucks, 
+    getAllTrucks,
     updateTruck, 
     tagTruckWithGPS,
     untagTruckGPS,
