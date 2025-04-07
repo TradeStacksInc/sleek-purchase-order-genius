@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -961,5 +962,146 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saleIndex = sales.findIndex(sale => sale.id === id);
     if (saleIndex === -1) return false;
 
-    const updatedSale = { ...sales[saleIndex] };
-    if (updates.
+    const updatedSale = { ...sales[saleIndex], ...updates };
+    
+    setSales(prev => {
+      const newSales = [...prev];
+      newSales[saleIndex] = updatedSale;
+      updated = true;
+      return newSales;
+    });
+
+    return updated;
+  };
+
+  const deleteSale = (id: string): boolean => {
+    let deleted = false;
+    setSales(prev => {
+      const filtered = prev.filter(sale => sale.id !== id);
+      deleted = filtered.length < prev.length;
+      return filtered;
+    });
+    return deleted;
+  };
+
+  const getSaleById = (id: string): Sale | undefined => {
+    return sales.find(sale => sale.id === id);
+  };
+  
+  const getAllSales = (params?: PaginationParams): PaginatedResult<Sale> => {
+    return getPaginatedData(sales, params || { page: 1, limit: 10 });
+  };
+
+  // Create context value
+  const contextValue: AppContextType = {
+    purchaseOrders,
+    logs,
+    suppliers,
+    drivers,
+    trucks,
+    gpsData,
+    aiInsights,
+    staff,
+    dispensers,
+    shifts,
+    sales,
+    prices,
+    incidents,
+    activityLogs,
+    tanks,
+    
+    // Purchase Order methods
+    ...purchaseOrderActions,
+    getOrderById,
+    getOrdersWithDeliveryStatus,
+    getOrdersWithDiscrepancies,
+    
+    // Log methods
+    ...logActions,
+    logAIInteraction,
+    
+    // Supplier methods
+    ...supplierActions,
+    
+    // Driver & Truck methods
+    ...driverTruckActions,
+    getNonGPSTrucks,
+    tagTruckWithGPS,
+    untagTruckGPS,
+    
+    // GPS data methods  
+    recordGPSData,
+    getGPSDataForTruck,
+    updateGPSData,
+    
+    // Delivery methods
+    ...deliveryActions,
+    updateDeliveryDetails,
+    markOrderAsDelivered,
+    startDelivery,
+    completeDelivery,
+    updateDeliveryStatus,
+    recordOffloadingDetails,
+    recordOffloadingToTank,
+    assignDriverToOrder,
+    
+    // AI methods
+    ...aiActions,
+    
+    // Staff methods
+    ...staffActions,
+    deleteStaff,
+    
+    // Dispenser methods
+    addDispenser,
+    updateDispenser: dispenserActions.updateDispenser,
+    deleteDispenser,
+    getDispenserById,
+    getAllDispensers,
+    setDispenserActive,
+    recordManualSale: dispenserActions.recordManualSale,
+    getDispenserSalesStats,
+    recordDispensing,
+    
+    // Shift methods
+    addShift,
+    updateShift,
+    deleteShift,
+    getShiftById,
+    getAllShifts,
+    startShift: shiftActions.startShift,
+    endShift: shiftActions.endShift,
+    getShiftsByStaffId,
+    getCurrentStaffShift,
+    
+    // Sale methods
+    addSale,
+    updateSale,
+    deleteSale,
+    getSaleById,
+    getAllSales,
+    
+    // Price methods
+    ...priceActions,
+    
+    // Tank methods
+    ...tankActionsMethods,
+    setTankActive,
+    
+    // Incident methods
+    addIncident,
+    
+    // Database management
+    resetDatabase,
+    exportDatabase,
+    importDatabase,
+  };
+  
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export default AppContext;
