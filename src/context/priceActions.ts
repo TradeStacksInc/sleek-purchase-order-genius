@@ -1,8 +1,9 @@
+
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Price, ProductType } from '@/types';
+import { Price, ProductType, ActivityLog } from '@/types';
 import { STORAGE_KEYS, saveToLocalStorage, getFromLocalStorage, PaginationParams, PaginatedResult } from '@/utils/localStorage';
-import { getPaginatedData } from '@/utils/localStorage/appState';
+import { getPaginatedData } from '@/utils/localStorage';
 import { useToast } from '@/hooks/use-toast';
 
 export const usePriceActions = (

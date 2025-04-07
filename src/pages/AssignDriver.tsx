@@ -1,46 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useApp } from '@/context/AppContext';
-import { Driver, PurchaseOrder, Truck } from '@/types';
-import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { toast } from '@/hooks/use-toast';
-import { 
-  AlertTriangle, 
-  ArrowRight, 
-  Truck as TruckIcon, 
-  User, 
-  Plus, 
-  MapPin, 
-  Info, 
-  Check
-} from 'lucide-react';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import {
   Form,
   FormControl,
@@ -49,727 +43,663 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { gpsFormSchema } from "@/schemas/gpsFormSchema";
+} from "@/components/ui/form"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { GPSData, Truck, Driver } from '@/types';
+import { format } from 'date-fns';
+import { Circle, CheckCircle, AlertTriangle, MapPin, Gps } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { gpsFormSchema } from '@/schemas/gpsFormSchema';
 
 const AssignDriver: React.FC = () => {
   const { 
-    purchaseOrders, 
-    drivers, 
     trucks, 
-    addDriver, 
-    addTruck, 
-    assignDriverToOrder,
+    drivers, 
+    getAvailableTrucks, 
+    getAvailableDrivers, 
+    updateTruck, 
+    updateDriver,
     tagTruckWithGPS,
-    getAllDrivers,
-    getAllTrucks,
-    getTruckById
+    untagTruckGPS,
+    getNonGPSTrucks,
+    getGPSDataForTruck,
+    updateGPSData
   } = useApp();
   
-  const [selectedOrderId, setSelectedOrderId] = useState('');
-  const [selectedDriverId, setSelectedDriverId] = useState('');
-  const [selectedTruckId, setSelectedTruckId] = useState('');
+  const navigate = useNavigate();
+  const [selectedTruck, setSelectedTruck] = useState<string | null>(null);
+  const [truckDetailsOpen, setTruckDetailsOpen] = useState(false);
+  const [driverDetailsOpen, setDriverDetailsOpen] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+  const [isDeleteTruckOpen, setIsDeleteTruckOpen] = useState(false);
+  const [isDeleteDriverOpen, setIsDeleteDriverOpen] = useState(false);
+  const [gpsModalOpen, setGPSModalOpen] = useState(false);
+  const [gpsData, setGpsData] = useState<GPSData[]>([]);
+  const [isAutoUpdateEnabled, setIsAutoUpdateEnabled] = useState(false);
+  const [autoUpdateInterval, setAutoUpdateInterval] = useState<NodeJS.Timeout | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0); // Key to force refresh of useEffect
   
-  const [newDriverName, setNewDriverName] = useState('');
-  const [newDriverContact, setNewDriverContact] = useState('');
-  const [newDriverLicense, setNewDriverLicense] = useState('');
+  const availableTrucks = getAvailableTrucks();
+  const availableDrivers = getAvailableDrivers();
+  const nonGPSTrucks = getNonGPSTrucks();
   
-  const [newTruckPlate, setNewTruckPlate] = useState('');
-  const [newTruckCapacity, setNewTruckCapacity] = useState('');
-  const [newTruckModel, setNewTruckModel] = useState('');
-  const [newTruckHasGPS, setNewTruckHasGPS] = useState('true');
-  
-  const [isGPSDialogOpen, setIsGPSDialogOpen] = useState(false);
-  
-  const eligibleOrders = purchaseOrders.filter(
-    order => order.status === 'active' && !order.deliveryDetails?.driverId
-  );
-  
-  const availableDrivers = drivers.filter(driver => driver.isAvailable);
-  const availableTrucks = trucks.filter(truck => truck.isAvailable);
-  
-  const handleAssign = () => {
-    if (!selectedOrderId || !selectedDriverId || !selectedTruckId) {
+  const refreshData = useCallback(() => {
+    setRefreshKey(prevKey => prevKey + 1);
+  }, []);
+
+  useEffect(() => {
+    if (selectedTruck) {
+      const gps = getGPSDataForTruck(selectedTruck, 5);
+      setGpsData(gps);
+    }
+  }, [selectedTruck, getGPSDataForTruck, refreshKey]);
+
+  const handleTruckSelection = (truckId: string) => {
+    setSelectedTruck(truckId);
+    setTruckDetailsOpen(true);
+  };
+
+  const handleDriverSelection = (driverId: string) => {
+    setSelectedDriver(driverId);
+    setDriverDetailsOpen(true);
+  };
+
+  const handleAssignDriver = async () => {
+    if (!selectedTruck || !selectedDriver) {
       toast({
-        title: "Missing Information",
-        description: "Please select an order, driver, and truck.",
-        variant: "destructive"
+        title: "Error",
+        description: "Please select both a truck and a driver.",
+        variant: "destructive",
       });
       return;
     }
-    
-    const selectedTruck = trucks.find(truck => truck.id === selectedTruckId);
-    
-    if (selectedTruck && selectedTruck.hasGPS && !selectedTruck.isGPSTagged) {
-      setIsGPSDialogOpen(true);
-      return;
-    }
-    
-    completeAssignment();
-  };
 
-  const completeAssignment = () => {
-    assignDriverToOrder(selectedOrderId, selectedDriverId, selectedTruckId);
-    
-    setSelectedOrderId('');
-    setSelectedDriverId('');
-    setSelectedTruckId('');
-    setIsGPSDialogOpen(false);
-    
-    toast({
-      title: "Driver Assigned",
-      description: "Driver and truck have been successfully assigned to the order.",
-    });
-  };
-  
-  const handleAddDriver = () => {
-    if (!newDriverName || !newDriverContact || !newDriverLicense) {
+    const truck = trucks.find(truck => truck.id === selectedTruck);
+    const driver = drivers.find(driver => driver.id === selectedDriver);
+
+    if (!truck || !driver) {
       toast({
-        title: "Missing Information",
-        description: "Please fill all driver details.",
-        variant: "destructive"
+        title: "Error",
+        description: "Selected truck or driver not found.",
+        variant: "destructive",
       });
       return;
     }
-    
-    addDriver({
-      name: newDriverName,
-      contact: newDriverContact,
-      licenseNumber: newDriverLicense,
-      isAvailable: true
-    });
-    
-    setNewDriverName('');
-    setNewDriverContact('');
-    setNewDriverLicense('');
-    
-    toast({
-      title: "Driver Added",
-      description: "New driver has been added successfully.",
-    });
-  };
-  
-  const handleAddTruck = () => {
-    if (!newTruckPlate || !newTruckCapacity || !newTruckModel) {
+
+    // Optimistically update the UI
+    const updatedTrucks = trucks.map(t =>
+      t.id === selectedTruck ? { ...t, isAvailable: false, driverId: selectedDriver } : t
+    );
+    const updatedDrivers = drivers.map(d =>
+      d.id === selectedDriver ? { ...d, isAvailable: false, currentTruckId: selectedTruck } : d
+    );
+
+    // setTrucks(updatedTrucks);
+    // setDrivers(updatedDrivers);
+
+    // Update truck
+    const truckUpdateSuccess = await updateTruck(selectedTruck, { isAvailable: false, driverId: selectedDriver });
+    const driverUpdateSuccess = await updateDriver(selectedDriver, { isAvailable: false, currentTruckId: selectedTruck });
+
+    if (truckUpdateSuccess && driverUpdateSuccess) {
       toast({
-        title: "Missing Information",
-        description: "Please fill all truck details.",
-        variant: "destructive"
+        title: "Driver Assigned",
+        description: `Driver ${driver.name} has been assigned to truck ${truck.plateNumber}.`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to assign driver. Please try again.",
+        variant: "destructive",
+      });
+
+      // Revert the UI update if the API call failed
+      // setTrucks(trucks);
+      // setDrivers(drivers);
+    }
+
+    setTruckDetailsOpen(false);
+    setDriverDetailsOpen(false);
+    setSelectedTruck(null);
+    setSelectedDriver(null);
+  };
+
+  const handleUnassignDriver = async () => {
+    if (!selectedTruck) {
+      toast({
+        title: "Error",
+        description: "Please select a truck to unassign the driver.",
+        variant: "destructive",
       });
       return;
     }
-    
-    addTruck({
-      plateNumber: newTruckPlate,
-      capacity: parseInt(newTruckCapacity),
-      model: newTruckModel,
-      hasGPS: newTruckHasGPS === 'true',
-      isAvailable: true,
-      isGPSTagged: false
-    });
-    
-    setNewTruckPlate('');
-    setNewTruckCapacity('');
-    setNewTruckModel('');
-    setNewTruckHasGPS('true');
-    
-    toast({
-      title: "Truck Added",
-      description: "New truck has been added successfully.",
-    });
+
+    const truck = trucks.find(truck => truck.id === selectedTruck);
+    if (!truck || !truck.driverId) {
+      toast({
+        title: "Error",
+        description: "No driver assigned to the selected truck.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const driverId = truck.driverId;
+
+    // Optimistically update the UI
+    const updatedTrucks = trucks.map(t =>
+      t.id === selectedTruck ? { ...t, isAvailable: true, driverId: null } : t
+    );
+    const updatedDrivers = drivers.map(d =>
+      d.id === driverId ? { ...d, isAvailable: true, currentTruckId: null } : d
+    );
+
+    // setTrucks(updatedTrucks);
+    // setDrivers(updatedDrivers);
+
+    // Update truck
+    const truckUpdateSuccess = await updateTruck(selectedTruck, { isAvailable: true, driverId: null });
+    const driverUpdateSuccess = await updateDriver(driverId, { isAvailable: true, currentTruckId: null });
+
+    if (truckUpdateSuccess && driverUpdateSuccess) {
+      toast({
+        title: "Driver Unassigned",
+        description: `Driver has been unassigned from truck ${truck.plateNumber}.`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to unassign driver. Please try again.",
+        variant: "destructive",
+      });
+
+      // Revert the UI update if the API call failed
+      // setTrucks(trucks);
+      // setDrivers(drivers);
+    }
+
+    setTruckDetailsOpen(false);
+    setSelectedTruck(null);
+    setSelectedDriver(null);
   };
 
-  return (
-    <div className="animate-fade-in space-y-6">
-      <h1 className="text-2xl font-bold">Driver & Truck Management</h1>
-      
-      <Tabs defaultValue="assign" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="assign">Assign Driver</TabsTrigger>
-          <TabsTrigger value="drivers">Add Driver</TabsTrigger>
-          <TabsTrigger value="trucks">Add Truck</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="assign">
-          <Card>
-            <CardHeader>
-              <CardTitle>Assign Driver to Order</CardTitle>
-              <CardDescription>
-                Assign a driver and truck to a paid purchase order for delivery
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {eligibleOrders.length === 0 ? (
-                <div className="text-center py-6">
-                  <p className="text-muted-foreground">No eligible orders available for assignment</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Orders must be paid (active) and not already assigned
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="grid gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="order">Purchase Order</Label>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="w-80">Select a paid purchase order to assign a driver and truck for delivery.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <Select
-                        value={selectedOrderId}
-                        onValueChange={setSelectedOrderId}
-                      >
-                        <SelectTrigger id="order">
-                          <SelectValue placeholder="Select a purchase order" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {eligibleOrders.map((order) => (
-                            <SelectItem key={order.id} value={order.id}>
-                              PO #{order.poNumber || 'N/A'} - {order.supplier?.name || 'Unknown'} (₦{order.grandTotal?.toLocaleString() || '0'})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {availableDrivers.length === 0 ? (
-                      <div className="rounded-md bg-amber-50 p-4 mt-4">
-                        <div className="flex">
-                          <div className="flex-shrink-0">
-                            <User className="h-5 w-5 text-amber-400" aria-hidden="true" />
-                          </div>
-                          <div className="ml-3">
-                            <h3 className="text-sm font-medium text-amber-800">No available drivers</h3>
-                            <div className="mt-2 text-sm text-amber-700">
-                              <p>Add a new driver using the "Add Driver" tab.</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor="driver">Driver</Label>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="w-80">Select an available driver to handle this delivery.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                        <Select
-                          value={selectedDriverId}
-                          onValueChange={setSelectedDriverId}
-                        >
-                          <SelectTrigger id="driver">
-                            <SelectValue placeholder="Select a driver" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableDrivers.map((driver) => (
-                              <SelectItem key={driver.id} value={driver.id}>
-                                {driver.name} - {driver.contact || driver.contactPhone || 'No contact'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    
-                    {availableTrucks.length === 0 ? (
-                      <div className="rounded-md bg-amber-50 p-4 mt-4">
-                        <div className="flex">
-                          <div className="flex-shrink-0">
-                            <TruckIcon className="h-5 w-5 text-amber-400" aria-hidden="true" />
-                          </div>
-                          <div className="ml-3">
-                            <h3 className="text-sm font-medium text-amber-800">No available trucks</h3>
-                            <div className="mt-2 text-sm text-amber-700">
-                              <p>Add a new truck using the "Add Truck" tab.</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor="truck">Truck</Label>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="w-80">Select an available truck for this delivery. Trucks with GPS capability will require GPS tagging before transport.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                        <Select
-                          value={selectedTruckId}
-                          onValueChange={setSelectedTruckId}
-                        >
-                          <SelectTrigger id="truck">
-                            <SelectValue placeholder="Select a truck" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableTrucks.map((truck) => (
-                              <SelectItem key={truck.id} value={truck.id}>
-                                {truck.plateNumber} - {truck.model} ({truck.capacity.toLocaleString()} liters)
-                                {truck.hasGPS && !truck.isGPSTagged && " - GPS Tagging Required"}
-                                {truck.hasGPS && truck.isGPSTagged && " - GPS Active"}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <Button 
-                    className="w-full"
-                    onClick={handleAssign}
-                    disabled={!selectedOrderId || !selectedDriverId || !selectedTruckId}
-                  >
-                    Assign for Delivery
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="drivers">
-          <Card>
-            <CardHeader>
-              <CardTitle>Add New Driver</CardTitle>
-              <CardDescription>
-                Register a new driver in the system
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="driverName">Driver Name</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Enter the full name of the driver</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Input 
-                      id="driverName" 
-                      placeholder="Full Name"
-                      value={newDriverName}
-                      onChange={(e) => setNewDriverName(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="contactNumber">Contact Number</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Enter the driver's phone number</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Input 
-                      id="contactNumber" 
-                      placeholder="+234 800-000-0000"
-                      value={newDriverContact}
-                      onChange={(e) => setNewDriverContact(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="licenseNumber">License Number</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Enter the driver's license number</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Input 
-                      id="licenseNumber" 
-                      placeholder="DL-12345-NG"
-                      value={newDriverLicense}
-                      onChange={(e) => setNewDriverLicense(e.target.value)}
-                    />
-                  </div>
-                </div>
-                
-                <Button 
-                  className="w-full"
-                  onClick={handleAddDriver}
-                  disabled={!newDriverName || !newDriverContact || !newDriverLicense}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Driver
-                </Button>
-                
-                <Separator />
-                
-                <div>
-                  <h3 className="font-medium mb-4">Current Drivers ({drivers.length})</h3>
-                  <div className="space-y-4">
-                    {drivers.map((driver) => (
-                      <DriverCard key={driver.id} driver={driver} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="trucks">
-          <Card>
-            <CardHeader>
-              <CardTitle>Add New Truck</CardTitle>
-              <CardDescription>
-                Register a new truck in the system
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="plateNumber">Plate Number</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Enter the truck's license plate number</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Input 
-                      id="plateNumber" 
-                      placeholder="LG-234-KJA"
-                      value={newTruckPlate}
-                      onChange={(e) => setNewTruckPlate(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="truckModel">Truck Model</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Enter the truck's make and model</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Input 
-                      id="truckModel" 
-                      placeholder="MAN Diesel 2018"
-                      value={newTruckModel}
-                      onChange={(e) => setNewTruckModel(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="capacity">Capacity (liters)</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Enter the maximum fuel capacity of the truck in liters</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Input 
-                      id="capacity" 
-                      type="number"
-                      placeholder="33000"
-                      value={newTruckCapacity}
-                      onChange={(e) => setNewTruckCapacity(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="hasGPS">GPS Capability</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Indicate whether this truck has GPS tracking capability</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Select
-                      value={newTruckHasGPS}
-                      onValueChange={setNewTruckHasGPS}
-                    >
-                      <SelectTrigger id="hasGPS">
-                        <SelectValue placeholder="Does the truck have GPS?" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="true">Yes, GPS Enabled</SelectItem>
-                        <SelectItem value="false">No GPS</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <Button 
-                  className="w-full"
-                  onClick={handleAddTruck}
-                  disabled={!newTruckPlate || !newTruckCapacity || !newTruckModel}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Truck
-                </Button>
-                
-                <Separator />
-                
-                <div>
-                  <h3 className="font-medium mb-4">Current Trucks ({trucks.length})</h3>
-                  <div className="space-y-4">
-                    {trucks.map((truck) => (
-                      <TruckCard key={truck.id} truck={truck} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+  const handleToggleGPS = async (truckId: string) => {
+    const truck = trucks.find(truck => truck.id === truckId);
+    if (!truck) return;
+    
+    if (truck.isGPSTagged) {
+      const success = untagTruckGPS(truckId);
+      if (success) {
+        toast({
+          title: "GPS Device Untagged",
+          description: `GPS device has been successfully untagged from truck ${truckId}.`,
+        });
+        refreshData();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to untag GPS device. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      setSelectedTruck(truckId);
+      setGPSModalOpen(true);
+    }
+  };
 
-      <GPSTaggingDialog 
-        isOpen={isGPSDialogOpen} 
-        setIsOpen={setIsGPSDialogOpen} 
-        truckId={selectedTruckId}
-        onComplete={completeAssignment}
-      />
-    </div>
-  );
-};
+  const formSchema = z.object({
+    gpsDeviceId: z.string().min(1, "GPS device ID is required"),
+  });
 
-const GPSTaggingDialog = ({ 
-  isOpen, 
-  setIsOpen, 
-  truckId,
-  onComplete 
-}: { 
-  isOpen: boolean; 
-  setIsOpen: (open: boolean) => void; 
-  truckId: string;
-  onComplete: () => void;
-}) => {
-  const { tagTruckWithGPS, getTruckById } = useApp();
-  const truck = truckId ? getTruckById(truckId) : undefined;
-  
-  const form = useForm({
+  const form = useForm<z.infer<typeof gpsFormSchema>>({
     resolver: zodResolver(gpsFormSchema),
     defaultValues: {
       gpsDeviceId: "",
-      latitude: 6.5244, // Default to Lagos, Nigeria
+      latitude: 6.5244,
       longitude: 3.3792,
     },
-  });
+  })
 
-  const onSubmit = (values) => {
-    if (truckId) {
-      tagTruckWithGPS(
-        truckId, 
-        values.gpsDeviceId,
-        values.latitude,
-        values.longitude
-      );
-      
+  const handleAddGPSDevice = useCallback((data: any) => {
+    const success = tagTruckWithGPS(selectedTruck, data.gpsDeviceId);
+    
+    if (success) {
       toast({
-        title: "GPS Tagged",
-        description: "GPS device has been successfully tagged to the truck.",
+        title: "GPS Device Tagged",
+        description: `GPS device has been successfully tagged to truck ${selectedTruck}.`,
       });
-      
-      setIsOpen(false);
-      form.reset();
-      onComplete();
+      setGPSModalOpen(false);
+      refreshData();
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to tag GPS device. Please try again.",
+        variant: "destructive",
+      });
     }
+  }, [selectedTruck, tagTruckWithGPS, toast, refreshData]);
+
+  const handleUpdateGPSData = () => {
+    if (!selectedTruck) return;
+
+    // Mock GPS data update
+    const latitude = 6.5244 + (Math.random() - 0.5) * 0.01;
+    const longitude = 3.3792 + (Math.random() - 0.5) * 0.01;
+    const speed = Math.floor(Math.random() * 100);
+
+    updateGPSData(selectedTruck, latitude, longitude, speed);
+
+    toast({
+      title: "GPS Data Updated",
+      description: `GPS data for truck ${selectedTruck} has been updated.`,
+    });
+  };
+
+  const toggleAutoUpdate = () => {
+    setIsAutoUpdateEnabled(prev => {
+      const newValue = !prev;
+
+      if (newValue) {
+        // Start auto-update
+        setAutoUpdateInterval(setInterval(handleUpdateGPSData, 5000));
+      } else {
+        // Stop auto-update
+        if (autoUpdateInterval) {
+          clearInterval(autoUpdateInterval);
+          setAutoUpdateInterval(null);
+        }
+      }
+
+      return newValue;
+    });
+  };
+
+  const formatDate = (date: Date | string | undefined) => {
+    if (!date) return 'N/A';
+    return format(new Date(date), 'PPP');
+  };
+
+  const formatTime = (date: Date | string | undefined) => {
+    if (!date) return 'N/A';
+    return format(new Date(date), 'p');
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-primary" />
-            GPS Tagging Required
-          </DialogTitle>
-          <DialogDescription>
-            {truck ? `Tag truck ${truck.plateNumber} with a GPS device before assigning it to this order.` : 'Tag truck with a GPS device before assigning it to this order.'}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="gpsDeviceId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>GPS Device ID</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter GPS device ID" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Enter the unique identifier of the GPS tracking device
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="latitude"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Initial Latitude</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.0001" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+    <div className="space-y-6 animate-fade-in">
+      <div className="md:grid md:grid-cols-2 md:gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Available Trucks</CardTitle>
+            <CardDescription>Select a truck to view details and assign a driver</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[300px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Plate Number</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead className="text-right">Capacity</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {availableTrucks.map((truck) => (
+                    <TableRow key={truck.id} onClick={() => handleTruckSelection(truck.id)} className="cursor-pointer hover:bg-muted">
+                      <TableCell className="font-medium">{truck.plateNumber}</TableCell>
+                      <TableCell>{truck.model}</TableCell>
+                      <TableCell className="text-right">{truck.capacity}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Available Drivers</CardTitle>
+            <CardDescription>Select a driver to view details and assign to a truck</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[300px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>License</TableHead>
+                    <TableHead className="text-right">Experience</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {availableDrivers.map((driver) => (
+                    <TableRow key={driver.id} onClick={() => handleDriverSelection(driver.id)} className="cursor-pointer hover:bg-muted">
+                      <TableCell className="font-medium">{driver.name}</TableCell>
+                      <TableCell>{driver.licenseNumber}</TableCell>
+                      <TableCell className="text-right">{driver.yearsOfExperience}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Truck Details Modal */}
+      {truckDetailsOpen && selectedTruck && (
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle>Truck Details</CardTitle>
+            <CardDescription>Information about the selected truck</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {trucks.filter(truck => truck.id === selectedTruck).map(truck => (
+              <div key={truck.id} className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Plate Number</h3>
+                    <p className="text-lg font-semibold">{truck.plateNumber}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Model</h3>
+                    <p className="text-lg font-semibold">{truck.model}</p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Capacity</h3>
+                    <p className="text-lg font-semibold">{truck.capacity}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                    <p className="text-lg font-semibold">{truck.isAvailable ? 'Available' : 'Assigned'}</p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">GPS Tagged</h3>
+                    <p className="text-lg font-semibold">
+                      {truck.isGPSTagged ? (
+                        <span className="flex items-center gap-2 text-green-500">
+                          <CheckCircle className="h-4 w-4" />
+                          Tagged
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2 text-red-500">
+                          <AlertTriangle className="h-4 w-4" />
+                          Not Tagged
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  {truck.isGPSTagged && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">GPS Device ID</h3>
+                      <p className="text-lg font-semibold">{truck.gpsDeviceId}</p>
+                    </div>
+                  )}
+                </div>
+                
+                {truck.driverId && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">Assigned Driver</h3>
+                      {drivers.filter(driver => driver.id === truck.driverId).map(driver => (
+                        <div key={driver.id} className="space-y-1">
+                          <p className="text-lg font-semibold">{driver.name}</p>
+                          <p className="text-sm text-muted-foreground">{driver.licenseNumber}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="longitude"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Initial Longitude</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.0001" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                
+                <Separator />
+                
+                <div className="flex justify-between">
+                  <Button variant="secondary" onClick={() => setTruckDetailsOpen(false)}>
+                    Close
+                  </Button>
+                  
+                  {truck.isAvailable ? (
+                    <Button onClick={handleAssignDriver} disabled={!selectedDriver}>
+                      Assign Driver
+                    </Button>
+                  ) : (
+                    <Button variant="destructive" onClick={handleUnassignDriver}>
+                      Unassign Driver
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Driver Details Modal */}
+      {driverDetailsOpen && selectedDriver && (
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle>Driver Details</CardTitle>
+            <CardDescription>Information about the selected driver</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {drivers.filter(driver => driver.id === selectedDriver).map(driver => (
+              <div key={driver.id} className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Name</h3>
+                    <p className="text-lg font-semibold">{driver.name}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">License Number</h3>
+                    <p className="text-lg font-semibold">{driver.licenseNumber}</p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Years of Experience</h3>
+                    <p className="text-lg font-semibold">{driver.yearsOfExperience}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                    <p className="text-lg font-semibold">{driver.isAvailable ? 'Available' : 'Assigned'}</p>
+                  </div>
+                </div>
+                
+                {driver.currentTruckId && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">Assigned Truck</h3>
+                      {trucks.filter(truck => truck.id === driver.currentTruckId).map(truck => (
+                        <div key={truck.id} className="space-y-1">
+                          <p className="text-lg font-semibold">{truck.plateNumber}</p>
+                          <p className="text-sm text-muted-foreground">{truck.model}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
-              />
+                
+                <Separator />
+                
+                <div className="flex justify-between">
+                  <Button variant="secondary" onClick={() => setDriverDetailsOpen(false)}>
+                    Close
+                  </Button>
+                  
+                  {driver.isAvailable ? (
+                    <Button onClick={handleAssignDriver} disabled={!selectedTruck}>
+                      Assign to Truck
+                    </Button>
+                  ) : (
+                    <Button variant="destructive" onClick={handleUnassignDriver} disabled={!selectedTruck}>
+                      Unassign from Truck
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* GPS Management Section */}
+      <Card className="shadow-md">
+        <CardHeader>
+          <CardTitle>GPS Management</CardTitle>
+          <CardDescription>Tag and manage GPS devices for your trucks</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Truck</h3>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start">
+                    {selectedTruck ? trucks.find(truck => truck.id === selectedTruck)?.plateNumber : "Select Truck"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  {nonGPSTrucks.map(truck => (
+                    <DropdownMenuItem key={truck.id} onClick={() => setSelectedTruck(truck.id)}>
+                      {truck.plateNumber} - {truck.model}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             
-            <DialogFooter>
-              <Button type="submit">
-                <Check className="mr-2 h-4 w-4" />
-                Confirm GPS Tagging
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-        
-        <div className="text-xs text-muted-foreground mt-4">
-          <div className="flex items-center gap-1 mb-1">
-            <AlertTriangle className="h-3 w-3 text-amber-500" />
-            <span className="font-medium">Important:</span>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Actions</h3>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => {
+                    if (selectedTruck) {
+                      handleToggleGPS(selectedTruck);
+                    } else {
+                      toast({
+                        title: "Error",
+                        description: "Please select a truck first.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  disabled={!selectedTruck}
+                >
+                  {trucks.find(truck => truck.id === selectedTruck)?.isGPSTagged ? 'Untag GPS' : 'Tag GPS'}
+                </Button>
+                
+                <Button 
+                  variant="secondary"
+                  onClick={() => {
+                    if (selectedTruck) {
+                      navigate(`/truck-gps-history/${selectedTruck}`);
+                    } else {
+                      toast({
+                        title: "Error",
+                        description: "Please select a truck first.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  disabled={!selectedTruck}
+                >
+                  View GPS History
+                </Button>
+              </div>
+            </div>
           </div>
-          <p>A GPS-tagged truck can be tracked in real-time during delivery and is required for marking a delivery "In Transit".</p>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const DriverCard: React.FC<{ driver: Driver }> = ({ driver }) => {
-  return (
-    <div className="rounded-md border p-4">
-      <div className="flex justify-between">
-        <div>
-          <h4 className="font-medium">{driver.name}</h4>
-          <p className="text-sm text-muted-foreground">{driver.contact || driver.contactPhone || 'No contact'}</p>
-          <p className="text-xs text-muted-foreground mt-1">License: {driver.licenseNumber}</p>
-        </div>
-        <div>
-          <span className={`px-2 py-1 rounded-full text-xs ${
-            driver.isAvailable 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-amber-100 text-amber-800'
-          }`}>
-            {driver.isAvailable ? 'Available' : 'On Delivery'}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const TruckCard: React.FC<{ truck: Truck }> = ({ truck }) => {
-  return (
-    <div className="rounded-md border p-4">
-      <div className="flex justify-between">
-        <div>
-          <h4 className="font-medium">{truck.plateNumber}</h4>
-          <p className="text-sm text-muted-foreground">{truck.model}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Capacity: {truck.capacity.toLocaleString()} liters
-            {truck.hasGPS && !truck.isGPSTagged && ' • GPS Ready'}
-            {truck.hasGPS && truck.isGPSTagged && ' • GPS Active'}
-            {!truck.hasGPS && ' • No GPS'}
-          </p>
-        </div>
-        <div>
-          <span className={`px-2 py-1 rounded-full text-xs ${
-            truck.isAvailable 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-amber-100 text-amber-800'
-          }`}>
-            {truck.isAvailable ? 'Available' : 'On Delivery'}
-          </span>
-        </div>
-      </div>
+          
+          {selectedTruck && (
+            <>
+              <Separator />
+              
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Recent GPS Data</h3>
+                <ScrollArea className="h-[200px] rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Timestamp</TableHead>
+                        <TableHead>Latitude</TableHead>
+                        <TableHead>Longitude</TableHead>
+                        <TableHead>Speed</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {gpsData.map(data => (
+                        <TableRow key={data.id}>
+                          <TableCell>{formatTime(data.timestamp)}</TableCell>
+                          <TableCell>{data.latitude}</TableCell>
+                          <TableCell>{data.longitude}</TableCell>
+                          <TableCell>{data.speed}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </div>
+              
+              <Separator />
+              
+              <div className="flex items-center justify-between">
+                <div className="space-x-2 flex items-center">
+                  <Label htmlFor="auto-update">Auto Update</Label>
+                  <Switch id="auto-update" checked={isAutoUpdateEnabled} onCheckedChange={toggleAutoUpdate} />
+                </div>
+                
+                <Button onClick={handleUpdateGPSData} disabled={isAutoUpdateEnabled}>
+                  Update GPS Data
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* GPS Device Modal */}
+      <AlertDialog open={gpsModalOpen} onOpenChange={setGPSModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tag GPS Device</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter the GPS device ID to tag to the selected truck.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleAddGPSDevice)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="gpsDeviceId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>GPS Device ID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter GPS Device ID" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <Button type="submit">Tag Device</Button>
+              </AlertDialogFooter>
+            </form>
+          </Form>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

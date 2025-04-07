@@ -1,4 +1,53 @@
-import { StoredAppData, loadAppState, clearAppState } from './localStorage/appState';
+
+import { STORAGE_KEYS } from './localStorage/constants';
+import { getFromLocalStorage } from './localStorage';
+
+// Type definition for StoredAppData
+export interface StoredAppData {
+  purchaseOrders: any[];
+  logs: any[];
+  suppliers: any[];
+  drivers: any[];
+  trucks: any[];
+  gpsData: any[];
+  aiInsights: any[];
+  staff: any[];
+  dispensers: any[];
+  shifts: any[];
+  sales: any[];
+  prices: any[];
+  incidents: any[];
+  activityLogs: any[];
+  tanks: any[];
+}
+
+// Load app state from local storage
+export const loadAppState = (): StoredAppData => {
+  return {
+    purchaseOrders: getFromLocalStorage(STORAGE_KEYS.PURCHASE_ORDERS, []),
+    logs: getFromLocalStorage(STORAGE_KEYS.LOGS, []),
+    suppliers: getFromLocalStorage(STORAGE_KEYS.SUPPLIERS, []),
+    drivers: getFromLocalStorage(STORAGE_KEYS.DRIVERS, []),
+    trucks: getFromLocalStorage(STORAGE_KEYS.TRUCKS, []),
+    gpsData: getFromLocalStorage(STORAGE_KEYS.GPS_DATA, []),
+    aiInsights: getFromLocalStorage(STORAGE_KEYS.AI_INSIGHTS, []),
+    staff: getFromLocalStorage(STORAGE_KEYS.STAFF, []),
+    dispensers: getFromLocalStorage(STORAGE_KEYS.DISPENSERS, []),
+    shifts: getFromLocalStorage(STORAGE_KEYS.SHIFTS, []),
+    sales: getFromLocalStorage(STORAGE_KEYS.SALES, []),
+    prices: getFromLocalStorage(STORAGE_KEYS.PRICES, []),
+    incidents: getFromLocalStorage(STORAGE_KEYS.INCIDENTS, []),
+    activityLogs: getFromLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, []),
+    tanks: getFromLocalStorage(STORAGE_KEYS.TANKS, [])
+  };
+};
+
+// Clear app state from local storage
+export const clearAppState = (): void => {
+  Object.values(STORAGE_KEYS).forEach(key => {
+    localStorage.removeItem(key);
+  });
+};
 
 // Data schemas for the different entities
 const SCHEMAS = {

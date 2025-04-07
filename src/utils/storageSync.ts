@@ -1,5 +1,5 @@
 
-import { StoredAppData } from './localStorage/appState';
+import { formatBytes as formatSizeBytes } from './formatBytes';
 
 // Event name for broadcasting storage updates
 const STORAGE_UPDATE_EVENT = 'PO_SYSTEM_STORAGE_UPDATE';
@@ -12,13 +12,7 @@ interface StorageUpdateEvent {
 
 // Format bytes to human readable format
 export const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
-  
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return formatSizeBytes(bytes);
 };
 
 // Broadcast a storage update to other components/tabs

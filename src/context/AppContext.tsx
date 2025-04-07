@@ -517,7 +517,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: new Date(),
       severity: "low",
       isRead: false,
-      generatedAt: new Date()
+      generatedAt: new Date(),
+      relatedEntityIds: []
     };
     
     setAiInsights(prev => [...prev, newInsight]);
@@ -727,101 +728,122 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   }, [sales]);
 
-  const contextValue: AppContextType = {
-    purchaseOrders,
-    logs,
-    suppliers,
-    drivers,
-    trucks,
-    gpsData,
-    aiInsights,
-    staff,
-    dispensers,
-    shifts,
-    sales,
-    prices,
-    incidents,
-    activityLogs,
-    tanks,
-    company,
-    addPurchaseOrder,
-    updatePurchaseOrder,
-    getPurchaseOrderById,
-    getOrderById,
-    getAllPurchaseOrders,
-    deletePurchaseOrder,
-    addLog,
-    getLogsByOrderId,
-    getLogById,
-    deleteLog,
-    getAllLogs,
-    addSupplier,
-    updateSupplier,
-    getSupplierById,
-    getAllSuppliers,
-    deleteSupplier,
-    addDriver,
-    updateDriver,
-    getDriverById,
-    getAllDrivers,
-    deleteDriver,
-    getAvailableDrivers,
-    addTruck,
-    updateTruck,
-    getTruckById,
-    getAllTrucks,
-    deleteTruck,
-    getAvailableTrucks,
-    tagTruckWithGPS,
-    untagTruckGPS,
-    getNonGPSTrucks,
-    addGPSData,
-    getGPSDataForTruck,
-    getAllGPSData,
-    updateGPSData,
-    addAIInsight,
-    markAIInsightAsRead,
-    getUnreadAIInsights,
-    getAllAIInsights,
-    resetAIInsights,
-    getInsightsByType,
-    generateAIInsights,
-    addStaff,
-    updateStaff,
-    getStaffById,
-    getAllStaff,
-    deleteStaff,
-    getActiveStaff,
-    addDispenser,
-    updateDispenser,
-    getDispenserById,
-    getAllDispensers,
-    deleteDispenser,
-    getActiveDispensers,
-    addShift,
-    updateShift,
-    getShiftById,
-    getAllShifts,
-    deleteShift,
-    getCurrentShift,
-    addSale,
-    updateSale,
-    getSaleById,
-    getAllSales,
-    deleteSale
-  };
-
-  return (
-    <AppContext.Provider value={contextValue}>
-      {children}
-    </AppContext.Provider>
-  );
-};
-
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
-  return context;
-};
+  // Add missing functions required by AppContextType
+  const updateOrderStatus = useCallback(async (id: string, status: OrderStatus): Promise<boolean> => {
+    const orderIndex = purchaseOrders.findIndex(order => order.id === id);
+    if (orderIndex === -1) return false;
+    
+    await updatePurchaseOrder(id, { status });
+    return true;
+  }, [purchaseOrders, updatePurchaseOrder]);
+  
+  const getOrdersWithDeliveryStatus = useCallback((status: string): PurchaseOrder[] => {
+    return purchaseOrders.filter(order => 
+      order.deliveryDetails && order.deliveryDetails.status === status
+    );
+  }, [purchaseOrders]);
+  
+  const getOrdersWithDiscrepancies = useCallback((): PurchaseOrder[] => {
+    return purchaseOrders.filter(order => 
+      order.offloadingDetails && order.offloadingDetails.isDiscrepancyFlagged
+    );
+  }, [purchaseOrders]);
+  
+  const logAIInteraction = useCallback((prompt: string, response: string): void => {
+    const newLog: ActivityLog = {
+      id: `log-${uuidv4()}`,
+      entityType: 'ai',
+      entityId: 'chat',
+      action: 'interaction',
+      details: `AI chat interaction`,
+      user: 'Current User',
+      timestamp: new Date(),
+      metadata: { prompt, response }
+    };
+    
+    setActivityLogs(prev => [newLog, ...prev]);
+  }, []);
+  
+  const getSalesForShift = useCallback((shiftId: string): Sale[] => {
+    return sales.filter(sale => sale.shiftId === shiftId);
+  }, [sales]);
+  
+  const addPrice = useCallback((price: Omit<Price, 'id'>): Price => {
+    const newPrice: Price = {
+      ...price,
+      id: uuidv4()
+    };
+    
+    setPrices(prev => [...prev, newPrice]);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, [...prices, newPrice]);
+    return newPrice;
+  }, [prices]);
+  
+  const updatePrice = useCallback((id: string, priceUpdate: Partial<Price>): Price | null => {
+    const priceIndex = prices.findIndex(p => p.id === id);
+    if (priceIndex === -1) return null;
+    
+    const updatedPrice = {
+      ...prices[priceIndex],
+      ...priceUpdate
+    };
+    
+    const newPrices = [...prices];
+    newPrices[priceIndex] = updatedPrice;
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
+    return updatedPrice;
+  }, [prices]);
+  
+  const deletePrice = useCallback((id: string): boolean => {
+    const priceIndex = prices.findIndex(p => p.id === id);
+    if (priceIndex === -1) return false;
+    
+    const newPrices = prices.filter(p => p.id !== id);
+    setPrices(newPrices);
+    saveToLocalStorage(STORAGE_KEYS.PRICES, newPrices);
+    return true;
+  }, [prices]);
+  
+  const getPriceById = useCallback((id: string): Price | undefined => {
+    return prices.find(p => p.id === id);
+  }, [prices]);
+  
+  const getAllPrices = useCallback((params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<Price> => {
+    return getPaginatedData(prices, params);
+  }, [prices]);
+  
+  const getCurrentPrices = useCallback((): Record<ProductType, number> => {
+    const currentPrices: Partial<Record<ProductType, number>> = {};
+    
+    prices.forEach(price => {
+      if (price.isActive) {
+        currentPrices[price.productType as ProductType] = price.price;
+      }
+    });
+    
+    return currentPrices as Record<ProductType, number>;
+  }, [prices]);
+  
+  // Incident functions
+  const addIncident = useCallback((incident: Omit<Incident, 'id'>): Incident => {
+    const newIncident: Incident = {
+      ...incident,
+      id: uuidv4()
+    };
+    
+    setIncidents(prev => [...prev, newIncident]);
+    saveToLocalStorage(STORAGE_KEYS.INCIDENTS, [...incidents, newIncident]);
+    return newIncident;
+  }, [incidents]);
+  
+  const updateIncident = useCallback((id: string, incidentUpdate: Partial<Incident>): Incident | null => {
+    const incidentIndex = incidents.findIndex(i => i.id === id);
+    if (incidentIndex === -1) return null;
+    
+    const updatedIncident = {
+      ...incidents[incidentIndex],
+      ...incidentUpdate
+    };
+    
+    const newIncidents = [...incidents];
