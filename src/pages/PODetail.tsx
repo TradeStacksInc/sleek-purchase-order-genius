@@ -1,270 +1,507 @@
-import React from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
-import { format } from 'date-fns';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, FileCheck, Clock, AlertCircle } from 'lucide-react';
-import { OrderStatus } from '@/types';
-import StatusTracker from '@/components/PurchaseOrder/StatusTracker';
+import { format } from 'date-fns';
+import { 
+  ArrowLeft, 
+  Truck, 
+  Calendar, 
+  DollarSign, 
+  FileText, 
+  User, 
+  Clock, 
+  CheckCircle2, 
+  XCircle,
+  AlertTriangle,
+  BarChart3,
+  MapPin,
+  Droplet
+} from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PurchaseOrder, LogEntry, Supplier } from '@/types';
+import { getStatusColor, formatCurrency } from '@/utils/formatters';
+import DeliveryStatusBadge from '@/components/DeliveryStatusBadge';
+import { toast } from '@/hooks/use-toast';
 
 const PODetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getOrderById, getLogsByOrderId, updateOrderStatus } = useApp();
+  const { getPurchaseOrderById, getLogsByOrderId, getSupplierById } = useApp();
   
-  const order = getOrderById(id!);
-  const logsResult = getLogsByOrderId(id!);
-  const logs = logsResult?.data || [];
+  const [order, setOrder] = useState<any | null>(null);
+  const [supplier, setSupplier] = useState<any | null>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+  
+  useEffect(() => {
+    if (id) {
+      const purchaseOrder = getPurchaseOrderById(id);
+      setOrder(purchaseOrder || null);
+      
+      if (purchaseOrder?.supplierId) {
+        const supplierData = getSupplierById(purchaseOrder.supplierId);
+        setSupplier(supplierData || null);
+      }
+      
+      // Get logs for this order
+      const orderLogs = getLogsByOrderId(id);
+      setLogs(orderLogs || []);
+    }
+  }, [id, getPurchaseOrderById, getSupplierById, getLogsByOrderId]);
+
+  // Access logs directly without .data property
+  console.log("Logs:", logs);
   
   if (!order) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh]">
-        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Purchase Order Not Found</h2>
-        <p className="text-muted-foreground mb-6">The purchase order you're looking for doesn't exist</p>
-        <Button variant="default" onClick={() => navigate('/')}>
-          Return to Dashboard
+        <AlertTriangle className="h-16 w-16 text-amber-500 mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Purchase Order Not Found</h2>
+        <p className="text-muted-foreground mb-6">The purchase order you're looking for doesn't exist or has been deleted.</p>
+        <Button onClick={() => navigate('/purchase-orders')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Purchase Orders
         </Button>
       </div>
     );
   }
-  
-  const getStatusIcon = (status: OrderStatus) => {
-    switch (status) {
-      case 'pending':
-        return <Clock className="h-5 w-5 text-status-pending" />;
-      case 'active':
-        return <Clock className="h-5 w-5 text-status-active" />;
-      case 'fulfilled':
-        return <FileCheck className="h-5 w-5 text-status-fulfilled" />;
-      default:
-        return null;
-    }
+
+  const getStatusBadge = (status: string) => {
+    const statusColors: Record<string, string> = {
+      draft: 'bg-gray-200 text-gray-800',
+      active: 'bg-green-100 text-green-800',
+      completed: 'bg-blue-100 text-blue-800',
+      cancelled: 'bg-red-100 text-red-800',
+      pending: 'bg-amber-100 text-amber-800',
+    };
+
+    return (
+      <Badge className={statusColors[status] || 'bg-gray-200'}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
-  
-  const getStatusColor = (status: OrderStatus) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-status-pending/20 text-status-pending border-status-pending/50';
-      case 'active':
-        return 'bg-status-active/20 text-status-active border-status-active/50';
-      case 'fulfilled':
-        return 'bg-status-fulfilled/20 text-status-fulfilled border-status-fulfilled/50';
-      default:
-        return '';
-    }
+
+  const getPaymentStatusBadge = (status: string) => {
+    const statusColors: Record<string, string> = {
+      unpaid: 'bg-red-100 text-red-800',
+      partial: 'bg-amber-100 text-amber-800',
+      paid: 'bg-green-100 text-green-800',
+    };
+
+    return (
+      <Badge className={statusColors[status] || 'bg-gray-200'}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
-  
-  const getNextAction = () => {
-    switch (order.status) {
-      case 'pending':
-        return (
-          <Button 
-            className="mt-4" 
-            onClick={() => updateOrderStatus(order.id, 'active')}
-          >
-            Mark as Paid
-          </Button>
-        );
-      case 'active':
-        return (
-          <Button 
-            className="mt-4" 
-            onClick={() => updateOrderStatus(order.id, 'fulfilled')}
-          >
-            Mark as Delivered
-          </Button>
-        );
-      default:
-        return null;
-    }
+
+  const formatDate = (date: Date | string | undefined) => {
+    if (!date) return 'N/A';
+    return format(new Date(date), 'PPP');
   };
-  
+
+  const formatTime = (date: Date | string | undefined) => {
+    if (!date) return 'N/A';
+    return format(new Date(date), 'p');
+  };
+
+  const formatDateTime = (date: Date | string | undefined) => {
+    if (!date) return 'N/A';
+    return format(new Date(date), 'PPp');
+  };
+
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center mb-6">
-        <Button variant="ghost" onClick={() => navigate('/')} className="mr-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
+    <div className="animate-fade-in space-y-6">
+      <div className="flex justify-between items-center">
+        <Button variant="outline" onClick={() => navigate('/purchase-orders')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Purchase Orders
         </Button>
-        <h1 className="text-2xl font-bold">Purchase Order Details</h1>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Status:</span>
+          {getStatusBadge(order.status)}
+          
+          <span className="text-sm text-muted-foreground ml-4">Payment:</span>
+          {getPaymentStatusBadge(order.paymentStatus || 'unpaid')}
+        </div>
       </div>
       
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Order Overview Card */}
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-xl">
-                    <span className="text-muted-foreground text-sm font-normal mr-2">Order #</span>
-                    {order.poNumber}
-                  </CardTitle>
-                  <CardDescription>
-                    Created on {format(new Date(order.createdAt), 'MMMM d, yyyy')}
-                  </CardDescription>
-                </div>
-                <Badge className="ml-auto text-sm py-1 px-3">
-                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                </Badge>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex justify-between items-center">
+              <span>Purchase Order #{order.poNumber || 'Draft'}</span>
+              {order.deliveryDetails && (
+                <DeliveryStatusBadge status={order.deliveryDetails.status} />
+              )}
+            </CardTitle>
+            <CardDescription>
+              Created on {formatDateTime(order.createdAt)}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Order Date</h3>
+                <p className="flex items-center mt-1">
+                  <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                  {formatDate(order.orderDate)}
+                </p>
               </div>
-            </CardHeader>
-            <CardContent>
-              {/* Status Tracker */}
-              <div className="mb-6">
-                <StatusTracker 
-                  currentStatus={order.status} 
-                  statusHistory={order.statusHistory}
-                />
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Expected Delivery</h3>
+                <p className="flex items-center mt-1">
+                  <Truck className="h-4 w-4 mr-2 text-muted-foreground" />
+                  {formatDate(order.expectedDeliveryDate)}
+                </p>
               </div>
-
-              <Alert className={cn("border mb-6", getStatusColor(order.status))}>
-                <div className="flex items-start">
-                  {getStatusIcon(order.status)}
-                  <div className="ml-3">
-                    <AlertTitle>
-                      {order.status === 'pending' ? 'Payment Pending' : 
-                       order.status === 'active' ? 'Order Active' : 
-                       'Order Fulfilled'}
-                    </AlertTitle>
-                    <AlertDescription>
-                      {order.status === 'pending' ? 
-                        'This order is awaiting payment before processing.' : 
-                        order.status === 'active' ? 
-                        'This order has been paid and is awaiting delivery.' : 
-                        'This order has been delivered and completed.'}
-                    </AlertDescription>
-                  </div>
-                </div>
-              </Alert>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-                <div>
-                  <h3 className="font-medium mb-2">Company Information</h3>
-                  <div className="text-sm space-y-1 text-muted-foreground">
-                    <p>{order.company.name}</p>
-                    <p>{order.company.address}</p>
-                    <p>{order.company.contact}</p>
-                    <p>Tax ID: {order.company.taxId}</p>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-medium mb-2">Supplier Information</h3>
-                  <div className="text-sm space-y-1 text-muted-foreground">
-                    <p>{order.supplier.name}</p>
-                    <p>{order.supplier.address}</p>
-                    <p>{order.supplier.contact}</p>
-                  </div>
-                </div>
+            </div>
+            
+            <Separator />
+            
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Supplier</h3>
+              <div className="mt-1 rounded-md border p-3">
+                <p className="font-medium">{supplier?.name || order.supplierName || 'Unknown Supplier'}</p>
+                {supplier && (
+                  <>
+                    <p className="text-sm text-muted-foreground">{supplier.contactName}</p>
+                    <p className="text-sm text-muted-foreground">{supplier.email}</p>
+                    <p className="text-sm text-muted-foreground">{supplier.phone}</p>
+                  </>
+                )}
               </div>
-              
-              <h3 className="font-medium mb-3">Order Items</h3>
-              <div className="rounded-md border mb-6">
-                <div className="relative w-full overflow-auto">
-                  <table className="w-full caption-bottom text-sm">
-                    <thead className="border-b bg-muted/50">
-                      <tr>
-                        <th className="px-4 py-3 text-left font-medium">Product</th>
-                        <th className="px-4 py-3 text-right font-medium">Quantity (Liters)</th>
-                        <th className="px-4 py-3 text-right font-medium">Unit Price (₦)</th>
-                        <th className="px-4 py-3 text-right font-medium">Total (₦)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {order.items.map((item) => (
-                        <tr key={item.id} className="border-b">
-                          <td className="px-4 py-3">{item.product}</td>
-                          <td className="px-4 py-3 text-right">{item.quantity.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right">{item.unitPrice.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right font-medium">{item.totalPrice.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={3} className="px-4 py-3 text-right font-medium">Grand Total:</td>
-                        <td className="px-4 py-3 text-right font-bold">₦{order.grandTotal.toLocaleString()}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+            </div>
+            
+            <Separator />
+            
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Delivery Location</h3>
+              <p className="flex items-start mt-1">
+                <MapPin className="h-4 w-4 mr-2 text-muted-foreground mt-1" />
+                <span>{order.deliveryAddress || 'No delivery address specified'}</span>
+              </p>
+            </div>
+            
+            <Separator />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Payment Terms</h3>
+                <p className="flex items-center mt-1">
+                  <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
+                  {order.paymentTerms || 'Not specified'}
+                </p>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium mb-2">Payment Terms</h3>
-                  <p className="text-sm text-muted-foreground">{order.paymentTerm}</p>
-                </div>
-                <div>
-                  <h3 className="font-medium mb-2">Expected Delivery Date</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(order.deliveryDate), 'MMMM d, yyyy')}
-                  </p>
-                </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Payment Status</h3>
+                <p className="mt-1">
+                  {getPaymentStatusBadge(order.paymentStatus || 'unpaid')}
+                </p>
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-between border-t pt-6">
-              <Button variant="outline" onClick={() => navigate('/')}>
-                Back to Dashboard
-              </Button>
-              {getNextAction()}
-            </CardFooter>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
         
-        {/* Activity Log Card */}
-        <div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Order Details</CardTitle>
+            <CardDescription>
+              Products, quantities, and pricing information
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ScrollArea className="h-[200px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead className="text-right">Unit Price</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {order.items && order.items.map((item: any, index: number) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <div className="font-medium">{item.productName}</div>
+                        <div className="text-sm text-muted-foreground">{item.productType}</div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.quantity.toLocaleString()} {item.unit || 'liters'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(item.unitPrice)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(item.totalPrice)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+            
+            <Separator />
+            
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Subtotal:</span>
+                <span>{formatCurrency(order.subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Tax ({order.taxRate || 0}%):</span>
+                <span>{formatCurrency(order.taxAmount)}</span>
+              </div>
+              {order.discountAmount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Discount:</span>
+                  <span>-{formatCurrency(order.discountAmount)}</span>
+                </div>
+              )}
+              <Separator />
+              <div className="flex justify-between font-bold">
+                <span>Grand Total:</span>
+                <span>{formatCurrency(order.grandTotal)}</span>
+              </div>
+            </div>
+            
+            {order.notes && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Notes</h3>
+                  <p className="mt-1 text-sm">{order.notes}</p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Tabs defaultValue="delivery" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="delivery">Delivery Information</TabsTrigger>
+          <TabsTrigger value="logs">Activity Logs</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="delivery" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Activity Log</CardTitle>
+              <CardTitle>Delivery Status</CardTitle>
               <CardDescription>
-                Recent activity for this purchase order
+                Track the current status of this delivery
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-5">
-                {logs.map((log) => (
-                  <div key={log.id}>
-                    <div className="flex gap-3">
-                      <div className="flex-none mt-0.5">
-                        <div className="bg-muted rounded-full w-8 h-8 flex items-center justify-center text-xs font-medium">
-                          {log.user.split(' ').map(n => n[0]).join('')}
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium">{log.action}</div>
-                        <div className="text-xs text-muted-foreground flex items-center">
-                          <span>{log.user}</span>
-                          <span className="mx-1">•</span>
-                          <span>{format(new Date(log.timestamp), 'MMM d, h:mm a')}</span>
-                        </div>
-                      </div>
+              {order.deliveryDetails ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">Driver</h3>
+                      <p className="flex items-center mt-1">
+                        <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                        {order.deliveryDetails.driverName || 'Not assigned'}
+                      </p>
                     </div>
-                    <Separator className="my-4" />
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">Vehicle</h3>
+                      <p className="flex items-center mt-1">
+                        <Truck className="h-4 w-4 mr-2 text-muted-foreground" />
+                        {order.deliveryDetails.vehicleDetails || 'Not assigned'}
+                      </p>
+                    </div>
                   </div>
-                ))}
-                
-                {logs.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No activity recorded yet</p>
+                  
+                  <Separator />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">Depot Departure</h3>
+                      <p className="flex items-center mt-1">
+                        <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                        {order.deliveryDetails.depotDepartureTime 
+                          ? formatDateTime(order.deliveryDetails.depotDepartureTime) 
+                          : 'Not departed'}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">Expected Arrival</h3>
+                      <p className="flex items-center mt-1">
+                        <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                        {order.deliveryDetails.expectedArrivalTime 
+                          ? formatDateTime(order.deliveryDetails.expectedArrivalTime) 
+                          : 'Not available'}
+                      </p>
+                    </div>
                   </div>
-                )}
+                  
+                  <Separator />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">Actual Arrival</h3>
+                      <p className="flex items-center mt-1">
+                        <CheckCircle2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                        {order.deliveryDetails.actualArrivalTime 
+                          ? formatDateTime(order.deliveryDetails.actualArrivalTime) 
+                          : 'Not arrived'}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">Distance</h3>
+                      <p className="flex items-center mt-1">
+                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                        {order.deliveryDetails.totalDistance 
+                          ? `${order.deliveryDetails.totalDistance} km` 
+                          : 'Not available'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {order.offloadingDetails && (
+                    <>
+                      <Separator />
+                      
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground">Offloading Details</h3>
+                        <div className="mt-2 rounded-md border p-3 space-y-2">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Loaded Volume</p>
+                              <p className="font-medium">{order.offloadingDetails.loadedVolume.toLocaleString()} liters</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Delivered Volume</p>
+                              <p className="font-medium">{order.offloadingDetails.deliveredVolume.toLocaleString()} liters</p>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <p className="text-xs text-muted-foreground">Discrepancy</p>
+                            <div className="flex items-center">
+                              <p className={`font-medium ${order.offloadingDetails.isDiscrepancyFlagged ? 'text-red-600' : 'text-green-600'}`}>
+                                {order.offloadingDetails.discrepancyPercentage.toFixed(2)}%
+                              </p>
+                              {order.offloadingDetails.isDiscrepancyFlagged && (
+                                <AlertTriangle className="h-4 w-4 ml-2 text-red-600" />
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <p className="text-xs text-muted-foreground">Tank Information</p>
+                            <p className="font-medium">
+                              <Droplet className="h-4 w-4 inline mr-1 text-blue-500" />
+                              Initial: {order.offloadingDetails.initialTankVolume.toLocaleString()} liters
+                              {' → '}
+                              Final: {order.offloadingDetails.finalTankVolume.toLocaleString()} liters
+                            </p>
+                          </div>
+                          
+                          {order.offloadingDetails.notes && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Notes</p>
+                              <p className="text-sm">{order.offloadingDetails.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <Truck className="h-12 w-12 mx-auto text-muted-foreground opacity-20 mb-2" />
+                  <h3 className="text-lg font-medium">No Delivery Assigned</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    This purchase order doesn't have delivery information yet.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="logs" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Logs</CardTitle>
+              <CardDescription>
+                History of all activities related to this purchase order
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {logs.length > 0 ? (
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-4">
+                    {logs.map((log) => (
+                      <div key={log.id} className="flex">
+                        <div className="mr-4 flex flex-col items-center">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="h-full w-px bg-border" />
+                        </div>
+                        <div className="space-y-1 pt-1">
+                          <p className="text-sm font-medium leading-none">
+                            {log.action.replace(/_/g, ' ')}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {log.details}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDateTime(log.timestamp)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              ) : (
+                <div className="text-center py-6">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground opacity-20 mb-2" />
+                  <h3 className="text-lg font-medium">No Activity Logs</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    There are no activity logs for this purchase order yet.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="documents" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Documents</CardTitle>
+              <CardDescription>
+                Related documents and attachments
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-6">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground opacity-20 mb-2" />
+                <h3 className="text-lg font-medium">No Documents</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  There are no documents attached to this purchase order.
+                </p>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
-}
 
 export default PODetail;

@@ -1,5 +1,7 @@
 
-import { getFromLocalStorage, saveToLocalStorage, STORAGE_KEYS } from './core';
+import { getFromLocalStorage, saveToLocalStorage } from './core';
+import { STORAGE_KEYS } from './constants';
+import { PaginationParams, PaginatedResult } from './types';
 
 export interface StoredAppData {
   purchaseOrders: any[];
@@ -103,4 +105,24 @@ export const clearAppState = (): boolean => {
  */
 export const getAppStateFromLocalStorage = (): StoredAppData => {
   return loadAppState({});
+};
+
+/**
+ * Pagination helper function
+ */
+export const getPaginatedData = <T>(data: T[], params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<T> => {
+  const { page = 1, limit = 10 } = params;
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+  
+  const paginatedData = data.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(data.length / limit);
+  
+  return {
+    data: paginatedData,
+    page,
+    pageSize: limit,
+    totalItems: data.length,
+    totalPages
+  };
 };

@@ -1,8 +1,8 @@
-
+import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Staff, ActivityLog } from '../types';
-import { PaginationParams, PaginatedResult } from '../utils/localStorage/types';
-import { getPaginatedData } from '../utils/localStorage/appState';
+import { Staff } from '@/types';
+import { STORAGE_KEYS, saveToLocalStorage, getFromLocalStorage, PaginationParams, PaginatedResult } from '@/utils/localStorage';
+import { getPaginatedData } from '@/utils/localStorage/appState';
 import { useToast } from '@/hooks/use-toast';
 
 export const useStaffActions = (

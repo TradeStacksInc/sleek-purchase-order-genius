@@ -52,7 +52,7 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { gpsFormSchema } from "@/schemas/gpsFormSchema";
 
 const AssignDriver: React.FC = () => {
   const { 
@@ -611,7 +611,7 @@ const GPSTaggingDialog = ({
   const { tagTruckWithGPS, getTruckById } = useApp();
   const truck = truckId ? getTruckById(truckId) : undefined;
   
-  const form = useForm<z.infer<typeof gpsFormSchema>>({
+  const form = useForm({
     resolver: zodResolver(gpsFormSchema),
     defaultValues: {
       gpsDeviceId: "",
@@ -620,7 +620,7 @@ const GPSTaggingDialog = ({
     },
   });
 
-  const onSubmit = (values: z.infer<typeof gpsFormSchema>) => {
+  const onSubmit = (values) => {
     if (truckId) {
       tagTruckWithGPS(
         truckId, 

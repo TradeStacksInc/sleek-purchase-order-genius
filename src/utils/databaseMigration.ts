@@ -1,4 +1,4 @@
-import { StoredAppData, getAppStateFromLocalStorage, clearAppState } from './localStorage/appState';
+import { StoredAppData, loadAppState, clearAppState } from './localStorage/appState';
 
 // Data schemas for the different entities
 const SCHEMAS = {
@@ -38,7 +38,7 @@ const SCHEMAS = {
  */
 export const prepareDataForMigration = (): StoredAppData => {
   // Load all current data from local storage
-  const appState = getAppStateFromLocalStorage();
+  const appState = loadAppState();
   
   return appState;
 };

@@ -2,7 +2,7 @@
 /**
  * Export data to a JSON file or other formats
  */
-export const exportDataToJson = <T>(data: T[], filename: string): boolean => {
+export const exportDataToJson = <T>(data: T, filename: string): boolean => {
   try {
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -26,16 +26,19 @@ export const exportDataToJson = <T>(data: T[], filename: string): boolean => {
 /**
  * Export data to CSV or other formats
  */
-export const exportDataToFile = <T>(data: T[], filename: string, format: 'csv' | 'json' = 'json'): boolean => {
+export const exportDataToFile = <T>(data: T, filename: string, format: 'csv' | 'json' = 'json'): boolean => {
   try {
     if (format === 'json') {
       return exportDataToJson(data, filename);
     } else if (format === 'csv') {
-      // Basic CSV conversion - expand as needed
-      if (!data.length) return false;
+      // For object data that's not an array, wrap in array
+      const dataArray = Array.isArray(data) ? data : [data];
       
-      const headers = Object.keys(data[0] as object).join(',');
-      const rows = data.map(item => {
+      // Basic CSV conversion - expand as needed
+      if (!dataArray.length) return false;
+      
+      const headers = Object.keys(dataArray[0] as object).join(',');
+      const rows = dataArray.map(item => {
         return Object.values(item as object)
           .map(val => {
             // Handle different data types appropriately

@@ -1,16 +1,24 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { PurchaseOrder } from '@/types';
+import { Download, Search, AlertTriangle, MapPin, CheckCircle, Circle, Clock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportDataToFile } from "@/utils/localStorage/export";
 import { DateRange } from 'react-day-picker';
 import { isWithinInterval, subDays, startOfMonth } from 'date-fns';
 import { AIInsightsPanel } from '@/components/AIInsightsPanel';
 import DeliveryTable from '@/components/DeliveryLog/DeliveryTable';
 import { useToast } from '@/hooks/use-toast';
 import { DateFilter } from '@/types/filters';
-import { exportDataToFile } from '@/utils/localStorage/export';
 import MapView from '@/components/DeliveryLog/MapView';
 import DeliveryLogHeader from '@/components/DeliveryLog/DeliveryLogHeader';
 import DeliveryLogPagination from '@/components/DeliveryLog/DeliveryLogPagination';
@@ -23,7 +31,7 @@ const DeliveryLog: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5; // Reduced to show fewer items per page
+  const itemsPerPage = 5;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMapView, setShowMapView] = useState(false);
 

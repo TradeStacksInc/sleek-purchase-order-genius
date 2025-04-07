@@ -1,9 +1,9 @@
 
 // Add importing of types needed
-import { STORAGE_KEYS } from './constants';
+import { STORAGE_KEYS, VALID_SUPABASE_TABLES } from './constants';
 import { PaginationParams, PaginatedResult } from './types';
 import { saveToLocalStorage, getFromLocalStorage, dateReviver } from './core';
-import { getAppStateFromLocalStorage, saveAppStateToLocalStorage, StoredAppData, clearAppState } from './appState';
+import { getAppStateFromLocalStorage, saveAppStateToLocalStorage, StoredAppData, clearAppState, getPaginatedData } from './appState';
 import { exportDataToJson, exportDataToFile } from './export';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,14 +13,7 @@ const getSupabaseTableName = (key: string): string => {
   const tableName = key.startsWith('po_system_') ? key.replace('po_system_', '') : key;
   
   // Make sure the table name matches one of the valid Supabase tables
-  const validTableNames = [
-    'purchase_orders', 'logs', 'suppliers', 'drivers', 'trucks',
-    'gps_data', 'ai_insights', 'staff', 'dispensers', 'shifts',
-    'sales', 'prices', 'incidents', 'activity_logs', 'tanks',
-    'delivery_details', 'offloading_details', 'purchase_order_items'
-  ];
-  
-  if (validTableNames.includes(tableName)) {
+  if (VALID_SUPABASE_TABLES.includes(tableName)) {
     return tableName;
   }
   
@@ -96,8 +89,13 @@ export const fetchFromSupabase = async <T>(tableName: string): Promise<T[]> => {
       return [];
     }
     
+    if (!VALID_SUPABASE_TABLES.includes(validTableName)) {
+      console.warn(`Table name not in valid tables list: ${validTableName}`);
+      return [];
+    }
+    
     const { data, error } = await supabase
-      .from(validTableName)
+      .from(validTableName as any)
       .select('*');
       
     if (error) throw error;
@@ -109,26 +107,8 @@ export const fetchFromSupabase = async <T>(tableName: string): Promise<T[]> => {
   }
 };
 
-// Pagination helper function
-export const getPaginatedData = <T>(data: T[], params: PaginationParams = { page: 1, limit: 10 }): PaginatedResult<T> => {
-  const { page = 1, limit = 10 } = params;
-  const startIndex = (page - 1) * limit;
-  const endIndex = startIndex + limit;
-  
-  const paginatedData = data.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(data.length / limit);
-  
-  return {
-    data: paginatedData,
-    page,
-    pageSize: limit,
-    totalItems: data.length,
-    totalPages
-  };
-};
-
 // Export everything
-export {
+export { 
   STORAGE_KEYS,
   saveToLocalStorage,
   getFromLocalStorage,
@@ -138,8 +118,8 @@ export {
   exportDataToJson,
   exportDataToFile,
   dateReviver,
-  StoredAppData
+  getPaginatedData
 };
 
 // Export types
-export type { PaginationParams, PaginatedResult };
+export type { PaginationParams, PaginatedResult, StoredAppData };
