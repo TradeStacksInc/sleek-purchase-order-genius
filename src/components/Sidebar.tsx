@@ -71,11 +71,15 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
       )}
 
       <div className={cn(
-        "fixed inset-y-0 left-0 z-20 flex flex-col bg-white w-64 shadow-md transition-transform duration-300 ease-in-out",
+        "fixed inset-y-0 left-0 z-20 flex flex-col bg-gray-50 w-64 shadow-md transition-transform duration-300 ease-in-out",
         open ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
-          <h2 className="font-semibold text-lg text-sidebar-foreground">Fuel Station</h2>
+          <div className="flex items-center">
+            <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+              <Database className="h-5 w-5" />
+            </div>
+          </div>
           <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="text-sidebar-foreground">
             <ChevronLeft className="h-5 w-5" />
             <span className="sr-only">Close sidebar</span>
