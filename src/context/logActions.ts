@@ -1,7 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { LogEntry, ActivityLog } from '@/types';
-import { saveToLocalStorage, STORAGE_KEYS } from '@/utils/localStorage';
+import { saveToLocalStorage, STORAGE_KEYS, PaginatedResult, PaginationParams } from '@/utils/localStorage';
 
 export const useLogActions = (
   logs: LogEntry[],
@@ -37,7 +37,7 @@ export const useLogActions = (
     return logs.find(log => log.id === id);
   };
   
-  const getAllLogs = (params?: { page: number; limit: number }) => {
+  const getAllLogs = (params?: PaginationParams): PaginatedResult<LogEntry> => {
     const page = params?.page || 1;
     const limit = params?.limit || 10;
     const startIndex = (page - 1) * limit;
@@ -50,9 +50,9 @@ export const useLogActions = (
 
     return {
       data,
-      total: logs.length,
       page,
-      limit,
+      pageSize: limit,
+      totalItems: logs.length,
       totalPages: Math.ceil(logs.length / limit)
     };
   };
@@ -75,7 +75,7 @@ export const useLogActions = (
     return newLog;
   };
   
-  const getAllActivityLogs = (params?: { page: number; limit: number }) => {
+  const getAllActivityLogs = (params?: PaginationParams): PaginatedResult<ActivityLog> => {
     const page = params?.page || 1;
     const limit = params?.limit || 10;
     const startIndex = (page - 1) * limit;
@@ -88,9 +88,9 @@ export const useLogActions = (
 
     return {
       data,
-      total: activityLogs.length,
       page,
-      limit,
+      pageSize: limit,
+      totalItems: activityLogs.length,
       totalPages: Math.ceil(activityLogs.length / limit)
     };
   };

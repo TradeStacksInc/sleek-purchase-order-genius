@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { 
   Driver, Truck, PurchaseOrder, GPSData
 } from '@/types';
+import { PaginatedResult, PaginationParams } from '@/utils/localStorage';
 
 export const useDriverTruckActions = (
   drivers: Driver[],
@@ -66,7 +67,7 @@ export const useDriverTruckActions = (
     return drivers.find(driver => driver.id === id);
   };
 
-  const getAllDrivers = (params?: { page: number; limit: number }): any => {
+  const getAllDrivers = (params?: PaginationParams): PaginatedResult<Driver> => {
     const page = params?.page || 1;
     const limit = params?.limit || 10;
     const startIndex = (page - 1) * limit;
@@ -77,9 +78,9 @@ export const useDriverTruckActions = (
 
     return {
       data,
-      total: drivers.length,
       page,
-      limit,
+      pageSize: limit,
+      totalItems: drivers.length,
       totalPages: Math.ceil(drivers.length / limit)
     };
   };
@@ -139,7 +140,7 @@ export const useDriverTruckActions = (
     return trucks.find(truck => truck.id === id);
   };
 
-  const getAllTrucks = (params?: { page: number; limit: number }): any => {
+  const getAllTrucks = (params?: PaginationParams): PaginatedResult<Truck> => {
     const page = params?.page || 1;
     const limit = params?.limit || 10;
     const startIndex = (page - 1) * limit;
@@ -150,9 +151,9 @@ export const useDriverTruckActions = (
 
     return {
       data,
-      total: trucks.length,
       page,
-      limit,
+      pageSize: limit,
+      totalItems: trucks.length,
       totalPages: Math.ceil(trucks.length / limit)
     };
   };
