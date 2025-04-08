@@ -46,7 +46,7 @@ export interface AppContextType {
   deletePurchaseOrder: (id: string) => boolean;
   getPurchaseOrderById: (id: string) => PurchaseOrder | undefined;
   getAllPurchaseOrders: (params?: PaginationParams) => PaginatedResult<PurchaseOrder>;
-  updateOrderStatus: (id: string, status: OrderStatus) => Promise<boolean>;
+  updateOrderStatus: (id: string, status: OrderStatus, note?: string) => Promise<boolean>;
   getOrderById: (id: string) => PurchaseOrder | undefined;
   getOrdersWithDeliveryStatus: (status: string) => PurchaseOrder[];
   getOrdersWithDiscrepancies: () => PurchaseOrder[];
@@ -140,16 +140,21 @@ export interface AppContextType {
   getAllPrices: (params?: PaginationParams) => PaginatedResult<Price>;
   getCurrentPrices: () => Record<ProductType, number>;
   
+  // Activity Log functions
+  addActivityLog: (log: Omit<ActivityLog, 'id' | 'timestamp'>) => ActivityLog;
+  getAllActivityLogs: (params?: PaginationParams) => PaginatedResult<ActivityLog>;
+  getActivityLogsByEntityType: (entityType: string) => ActivityLog[];
+  getActivityLogsByAction: (action: string) => ActivityLog[];
+  getRecentActivityLogs: (limit?: number) => ActivityLog[];
+  logFraudDetection: (description: string, severity: 'low' | 'medium' | 'high', entityId?: string) => ActivityLog;
+  logGpsActivity: (truckId: string, description: string) => ActivityLog;
+  
   // Incident functions
   addIncident: (incident: Omit<Incident, 'id'>) => Incident;
   updateIncident: (id: string, incident: Partial<Incident>) => Incident | null;
   deleteIncident: (id: string) => boolean;
   getIncidentById: (id: string) => Incident | undefined;
   getAllIncidents: (params?: PaginationParams) => PaginatedResult<Incident>;
-  
-  // Activity Log functions
-  addActivityLog: (log: Omit<ActivityLog, 'id' | 'timestamp'>) => ActivityLog;
-  getAllActivityLogs: (params?: PaginationParams) => PaginatedResult<ActivityLog>;
   
   // Tank functions
   addTank: (tank: Omit<Tank, 'id'>) => Tank;
@@ -174,8 +179,4 @@ export interface AppContextType {
   startDelivery: (orderId: string) => Promise<boolean>;
   updateDeliveryStatus: (orderId: string, status: 'pending' | 'delivered' | 'in_transit') => boolean;
   assignDriverToOrder: (orderId: string, driverId: string, truckId: string) => boolean;
-
-  // Fraud detection and GPS tracking functions
-  logFraudDetection: (description: string, severity: 'low' | 'medium' | 'high', entityId?: string) => void;
-  logGpsActivity: (truckId: string, description: string) => void;
 }

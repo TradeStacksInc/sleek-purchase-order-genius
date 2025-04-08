@@ -78,11 +78,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deleteDriver,
     getDriverById,
     getAllDrivers,
+    getAvailableDrivers,
     addTruck,
     updateTruck,
     deleteTruck,
     getTruckById,
     getAllTrucks,
+    getAvailableTrucks,
     tagTruckWithGPS,
     untagTruckGPS
   } = useDriverTruckActions(
@@ -232,7 +234,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   }, [purchaseOrders]);
 
-  const updateOrderStatus = useCallback(async (id: string, status: OrderStatus): Promise<boolean> => {
+  const updateOrderStatus = useCallback(async (id: string, status: OrderStatus, note: string = ''): Promise<boolean> => {
     const orderIndex = purchaseOrders.findIndex(order => order.id === id);
     if (orderIndex === -1) return false;
     
@@ -243,7 +245,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'update',
       entityType: 'purchase_order',
       entityId: id,
-      details: `Order status changed from ${oldStatus} to ${status} for order ${purchaseOrders[orderIndex].poNumber}`,
+      details: `Order status changed from ${oldStatus} to ${status} for order ${purchaseOrders[orderIndex].poNumber}${note ? ` - Note: ${note}` : ''}`,
       user: 'Current User'
     });
     
@@ -1020,16 +1022,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deletePurchaseOrder,
     getPurchaseOrderById,
     getAllPurchaseOrders,
+    updateOrderStatus,
     getOrderById,
     getOrdersWithDeliveryStatus,
     getOrdersWithDiscrepancies,
-    updateOrderStatus,
     
     addLog,
     deleteLog,
     getLogById,
     getAllLogs,
     getLogsByOrderId,
+    logAIInteraction: (prompt: string, response: string): LogEntry => {
+      const interaction = prompt + " -> " + response.substring(0, 50) + "...";
+      return addLog({
+        action: 'ai_interaction',
+        entityType: 'ai',
+        entityId: 'system',
+        details: interaction,
+        user: 'Current User'
+      });
+    },
+    
+    addActivityLog,
+    getAllActivityLogs,
+    getActivityLogsByEntityType,
+    getActivityLogsByAction,
+    getRecentActivityLogs,
+    logFraudDetection,
+    logGpsActivity,
     
     addSupplier: (supplier: Omit<Supplier, 'id'>): Supplier => {
       const newSupplier: Supplier = {
@@ -1208,17 +1228,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return currentPrices as Record<ProductType, number>;
     },
     
-    logAIInteraction: (prompt: string, response: string): LogEntry => {
-      const interaction = prompt + " -> " + response.substring(0, 50) + "...";
-      return addLog({
-        action: 'ai_interaction',
-        entityType: 'ai',
-        entityId: 'system',
-        details: interaction,
-        user: 'Current User'
-      });
-    },
-    
+    logAIInteraction,
     logFraudDetection,
     logGpsActivity,
     

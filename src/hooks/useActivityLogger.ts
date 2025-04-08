@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useLocation } from 'react-router-dom';
-import { LogEntry, ActivityLog } from '@/types';
+import { ActivityLog } from '@/types';
 
 interface LogActivityOptions {
   action: string;
