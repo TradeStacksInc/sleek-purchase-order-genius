@@ -69,7 +69,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getActivityLogsByAction,
     getRecentActivityLogs,
     logFraudDetection,
-    logGpsActivity
+    logGpsActivity,
+    logAIInteraction
   } = logActions;
 
   const {
@@ -86,7 +87,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getAllTrucks,
     getAvailableTrucks,
     tagTruckWithGPS,
-    untagTruckGPS
+    untagTruckGPS,
+    getNonGPSTrucks
   } = useDriverTruckActions(
     drivers,
     setDrivers,
@@ -251,18 +253,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     return true;
   }, [purchaseOrders, updatePurchaseOrder, addActivityLog]);
-
-  const getAvailableDrivers = useCallback((): Driver[] => {
-    return drivers.filter(driver => driver.isAvailable);
-  }, [drivers]);
-
-  const getAvailableTrucks = useCallback((): Truck[] => {
-    return trucks.filter(truck => truck.isAvailable);
-  }, [trucks]);
-
-  const getNonGPSTrucks = useCallback((): Truck[] => {
-    return trucks.filter(truck => !truck.isGPSTagged);
-  }, [trucks]);
 
   const addGPSData = useCallback((data: Omit<GPSData, "id" | "timestamp">): GPSData => {
     const newData: GPSData = {
@@ -1032,24 +1022,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getLogById,
     getAllLogs,
     getLogsByOrderId,
-    logAIInteraction: (prompt: string, response: string): LogEntry => {
-      const interaction = prompt + " -> " + response.substring(0, 50) + "...";
-      return addLog({
-        action: 'ai_interaction',
-        entityType: 'ai',
-        entityId: 'system',
-        details: interaction,
-        user: 'Current User'
-      });
-    },
     
     addActivityLog,
     getAllActivityLogs,
     getActivityLogsByEntityType,
     getActivityLogsByAction,
     getRecentActivityLogs,
-    logFraudDetection,
-    logGpsActivity,
     
     addSupplier: (supplier: Omit<Supplier, 'id'>): Supplier => {
       const newSupplier: Supplier = {
