@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { 
   Driver, Truck, PurchaseOrder, GPSData
@@ -26,19 +27,29 @@ export const useDriverTruckActions = (
     return newDriver;
   };
 
-  const updateDriver = (id: string, updates: Partial<Driver>): boolean => {
-    let updated = false;
+  const updateDriver = (id: string, updates: Partial<Driver>): Driver => {
+    let updatedDriver: Driver | undefined;
+    
     setDrivers(prev => {
       const updatedDrivers = prev.map(driver => {
         if (driver.id === id) {
-          updated = true;
-          return { ...driver, ...updates, updatedAt: new Date() };
+          updatedDriver = { ...driver, ...updates, updatedAt: new Date() };
+          return updatedDriver;
         }
         return driver;
       });
       return updatedDrivers;
     });
-    return updated;
+    
+    if (!updatedDriver) {
+      const existingDriver = drivers.find(driver => driver.id === id);
+      if (!existingDriver) {
+        throw new Error(`Driver with id ${id} not found`);
+      }
+      updatedDriver = { ...existingDriver, ...updates, updatedAt: new Date() };
+    }
+    
+    return updatedDriver;
   };
 
   const deleteDriver = (id: string): boolean => {
@@ -73,6 +84,10 @@ export const useDriverTruckActions = (
     };
   };
 
+  const getAvailableDrivers = (): Driver[] => {
+    return drivers.filter(driver => driver.isAvailable !== false);
+  };
+
   const addTruck = (truck: Omit<Truck, 'id'>): Truck => {
     const newTruck = {
       ...truck,
@@ -85,19 +100,29 @@ export const useDriverTruckActions = (
     return newTruck;
   };
 
-  const updateTruck = (id: string, updates: Partial<Truck>): boolean => {
-    let updated = false;
+  const updateTruck = (id: string, updates: Partial<Truck>): Truck => {
+    let updatedTruck: Truck | undefined;
+    
     setTrucks(prev => {
       const updatedTrucks = prev.map(truck => {
         if (truck.id === id) {
-          updated = true;
-          return { ...truck, ...updates, updatedAt: new Date() };
+          updatedTruck = { ...truck, ...updates, updatedAt: new Date() };
+          return updatedTruck;
         }
         return truck;
       });
       return updatedTrucks;
     });
-    return updated;
+    
+    if (!updatedTruck) {
+      const existingTruck = trucks.find(truck => truck.id === id);
+      if (!existingTruck) {
+        throw new Error(`Truck with id ${id} not found`);
+      }
+      updatedTruck = { ...existingTruck, ...updates, updatedAt: new Date() };
+    }
+    
+    return updatedTruck;
   };
 
   const deleteTruck = (id: string): boolean => {
@@ -130,6 +155,10 @@ export const useDriverTruckActions = (
       limit,
       totalPages: Math.ceil(trucks.length / limit)
     };
+  };
+
+  const getAvailableTrucks = (): Truck[] => {
+    return trucks.filter(truck => truck.isAvailable !== false);
   };
 
   const tagTruckWithGPS = (
@@ -239,11 +268,13 @@ export const useDriverTruckActions = (
     deleteDriver,
     getDriverById,
     getAllDrivers,
+    getAvailableDrivers,
     addTruck,
     updateTruck,
     deleteTruck,
     getTruckById,
     getAllTrucks,
+    getAvailableTrucks,
     tagTruckWithGPS,
     untagTruckGPS
   };

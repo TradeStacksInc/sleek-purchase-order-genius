@@ -28,7 +28,7 @@ const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({
 
   const handleSubmit = () => {
     try {
-      updateOrderStatus(orderId, status);
+      updateOrderStatus(orderId, status, note);
       
       toast({
         title: 'Status updated',

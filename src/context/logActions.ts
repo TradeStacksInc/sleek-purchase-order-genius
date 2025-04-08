@@ -72,8 +72,8 @@ export const useLogActions = (
       .slice(0, limit);
   };
 
-  const logFraudDetection = (description: string, severity: 'low' | 'medium' | 'high', entityId?: string): void => {
-    addActivityLog({
+  const logFraudDetection = (description: string, severity: 'low' | 'medium' | 'high', entityId?: string): ActivityLog => {
+    return addActivityLog({
       action: 'detect',
       entityType: 'fraud',
       entityId: entityId || 'system',
@@ -82,8 +82,8 @@ export const useLogActions = (
     });
   };
 
-  const logGpsActivity = (truckId: string, description: string): void => {
-    addActivityLog({
+  const logGpsActivity = (truckId: string, description: string): ActivityLog => {
+    return addActivityLog({
       action: 'track',
       entityType: 'gps',
       entityId: truckId,

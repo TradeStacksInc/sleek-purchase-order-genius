@@ -1,3 +1,4 @@
+
 // Only fixing the log entry sections that have errors
 import { v4 as uuidv4 } from 'uuid';
 import { PurchaseOrder, OrderStatus } from '@/types';
@@ -49,7 +50,7 @@ export const usePurchaseOrderActions = (
     return newOrder;
   };
 
-  const updateOrderStatus = (orderId: string, status: OrderStatus, note: string): boolean => {
+  const updateOrderStatus = (orderId: string, status: OrderStatus, note: string = ''): boolean => {
     const orderIndex = purchaseOrders.findIndex(order => order.id === orderId);
     if (orderIndex === -1) return false;
     
