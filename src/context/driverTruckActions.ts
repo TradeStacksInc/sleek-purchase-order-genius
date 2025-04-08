@@ -160,6 +160,10 @@ export const useDriverTruckActions = (
   const getAvailableTrucks = (): Truck[] => {
     return trucks.filter(truck => truck.isAvailable !== false);
   };
+  
+  const getNonGPSTrucks = (): Truck[] => {
+    return trucks.filter(truck => !truck.isGPSTagged);
+  };
 
   const tagTruckWithGPS = (
     truckId: string | null, 
@@ -276,6 +280,7 @@ export const useDriverTruckActions = (
     getAllTrucks,
     getAvailableTrucks,
     tagTruckWithGPS,
-    untagTruckGPS
+    untagTruckGPS,
+    getNonGPSTrucks
   };
 };

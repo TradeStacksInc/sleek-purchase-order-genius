@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/context/AppContext';
 import { OrderStatus } from '@/types';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 
 export interface StatusUpdateDialogProps {
   orderId: string;
@@ -23,12 +24,21 @@ const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const { updateOrderStatus } = useApp();
+  const { logUserAction } = useActivityLogger();
   const [status, setStatus] = useState<OrderStatus>(currentStatus as OrderStatus);
   const [note, setNote] = useState('');
 
   const handleSubmit = async () => {
     try {
       await updateOrderStatus(orderId, status, note);
+      
+      // Log the action using useActivityLogger
+      logUserAction(
+        'update_status',
+        'purchase_order',
+        orderId,
+        `Status updated to ${status}${note ? ` with note: ${note}` : ''}`
+      );
       
       toast({
         title: 'Status updated',
