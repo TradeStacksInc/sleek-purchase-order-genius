@@ -65,6 +65,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getLogsByOrderId,
     addActivityLog,
     getAllActivityLogs,
+    getActivityLogsByEntityType,
+    getActivityLogsByAction,
+    getRecentActivityLogs,
     logFraudDetection,
     logGpsActivity
   } = logActions;
@@ -817,37 +820,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newSale;
   }, [sales, addActivityLog]);
 
-  const logFraudDetection = useCallback((description: string, severity: 'low' | 'medium' | 'high', entityId?: string): void => {
-    addActivityLog({
-      action: 'detect',
-      entityType: 'fraud',
-      entityId: entityId || 'system',
-      details: `Fraud detection: ${description} (Severity: ${severity})`,
-      user: 'System'
-    });
-    
-    addIncident({
-      type: 'fraud',
-      severity,
-      description,
-      location: 'System',
-      reportedBy: 'Fraud Detection System'
-    });
-  }, [addActivityLog, addIncident]);
-
-  const logGpsActivity = useCallback((truckId: string, description: string): void => {
-    const truck = getTruckById(truckId);
-    if (!truck) return;
-    
-    addActivityLog({
-      action: 'track',
-      entityType: 'gps',
-      entityId: truckId,
-      details: `GPS Activity for truck ${truck.plateNumber}: ${description}`,
-      user: 'System'
-    });
-  }, [getTruckById, addActivityLog]);
-
   const getStaffById = useCallback((id: string): Staff | undefined => {
     return staff.find(s => s.id === id);
   }, [staff]);
@@ -1053,14 +1025,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getOrdersWithDiscrepancies,
     updateOrderStatus,
     
-    addLog: (log: Omit<LogEntry, 'id' | 'timestamp'>): LogEntry => {
-      return addLog(log);
-    },
-    
-    deleteLog: (id: string): boolean => {
-      return deleteLog(id);
-    },
-    
+    addLog,
+    deleteLog,
     getLogById,
     getAllLogs,
     getLogsByOrderId,
@@ -1106,44 +1072,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return getPaginatedData(suppliers, params || { page: 1, limit: 10 });
     },
     
-    addDriver: (driver: Omit<Driver, 'id'>): Driver => {
-      return addDriver(driver);
-    },
-    
-    updateDriver: (id: string, driver: Partial<Driver>): Driver | null => {
-      const result = updateDriver(id, driver);
-      if (typeof result === 'boolean') {
-        // Need to find the updated driver to return it
-        return drivers.find(d => d.id === id) || null;
-      }
-      return result;
-    },
-    
-    deleteDriver: (id: string): boolean => {
-      return deleteDriver(id);
-    },
-    
+    addDriver,
+    updateDriver,
+    deleteDriver,
     getDriverById,
     getAllDrivers,
     getAvailableDrivers,
     
-    addTruck: (truck: Omit<Truck, 'id'>): Truck => {
-      return addTruck(truck);
-    },
-    
-    updateTruck: (id: string, truck: Partial<Truck>): Truck | null => {
-      const result = updateTruck(id, truck);
-      if (typeof result === 'boolean') {
-        // Need to find the updated truck to return it
-        return trucks.find(t => t.id === id) || null;
-      }
-      return result;
-    },
-    
-    deleteTruck: (id: string): boolean => {
-      return deleteTruck(id);
-    },
-    
+    addTruck,
+    updateTruck,
+    deleteTruck,
     getTruckById,
     getAllTrucks,
     getAvailableTrucks,
@@ -1211,23 +1149,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return aiInsights.filter(insight => insight.type === type);
     },
     
-    addIncident,
-    updateIncident,
-    deleteIncident,
-    getIncidentById,
-    getAllIncidents,
-    
-    addTank,
-    updateTank,
-    deleteTank,
-    getTankById,
-    getAllTanks,
-    getTanksByProduct,
-    setTankActive,
-    
-    addActivityLog,
-    getAllActivityLogs,
-    
     addStaff,
     updateStaff,
     deleteStaff,
@@ -1235,8 +1156,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getAllStaff,
     getActiveStaff,
     
-    logUserLogin,
-    logUserLogout,
+    addDispenser,
+    updateDispenser,
+    deleteDispenser,
+    getDispenserById,
+    getAllDispensers,
+    getActiveDispensers,
+    
+    addShift,
+    updateShift,
+    deleteShift,
+    getShiftById,
+    getAllShifts,
+    getCurrentShift,
+    
+    addSale,
+    updateSale,
+    deleteSale,
+    getSaleById,
+    getAllSales,
+    getSalesForShift,
     
     addPrice,
     updatePrice,
@@ -1283,7 +1222,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logFraudDetection,
     logGpsActivity,
     
-    company,
     updateCompany,
     
     completeDelivery,
@@ -1291,7 +1229,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     recordOffloadingToTank,
     startDelivery,
     updateDeliveryStatus,
-    assignDriverToOrder
+    assignDriverToOrder,
+    
+    addIncident,
+    updateIncident,
+    deleteIncident,
+    getIncidentById,
+    getAllIncidents,
+    
+    addTank,
+    updateTank,
+    deleteTank,
+    getTankById,
+    getAllTanks,
+    getTanksByProduct,
+    setTankActive,
+    
+    logUserLogin,
+    logUserLogout
   };
 
   return (
