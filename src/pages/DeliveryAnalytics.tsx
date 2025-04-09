@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -52,6 +53,7 @@ const DeliveryAnalytics: React.FC = () => {
       return sum + deliveredQuantity;
     }, 0);
     
+    // Fix the calculation to ensure proper number types
     const volumeDiscrepancy = Number(totalVolumeOrdered) > 0 
       ? ((Number(totalVolumeDelivered) - Number(totalVolumeOrdered)) / Number(totalVolumeOrdered)) * 100 
       : 0;

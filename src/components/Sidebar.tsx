@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -23,7 +22,7 @@ import {
   LineChart,
   ChevronDown,
   ChevronUp,
-  Database as TankIcon // Using Database as a replacement for Tank
+  Database as TankIcon 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -57,7 +56,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
 
   return (
     <>
-      {/* Toggle button for closed sidebar */}
       {!open && (
         <Button 
           variant="outline" 
@@ -90,7 +88,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
           <nav className="px-2 space-y-1">
             <NavItem to="/" icon={<BarChart className="h-5 w-5" />} text="Dashboard" />
             
-            {/* Purchase & Delivery Section */}
             <CollapsibleSection 
               title="Purchase & Delivery" 
               isOpen={openSections.operations}
@@ -103,7 +100,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               <NavItem to="/offload-log" icon={<Droplet className="h-5 w-5" />} text="Offload Log" />
             </CollapsibleSection>
             
-            {/* Tank & Dispenser Management Section */}
             <CollapsibleSection 
               title="Storage & Dispensing" 
               isOpen={openSections.inventory}
@@ -114,7 +110,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               <NavItem to="/price-management" icon={<Tag className="h-5 w-5" />} text="Price Management" />
             </CollapsibleSection>
             
-            {/* Sales & Shifts Section */}
             <CollapsibleSection 
               title="Sales & Shifts" 
               isOpen={openSections.financials}
@@ -124,7 +119,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               <NavItem to="/financial-dashboard" icon={<BarChart2 className="h-5 w-5" />} text="Sales Reports" />
             </CollapsibleSection>
             
-            {/* Staff Management */}
             <CollapsibleSection 
               title="Staff & Security" 
               isOpen={openSections.staff}
@@ -135,7 +129,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               <NavItem to="/fraud-detection" icon={<Shield className="h-5 w-5" />} text="Fraud Detection" />
             </CollapsibleSection>
             
-            {/* Logistics Management */}
             <CollapsibleSection 
               title="Logistics" 
               isOpen={openSections.management}
@@ -145,7 +138,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
               <NavItem to="/gps-tracking" icon={<Truck className="h-5 w-5" />} text="GPS Tracking" />
             </CollapsibleSection>
             
-            {/* Analytics Section */}
             <CollapsibleSection 
               title="Analytics" 
               isOpen={openSections.analytics}
