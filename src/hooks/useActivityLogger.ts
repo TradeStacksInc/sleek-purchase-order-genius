@@ -38,7 +38,7 @@ export const useActivityLogger = () => {
   );
 
   /**
-   * Log a page visit
+   * Log a page visit - will be ignored if page visit logging is disabled
    */
   const logPageVisit = useCallback(
     (pageName: string): ActivityLog => {

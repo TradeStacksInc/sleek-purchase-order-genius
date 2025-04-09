@@ -3,6 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { LogEntry, ActivityLog } from '@/types';
 import { saveToLocalStorage, STORAGE_KEYS, PaginatedResult, PaginationParams } from '@/utils/localStorage';
 
+// Configuration options
+const CONFIG = {
+  logPageVisits: false, // Set to false to disable automatic page visit logging
+};
+
 export const useLogActions = (
   logs: LogEntry[],
   setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>,
@@ -63,6 +68,11 @@ export const useLogActions = (
 
   // Activity Logging Functions
   const addActivityLog = (log: Omit<ActivityLog, 'id' | 'timestamp'>): ActivityLog => {
+    // Skip page visit logs if disabled and this is a page visit
+    if (!CONFIG.logPageVisits && log.action === 'visit' && log.entityType === 'page') {
+      return {} as ActivityLog; // Return empty object but don't actually log
+    }
+    
     const newLog: ActivityLog = {
       ...log,
       id: uuidv4(),
@@ -141,6 +151,11 @@ export const useLogActions = (
     });
   };
 
+  // Toggle activity logging
+  const setLogPageVisits = (enabled: boolean): void => {
+    CONFIG.logPageVisits = enabled;
+  };
+
   return {
     addLog,
     deleteLog,
@@ -154,6 +169,7 @@ export const useLogActions = (
     getRecentActivityLogs,
     logFraudDetection,
     logGpsActivity,
-    logAIInteraction
+    logAIInteraction,
+    setLogPageVisits
   };
 };
