@@ -269,27 +269,18 @@ const AssignDriver: React.FC = () => {
       refreshData();
     }
   };
-  
+
   const updateDeliveryStatus = async (poId: string, status: 'pending' | 'in_transit' | 'delivered') => {
     try {
       let updatedOrder: PurchaseOrder | undefined;
-      setPurchaseOrders(prev =>
-        prev.map(order => {
-          if (order.id === poId) {
-            updatedOrder = {
-              ...order,
-              deliveryDetails: {
-                ...order.deliveryDetails,
-                status: status
-              }
-            };
-            return updatedOrder;
-          }
-          return order;
-        })
-      );
+      const result = await updatePurchaseOrder(poId, {
+        deliveryDetails: {
+          ...purchaseOrders.find(order => order.id === poId)?.deliveryDetails,
+          status: status
+        }
+      });
 
-      if (!updatedOrder) {
+      if (!result) {
         toast({
           title: "Error",
           description: "Failed to update delivery status. Please try again.",

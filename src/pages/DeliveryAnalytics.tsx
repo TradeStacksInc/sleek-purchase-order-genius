@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { format, startOfToday, startOfWeek, startOfMonth, startOfYear, isWithinInterval } from 'date-fns';
@@ -166,12 +165,12 @@ const DeliveryAnalytics: React.FC = () => {
     
     // Volume analysis
     const totalVolumeOrdered = filteredOrders.reduce((sum, order) => 
-      sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
+      sum + order.items.reduce((itemSum, item) => itemSum + Number(item.quantity), 0), 0
     );
     
     const totalVolumeDelivered = filteredOrders.reduce((sum, order) => {
       // Use simulated delivered quantity since offloadingDetails.actualQuantity isn't available
-      const orderedQuantity = order.items.reduce((itemSum, item) => itemSum + item.quantity, 0);
+      const orderedQuantity = order.items.reduce((itemSum, item) => itemSum + Number(item.quantity), 0);
       const deliveredQuantity = orderedQuantity * (1 + (Math.random() * 0.1 - 0.05)); // ±5% random variation
       
       return sum + deliveredQuantity;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -7,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApp } from '@/context/AppContext';
 import StatusTracker from '@/components/PurchaseOrder/StatusTracker';
-import StatusUpdateDialog from '@/components/PurchaseOrder/StatusUpdateDialog';
+import { StatusUpdateDialog } from '@/components/PurchaseOrder/StatusUpdateDialog';
 import { CalendarIcon, TruckIcon, FileTextIcon, BarChart3Icon } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 

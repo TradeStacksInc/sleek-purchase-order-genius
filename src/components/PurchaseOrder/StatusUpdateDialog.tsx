@@ -13,14 +13,27 @@ interface StatusUpdateDialogProps {
   orderId: string;
   currentStatus: string;
   children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({ orderId, currentStatus, children }) => {
+export const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({ 
+  orderId, 
+  currentStatus, 
+  children,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen
+}) => {
   const { toast } = useToast();
   const { updateOrderStatus } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>('pending');
   const [notes, setNotes] = useState('');
+
+  // Support both controlled and uncontrolled modes
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : isOpen;
+  const setOpen = isControlled ? setControlledOpen : setIsOpen;
 
   const handleUpdateStatus = async () => {
     try {
@@ -33,7 +46,7 @@ export const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({ orderId,
           title: "Status Updated",
           description: `Order status updated to ${selectedStatus}`,
         });
-        setIsOpen(false);
+        setOpen(false);
       } else {
         toast({
           title: "Update Failed",
