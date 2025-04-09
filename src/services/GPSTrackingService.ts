@@ -1,4 +1,3 @@
-
 import GPSSimulator from './GPSSimulator';
 import { Truck } from '@/types';
 
@@ -11,6 +10,7 @@ export interface TrackingInfo {
   currentSpeed: number;
   lastUpdate: Date;
   path: Array<{lat: number, lng: number, timestamp: Date}>;
+  fuelLevel?: number;
 }
 
 class GPSTrackingService {

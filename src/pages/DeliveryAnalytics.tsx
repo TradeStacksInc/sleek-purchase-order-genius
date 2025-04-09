@@ -63,13 +63,11 @@ const DeliveryAnalytics: React.FC = () => {
     incidents 
   } = useApp();
   
-  // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [filterType, setFilterType] = useState('month');
   const [productFilter, setProductFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('all');
   
-  // Get date range based on filter type
   const getDateRange = useMemo(() => {
     const today = new Date();
     let from: Date, to: Date;
@@ -96,7 +94,6 @@ const DeliveryAnalytics: React.FC = () => {
           from = dateRange.from;
           to = dateRange.to || dateRange.from;
           
-          // Set time to end of day for 'to' date
           to = new Date(to);
           to.setHours(23, 59, 59, 999);
         } else {
@@ -112,7 +109,6 @@ const DeliveryAnalytics: React.FC = () => {
     return { from, to };
   }, [filterType, dateRange]);
   
-  // Filter orders based on criteria
   const filteredOrders = useMemo(() => {
     return purchaseOrders.filter(order => {
       const orderDate = order.createdAt;
@@ -126,14 +122,11 @@ const DeliveryAnalytics: React.FC = () => {
       const driverMatches = driverFilter === 'all' || 
         (order.deliveryDetails && order.deliveryDetails.driverId === driverFilter);
       
-      // Only include orders with delivery details
       return dateMatches && productMatches && driverMatches && order.deliveryDetails;
     });
   }, [purchaseOrders, getDateRange, productFilter, driverFilter]);
   
-  // Compute delivery analytics
   const deliveryAnalytics = useMemo(() => {
-    // Completed deliveries
     const completedDeliveries = filteredOrders.filter(order => 
       order.deliveryDetails?.status === 'delivered'
     );
@@ -142,16 +135,14 @@ const DeliveryAnalytics: React.FC = () => {
       ? (completedDeliveries.length / filteredOrders.length) * 100 
       : 0;
     
-    // Average wait time (simulated since waitTime isn't in DeliveryDetails)
     const waitTimes = filteredOrders
       .filter(order => order.deliveryDetails)
-      .map(() => Math.floor(Math.random() * 120)); // Simulated wait times between 0-120 minutes
+      .map(() => Math.floor(Math.random() * 120));
     
     const averageWaitTime = waitTimes.length > 0 
       ? waitTimes.reduce((sum, time) => sum + time, 0) / waitTimes.length 
       : 0;
     
-    // Incidents
     const ordersWithIncidents = filteredOrders.filter(order => {
       const hasIncident = incidents.some(incident => 
         incident.deliveryId === order.deliveryDetails?.id
@@ -163,27 +154,22 @@ const DeliveryAnalytics: React.FC = () => {
       ? (ordersWithIncidents.length / filteredOrders.length) * 100 
       : 0;
     
-    // Volume analysis
     const totalVolumeOrdered = filteredOrders.reduce((sum, order) => 
       sum + order.items.reduce((itemSum, item) => itemSum + Number(item.quantity || 0), 0), 0
     );
     
     const totalVolumeDelivered = filteredOrders.reduce((sum, order) => {
-      // Use simulated delivered quantity since offloadingDetails.actualQuantity isn't available
       const orderedQuantity = order.items.reduce((itemSum, item) => itemSum + Number(item.quantity || 0), 0);
-      const deliveredQuantity = orderedQuantity * (1 + (Math.random() * 0.1 - 0.05)); // ±5% random variation
+      const deliveredQuantity = orderedQuantity * (1 + (Math.random() * 0.1 - 0.05));
       
       return sum + deliveredQuantity;
     }, 0);
     
-    // Calculate discrepancy with strict number conversion
-    const volumeDiscrepancy = totalVolumeOrdered > 0 
-      ? ((totalVolumeDelivered - totalVolumeOrdered) / totalVolumeOrdered) * 100 
+    const volumeDiscrepancy = Number(totalVolumeOrdered) > 0 
+      ? ((Number(totalVolumeDelivered) - Number(totalVolumeOrdered)) / Number(totalVolumeOrdered)) * 100 
       : 0;
     
-    // Deliveries by product type
     const deliveriesByProduct = filteredOrders.reduce((acc, order) => {
-      // Get product types from order items
       order.items.forEach(item => {
         const product = item.product;
         if (!acc[product]) acc[product] = 0;
@@ -192,7 +178,6 @@ const DeliveryAnalytics: React.FC = () => {
       return acc;
     }, {} as Record<string, number>);
     
-    // Deliveries by driver
     const deliveriesByDriver = filteredOrders.reduce((acc, order) => {
       if (order.deliveryDetails?.driverId) {
         const driverId = order.deliveryDetails.driverId;
@@ -202,7 +187,6 @@ const DeliveryAnalytics: React.FC = () => {
       return acc;
     }, {} as Record<string, number>);
     
-    // Daily delivery counts for chart
     const deliveriesByDay: Record<string, number> = {};
     filteredOrders.forEach(order => {
       const date = format(order.createdAt, 'yyyy-MM-dd');
@@ -214,20 +198,18 @@ const DeliveryAnalytics: React.FC = () => {
       deliveries: deliveriesByDay[date]
     }));
     
-    // Chart data for deliveries by product
     const productChartData = Object.entries(deliveriesByProduct).map(([name, value]) => ({
       name,
       value
     }));
     
-    // Chart data for driver performance
     const driverPerformanceData = Object.entries(deliveriesByDriver).map(([driverId, deliveryCount]) => {
       const driver = drivers.find(d => d.id === driverId);
       return {
         name: driver ? driver.name : 'Unknown',
         deliveries: deliveryCount
       };
-    }).sort((a, b) => b.deliveries - a.deliveries).slice(0, 5); // Top 5 drivers
+    }).sort((a, b) => b.deliveries - a.deliveries).slice(0, 5);
     
     return {
       totalDeliveries: filteredOrders.length,
@@ -244,7 +226,6 @@ const DeliveryAnalytics: React.FC = () => {
     };
   }, [filteredOrders, drivers, incidents]);
   
-  // Export data functions (simulated)
   const exportToPDF = () => {
     alert('Exporting to PDF...');
   };
@@ -253,7 +234,6 @@ const DeliveryAnalytics: React.FC = () => {
     alert('Exporting to Excel...');
   };
   
-  // Chart colors
   const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe'];
   
   return (
@@ -381,7 +361,6 @@ const DeliveryAnalytics: React.FC = () => {
         Showing data from {format(getDateRange.from, 'MMM dd, yyyy')} to {format(getDateRange.to, 'MMM dd, yyyy')}
       </div>
       
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="shadow-md hover:shadow-lg transition-all duration-200 rounded-xl overflow-hidden border-t-4 border-t-blue-500">
           <CardContent className="p-6">
@@ -460,7 +439,6 @@ const DeliveryAnalytics: React.FC = () => {
         </Card>
       </div>
       
-      {/* Volume Analysis */}
       <Card className="shadow-md rounded-xl overflow-hidden">
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-medium">Volume Analysis</CardTitle>
@@ -486,7 +464,6 @@ const DeliveryAnalytics: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="shadow-md rounded-xl overflow-hidden">
           <CardHeader className="pb-2">
@@ -563,7 +540,6 @@ const DeliveryAnalytics: React.FC = () => {
         </Card>
       </div>
       
-      {/* Driver Performance */}
       <Card className="shadow-md rounded-xl overflow-hidden">
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-medium">Top Drivers</CardTitle>
@@ -603,7 +579,6 @@ const DeliveryAnalytics: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* Recent Deliveries Table */}
       <Card className="shadow-md rounded-xl overflow-hidden">
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-medium">Recent Deliveries</CardTitle>
@@ -630,7 +605,6 @@ const DeliveryAnalytics: React.FC = () => {
                       d.id === order.deliveryDetails?.driverId
                     );
                     
-                    // Get the first product from items array
                     const firstProduct = order.items[0]?.product || 'Unknown';
                     
                     return (

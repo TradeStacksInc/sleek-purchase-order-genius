@@ -1,122 +1,80 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { useApp } from '@/context/AppContext';
 import GPSTrackingService, { TrackingInfo } from '@/services/GPSTrackingService';
 import { Truck } from '@/types';
 
 export const useTruckTracking = () => {
-  const { trucks } = useApp();
   const [isTracking, setIsTracking] = useState(false);
   const [trackedTrucks, setTrackedTrucks] = useState<string[]>([]);
   const [trackingInfo, setTrackingInfo] = useState<Record<string, TrackingInfo>>({});
-  const [activeTrackedTruck, setActiveTrackedTruck] = useState<string | null>(null);
-  const [updateTimestamp, setUpdateTimestamp] = useState<Date>(new Date());
-  
-  useEffect(() => {
-    const gpsService = GPSTrackingService.getInstance();
-    
-    // Register for updates from the GPS service
-    const callbackId = gpsService.registerUpdateCallback((truckId, info) => {
-      setTrackingInfo(prev => ({ ...prev, [truckId]: info }));
-      setUpdateTimestamp(new Date());
-    });
-    
-    // Get initial tracking data
-    const allTracked = gpsService.getAllTrackedTrucks();
-    const trackedIds = allTracked.map(item => item.truckId);
-    setTrackedTrucks(trackedIds);
-    
-    // Initialize tracking info state
-    const initialInfo: Record<string, TrackingInfo> = {};
-    allTracked.forEach(({ truckId, info }) => {
-      initialInfo[truckId] = info;
-    });
-    setTrackingInfo(initialInfo);
-    
-    // Set tracking status
-    setIsTracking(gpsService.isTracking());
-    
-    // If we have tracked trucks but no active one is selected, select the first one
-    if (trackedIds.length > 0 && !activeTrackedTruck) {
-      setActiveTrackedTruck(trackedIds[0]);
-    }
-    
-    return () => {
-      // Clean up the callback registration
-      gpsService.unregisterUpdateCallback(callbackId);
-    };
-  }, []);
-  
-  const startTracking = useCallback((truck: Truck) => {
-    if (!truck) return;
-    
-    const gpsService = GPSTrackingService.getInstance();
-    
-    // Default starting position
-    const startingLatitude = 6.5244 + (Math.random() - 0.5) * 0.1;
-    const startingLongitude = 3.3792 + (Math.random() - 0.5) * 0.1;
-    
-    gpsService.startTracking(truck.id, startingLatitude, startingLongitude);
-    
-    // Update states
-    setTrackedTrucks(prev => [...prev, truck.id]);
-    setIsTracking(true);
-    
-    // Make this the active truck if none is selected
-    if (!activeTrackedTruck) {
-      setActiveTrackedTruck(truck.id);
-    }
-    
-    // Update tracked trucks list
-    const allTracked = gpsService.getAllTrackedTrucks();
-    const trackedIds = allTracked.map(item => item.truckId);
-    setTrackedTrucks(trackedIds);
-  }, [activeTrackedTruck]);
-  
-  const stopTracking = useCallback((truckId: string) => {
-    const gpsService = GPSTrackingService.getInstance();
-    gpsService.stopTracking(truckId);
-    
-    // Update states
-    setTrackedTrucks(prev => prev.filter(id => id !== truckId));
-    setTrackingInfo(prev => {
-      const newInfo = { ...prev };
-      delete newInfo[truckId];
-      return newInfo;
-    });
-    
-    // If this was the active truck, select a new one
-    if (activeTrackedTruck === truckId) {
-      const allTracked = gpsService.getAllTrackedTrucks();
-      const trackedIds = allTracked.map(item => item.truckId);
-      setActiveTrackedTruck(trackedIds.length > 0 ? trackedIds[0] : null);
-    }
-    
-    setIsTracking(gpsService.isTracking());
-    
-    // Update tracked trucks list
-    const allTracked = gpsService.getAllTrackedTrucks();
-    const trackedIds = allTracked.map(item => item.truckId);
-    setTrackedTrucks(trackedIds);
-  }, [activeTrackedTruck]);
-  
-  const selectTruck = useCallback((truckId: string) => {
-    setActiveTrackedTruck(truckId);
+  const [updateTimestamp, setUpdateTimestamp] = useState<Date | null>(null);
+
+  const trackingService = GPSTrackingService.getInstance();
+
+  // Update handler
+  const handleTrackingUpdate = useCallback((truckId: string, info: TrackingInfo) => {
+    setTrackingInfo(prev => ({
+      ...prev,
+      [truckId]: {
+        ...info,
+        fuelLevel: Math.floor(Math.random() * 100) // Simulate fuel level for demo
+      }
+    }));
+    setUpdateTimestamp(new Date());
   }, []);
 
-  const getTrackingInfo = useCallback((truckId: string): TrackingInfo | undefined => {
-    return trackingInfo[truckId];
-  }, [trackingInfo]);
-  
+  // Start tracking
+  const startTracking = useCallback((truck: Truck) => {
+    const initialLatitude = truck.lastLatitude || 9.0820;  // Default to Lagos coordinates
+    const initialLongitude = truck.lastLongitude || 8.6753;
+
+    trackingService.startTracking(truck.id, initialLatitude, initialLongitude);
+
+    setIsTracking(true);
+    setTrackedTrucks(prev => [...prev, truck.id]);
+    
+    // Initialize tracking info
+    setTrackingInfo(prev => ({
+      ...prev,
+      [truck.id]: {
+        latitude: initialLatitude,
+        longitude: initialLongitude,
+        speed: 0,
+        distance: 0,
+        distanceCovered: 0,
+        currentSpeed: 0,
+        lastUpdate: new Date(),
+        path: [],
+        fuelLevel: 85 // Initial fuel level
+      }
+    }));
+  }, [trackingService]);
+
+  // Stop tracking
+  const stopTracking = useCallback((truckId: string) => {
+    trackingService.stopTracking(truckId);
+    setTrackedTrucks(prev => prev.filter(id => id !== truckId));
+    if (trackedTrucks.length <= 1) {
+      setIsTracking(false);
+    }
+  }, [trackingService, trackedTrucks]);
+
+  // Register update callback
+  useEffect(() => {
+    const callbackId = trackingService.registerUpdateCallback(handleTrackingUpdate);
+    
+    return () => {
+      trackingService.unregisterUpdateCallback(callbackId);
+      trackedTrucks.forEach(truckId => trackingService.stopTracking(truckId));
+    };
+  }, [trackingService, handleTrackingUpdate, trackedTrucks]);
+
   return {
     isTracking,
     trackedTrucks,
     trackingInfo,
-    activeTrackedTruck,
     updateTimestamp,
     startTracking,
-    stopTracking,
-    selectTruck,
-    getTrackingInfo
+    stopTracking
   };
 };

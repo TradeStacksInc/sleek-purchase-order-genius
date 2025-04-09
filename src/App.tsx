@@ -18,22 +18,20 @@ import NotFoundPage from './pages/NotFoundPage';
 const App: React.FC = () => {
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="orders" element={<OrdersPage />} />
-        <Route path="orders/:id" element={<PODetail />} />
-        <Route path="orders/edit/:id" element={<CreatePO />} />
-        <Route path="create" element={<CreatePO />} />
-        <Route path="assign-driver/:id" element={<AssignDriverPage />} />
-        <Route path="gps-tracking/:id" element={<GPSTrackingPage />} />
-        <Route path="drivers" element={<DriversPage />} />
-        <Route path="trucks" element={<TrucksPage />} />
-        <Route path="tanks" element={<TanksPage />} />
-        <Route path="staff" element={<StaffPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
+      <Route path="/" element={<Layout><Dashboard /></Layout>} />
+      <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+      <Route path="/orders" element={<Layout><OrdersPage /></Layout>} />
+      <Route path="/orders/:id" element={<Layout><PODetail /></Layout>} />
+      <Route path="/orders/edit/:id" element={<Layout><CreatePO /></Layout>} />
+      <Route path="/create" element={<Layout><CreatePO /></Layout>} />
+      <Route path="/assign-driver/:id" element={<Layout><AssignDriverPage /></Layout>} />
+      <Route path="/gps-tracking/:id" element={<Layout><GPSTrackingPage /></Layout>} />
+      <Route path="/drivers" element={<Layout><DriversPage /></Layout>} />
+      <Route path="/trucks" element={<Layout><TrucksPage /></Layout>} />
+      <Route path="/tanks" element={<Layout><TanksPage /></Layout>} />
+      <Route path="/staff" element={<Layout><StaffPage /></Layout>} />
+      <Route path="/settings" element={<Layout><SettingsPage /></Layout>} />
+      <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
     </Routes>
   );
 };
