@@ -85,6 +85,12 @@ export const useLogActions = (
     return newLog;
   };
   
+  const clearAllActivityLogs = (): boolean => {
+    setActivityLogs([]);
+    saveToLocalStorage(STORAGE_KEYS.ACTIVITY_LOGS, []);
+    return true;
+  };
+  
   const getAllActivityLogs = (params?: PaginationParams): PaginatedResult<ActivityLog> => {
     const page = params?.page || 1;
     const limit = params?.limit || 10;
@@ -163,6 +169,7 @@ export const useLogActions = (
     getAllLogs,
     getLogsByOrderId,
     addActivityLog,
+    clearAllActivityLogs,
     getAllActivityLogs,
     getActivityLogsByEntityType,
     getActivityLogsByAction,

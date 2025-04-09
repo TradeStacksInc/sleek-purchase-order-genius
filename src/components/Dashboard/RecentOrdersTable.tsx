@@ -42,9 +42,15 @@ const RecentOrdersTable: React.FC<RecentOrdersTableProps> = ({
               return (
                 <tr key={order.id} className="border-b hover:bg-muted/50 transition-colors">
                   <td className="px-4 py-3 align-middle font-medium">{order.poNumber}</td>
-                  <td className="px-4 py-3 align-middle">{order.supplier.name}</td>
-                  <td className="px-4 py-3 align-middle">{format(new Date(order.createdAt), 'MMM dd, yyyy')}</td>
-                  <td className="px-4 py-3 align-middle">₦{order.grandTotal.toLocaleString()}</td>
+                  <td className="px-4 py-3 align-middle">{order.supplier?.name}</td>
+                  <td className="px-4 py-3 align-middle">
+                    {order.createdAt instanceof Date 
+                      ? format(order.createdAt, 'MMM dd, yyyy')
+                      : format(new Date(order.createdAt), 'MMM dd, yyyy')}
+                  </td>
+                  <td className="px-4 py-3 align-middle">
+                    ₦{order.grandTotal ? order.grandTotal.toLocaleString() : '0'}
+                  </td>
                   <td className="px-4 py-3 align-middle">
                     <StatusBadge status={order.status} />
                   </td>
@@ -75,7 +81,7 @@ const RecentOrdersTable: React.FC<RecentOrdersTableProps> = ({
                         </Button>
                       )}
                       {order.status === 'active' && !order.deliveryDetails?.driverId && (
-                        <Link to="/assign-driver">
+                        <Link to={`/assign-driver/${order.id}`}>
                           <Button 
                             variant="outline" 
                             size="sm"
@@ -85,7 +91,7 @@ const RecentOrdersTable: React.FC<RecentOrdersTableProps> = ({
                         </Link>
                       )}
                       {order.deliveryDetails?.status === 'in_transit' && (
-                        <Link to="/gps-tracking">
+                        <Link to={`/gps-tracking/${order.id}`}>
                           <Button 
                             variant="outline" 
                             size="sm"

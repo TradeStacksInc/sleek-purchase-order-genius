@@ -1,5 +1,3 @@
-
-// Only fixing the log entry sections that have errors
 import { v4 as uuidv4 } from 'uuid';
 import { PurchaseOrder, OrderStatus } from '@/types';
 import { PaginationParams, PaginatedResult } from '@/utils/localStorage/types';
@@ -33,7 +31,7 @@ export const usePurchaseOrderActions = (
     
     setPurchaseOrders([...purchaseOrders, newOrder]);
     
-    // Log the creation
+    // Log the creation - properly formatted with numeric types
     const actionLog = {
       id: `log-${uuidv4().substring(0, 8)}`,
       timestamp: new Date(),
@@ -81,7 +79,7 @@ export const usePurchaseOrderActions = (
       return updated;
     });
     
-    // Log the status update
+    // Log the status update - properly formatted with numeric types
     const actionLog = {
       id: `log-${uuidv4().substring(0, 8)}`,
       timestamp: new Date(),

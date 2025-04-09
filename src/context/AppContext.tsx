@@ -61,12 +61,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [company, setCompany] = useLocalStorage('company', defaultCompany);
 
   // Initialize actions
-  const { addLog, deleteLog, getLogById, getAllLogs, getLogsByOrderId, addActivityLog, getAllActivityLogs, 
-         getActivityLogsByEntityType, getActivityLogsByAction, getRecentActivityLogs, logFraudDetection,
-         logGpsActivity, logAIInteraction, setLogPageVisits } = useLogActions(logs, setLogs, activityLogs, setActivityLogs);
+  const { addLog, deleteLog, getLogById, getAllLogs, getLogsByOrderId, addActivityLog, clearAllActivityLogs, 
+         getAllActivityLogs, getActivityLogsByEntityType, getActivityLogsByAction, getRecentActivityLogs, 
+         logFraudDetection, logGpsActivity, logAIInteraction, setLogPageVisits } = useLogActions(
+          logs, setLogs, activityLogs, setActivityLogs
+         );
   
   const { addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, getPurchaseOrderById, 
-         getAllPurchaseOrders, updateOrderStatus } = usePurchaseOrderActions(purchaseOrders, setPurchaseOrders, logs, setLogs);
+         getAllPurchaseOrders, updateOrderStatus } = usePurchaseOrderActions(
+          purchaseOrders, setPurchaseOrders, logs, setLogs
+         );
   
   const { addDriver, updateDriver, deleteDriver, getDriverById, getAllDrivers, getAvailableDrivers,
          addTruck, updateTruck, deleteTruck, getTruckById, getAllTrucks, getAvailableTrucks,
@@ -95,7 +99,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     // Disable automatic page visit logging
     setLogPageVisits(false);
-  }, [setLogPageVisits]);
+    
+    // Clear existing activity logs on application startup
+    clearAllActivityLogs();
+  }, [setLogPageVisits, clearAllActivityLogs]);
   
   // Supplier functions
   const addSupplier = (supplier: Omit<Supplier, 'id'>): Supplier => {
@@ -187,6 +194,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Update delivery status
       updateDeliveryStatus(orderId, 'in_transit');
       
+      // Log the activity
+      addActivityLog({
+        action: 'start_delivery',
+        entityType: 'purchase_order',
+        entityId: orderId,
+        details: `Delivery started for Purchase Order ${order.poNumber}`,
+        user: 'Admin'
+      });
+      
       return true;
     } catch (err) {
       console.error('Error starting delivery:', err);
@@ -204,6 +220,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       // Update delivery status
       updateDeliveryStatus(orderId, 'delivered');
+      
+      // Log the activity
+      addActivityLog({
+        action: 'complete_delivery',
+        entityType: 'purchase_order',
+        entityId: orderId,
+        details: `Delivery completed for Purchase Order ${order.poNumber}`,
+        user: 'Admin'
+      });
       
       return true;
     } catch (err) {
@@ -398,6 +423,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getAllLogs,
     getLogsByOrderId,
     logAIInteraction,
+    clearAllActivityLogs,
     
     // Activity Logs
     activityLogs,

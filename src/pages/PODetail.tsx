@@ -15,13 +15,30 @@ import { formatCurrency } from '@/utils/formatters';
 const PODetail = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
-  const { getPurchaseOrderById, getSupplierById, getLogsByOrderId } = useApp();
+  const { 
+    getPurchaseOrderById, 
+    getSupplierById, 
+    getLogsByOrderId,
+    startDelivery,
+    updateOrderStatus,
+    getDriverById,
+    getTruckById
+  } = useApp();
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
   
   const purchaseOrder = id ? getPurchaseOrderById(id) : undefined;
   const supplier = purchaseOrder?.supplierId ? getSupplierById(purchaseOrder.supplierId) : undefined;
   const logs = id ? getLogsByOrderId(id) : [];
+  
+  const driver = purchaseOrder?.deliveryDetails?.driverId 
+    ? getDriverById(purchaseOrder.deliveryDetails.driverId)
+    : null;
+    
+  const truck = purchaseOrder?.deliveryDetails?.truckId
+    ? getTruckById(purchaseOrder.deliveryDetails.truckId)
+    : null;
 
   useEffect(() => {
     if (!purchaseOrder && id) {
@@ -32,6 +49,60 @@ const PODetail = () => {
       });
     }
   }, [purchaseOrder, id, toast]);
+
+  const handleStartDelivery = async () => {
+    if (!id) return;
+    
+    try {
+      const success = await startDelivery(id);
+      if (success) {
+        toast({
+          title: "Delivery Started",
+          description: "The delivery has been started successfully.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to start the delivery. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error starting delivery:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCompleteDelivery = async () => {
+    if (!id) return;
+    
+    try {
+      const success = await updateOrderStatus(id, 'fulfilled', 'Delivery completed');
+      if (success) {
+        toast({
+          title: "Delivery Completed",
+          description: "The delivery has been marked as completed.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to complete the delivery. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error completing delivery:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (!purchaseOrder) {
     return (
@@ -68,7 +139,7 @@ const PODetail = () => {
             <CardTitle>Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge className={`${purchaseOrder.status === 'completed' ? 'bg-green-100 text-green-800' : 
+            <Badge className={`${purchaseOrder.status === 'fulfilled' ? 'bg-green-100 text-green-800' : 
                               purchaseOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                               'bg-blue-100 text-blue-800'}`}>
               {purchaseOrder.status.charAt(0).toUpperCase() + purchaseOrder.status.slice(1)}
@@ -77,6 +148,44 @@ const PODetail = () => {
               <StatusTracker 
                 currentStatus={purchaseOrder.status} 
               />
+            </div>
+            
+            {/* Add action buttons based on status */}
+            <div className="mt-4">
+              {purchaseOrder.status === 'active' && !purchaseOrder.deliveryDetails?.driverId && (
+                <Link to={`/assign-driver/${id}`}>
+                  <Button size="sm" className="w-full">
+                    <TruckIcon className="h-4 w-4 mr-2" /> Assign Driver & Truck
+                  </Button>
+                </Link>
+              )}
+              
+              {purchaseOrder.status === 'active' && purchaseOrder.deliveryDetails?.driverId && !purchaseOrder.deliveryDetails?.status && (
+                <Button 
+                  size="sm" 
+                  className="w-full" 
+                  onClick={handleStartDelivery}
+                >
+                  <TruckIcon className="h-4 w-4 mr-2" /> Start Delivery
+                </Button>
+              )}
+              
+              {purchaseOrder.deliveryDetails?.status === 'in_transit' && (
+                <>
+                  <Link to={`/gps-tracking/${id}`} className="block mb-2">
+                    <Button variant="outline" size="sm" className="w-full">
+                      Track Delivery
+                    </Button>
+                  </Link>
+                  <Button 
+                    size="sm" 
+                    className="w-full"
+                    onClick={handleCompleteDelivery}
+                  >
+                    Complete Delivery
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -117,8 +226,8 @@ const PODetail = () => {
         </Card>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-6">
           <TabsTrigger value="details">
             <FileTextIcon className="mr-2 h-4 w-4" />
             Order Details
@@ -137,184 +246,188 @@ const PODetail = () => {
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="details">
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Order Information</h3>
-                  <p className="text-sm"><span className="font-medium">PO Number:</span> {purchaseOrder.poNumber || 'Not assigned'}</p>
-                  <p className="text-sm"><span className="font-medium">Date Created:</span> {purchaseOrder.createdAt?.toLocaleDateString()}</p>
-                  <p className="text-sm"><span className="font-medium">Last Updated:</span> {purchaseOrder.updatedAt?.toLocaleDateString()}</p>
-                  <p className="text-sm"><span className="font-medium">Payment Terms:</span> {purchaseOrder.paymentTerm || 'Not specified'}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2">Order Items</h3>
-                  {purchaseOrder.items && purchaseOrder.items.length > 0 ? (
-                    <div className="space-y-2">
-                      {purchaseOrder.items.map((item, index) => (
-                        <div key={index} className="text-sm">
-                          <span className="font-medium">{item.productName || item.product}</span>
-                          <p>Quantity: {item.quantity} × {formatCurrency(item.unitPrice)}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No items in this order</p>
-                  )}
-                </div>
-              </div>
-              
-              {purchaseOrder.notes && (
-                <div className="mt-4">
-                  <h3 className="font-semibold mb-2">Notes</h3>
-                  <p className="text-sm">{purchaseOrder.notes}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="delivery">
-          <Card>
-            <CardHeader>
-              <CardTitle>Delivery Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {purchaseOrder.deliveryDetails ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="font-semibold mb-2">Delivery Status</h3>
-                    <Badge className={`${
-                      purchaseOrder.deliveryDetails.status === 'delivered' ? 'bg-green-100 text-green-800' : 
-                      purchaseOrder.deliveryDetails.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {purchaseOrder.deliveryDetails.status?.charAt(0).toUpperCase() + purchaseOrder.deliveryDetails.status?.slice(1) || 'Pending'}
-                    </Badge>
-                    
-                    <div className="mt-4 space-y-1">
-                      <p className="text-sm"><span className="font-medium">Expected Delivery:</span> {purchaseOrder.deliveryDate?.toLocaleDateString() || 'Not specified'}</p>
-                      {purchaseOrder.deliveryDetails.depotDepartureTime && (
-                        <p className="text-sm"><span className="font-medium">Departed Depot:</span> {new Date(purchaseOrder.deliveryDetails.depotDepartureTime).toLocaleString()}</p>
-                      )}
-                      {purchaseOrder.deliveryDetails.expectedArrivalTime && (
-                        <p className="text-sm"><span className="font-medium">Expected Arrival:</span> {new Date(purchaseOrder.deliveryDetails.expectedArrivalTime).toLocaleString()}</p>
-                      )}
-                      {purchaseOrder.deliveryDetails.actualArrivalTime && (
-                        <p className="text-sm"><span className="font-medium">Actual Arrival:</span> {new Date(purchaseOrder.deliveryDetails.actualArrivalTime).toLocaleString()}</p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-semibold mb-2">Transport Details</h3>
-                    <div className="space-y-1">
-                      <p className="text-sm"><span className="font-medium">Driver:</span> {purchaseOrder.deliveryDetails.driverName || 'Not assigned'}</p>
-                      <p className="text-sm"><span className="font-medium">Vehicle:</span> {purchaseOrder.deliveryDetails.vehicleDetails || 'Not assigned'}</p>
-                      {purchaseOrder.deliveryDetails.totalDistance && (
-                        <p className="text-sm"><span className="font-medium">Total Distance:</span> {purchaseOrder.deliveryDetails.totalDistance} km</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-gray-500">No delivery information available</p>
-                  <Button className="mt-4" asChild>
-                    <Link to={`/assign-driver/${id}`}>Assign Driver & Truck</Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          {purchaseOrder.offloadingDetails && (
-            <Card className="mt-4">
+        <div className="overflow-auto">
+          <TabsContent value="details">
+            <Card>
               <CardHeader>
-                <CardTitle>Offloading Details</CardTitle>
+                <CardTitle>Order Details</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <h3 className="font-semibold mb-2">Volume Information</h3>
-                    <div className="space-y-1">
-                      <p className="text-sm"><span className="font-medium">Initial Tank Volume:</span> {purchaseOrder.offloadingDetails.initialTankVolume} liters</p>
-                      <p className="text-sm"><span className="font-medium">Final Tank Volume:</span> {purchaseOrder.offloadingDetails.finalTankVolume} liters</p>
-                      <p className="text-sm"><span className="font-medium">Loaded Volume:</span> {purchaseOrder.offloadingDetails.loadedVolume} liters</p>
-                      <p className="text-sm"><span className="font-medium">Delivered Volume:</span> {purchaseOrder.offloadingDetails.deliveredVolume} liters</p>
-                    </div>
+                    <h3 className="font-semibold mb-2">Order Information</h3>
+                    <p className="text-sm"><span className="font-medium">PO Number:</span> {purchaseOrder.poNumber || 'Not assigned'}</p>
+                    <p className="text-sm"><span className="font-medium">Date Created:</span> {purchaseOrder.createdAt?.toLocaleDateString()}</p>
+                    <p className="text-sm"><span className="font-medium">Last Updated:</span> {purchaseOrder.updatedAt?.toLocaleDateString()}</p>
+                    <p className="text-sm"><span className="font-medium">Payment Terms:</span> {purchaseOrder.paymentTerm || 'Not specified'}</p>
                   </div>
-                  
                   <div>
-                    <h3 className="font-semibold mb-2">Discrepancy Information</h3>
-                    <Badge className={purchaseOrder.offloadingDetails.isDiscrepancyFlagged ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
-                      {purchaseOrder.offloadingDetails.isDiscrepancyFlagged ? 'Discrepancy Detected' : 'No Discrepancy'}
-                    </Badge>
-                    
-                    {purchaseOrder.offloadingDetails.isDiscrepancyFlagged && (
-                      <p className="text-sm mt-2"><span className="font-medium">Discrepancy Percentage:</span> {purchaseOrder.offloadingDetails.discrepancyPercentage}%</p>
+                    <h3 className="font-semibold mb-2">Order Items</h3>
+                    {purchaseOrder.items && purchaseOrder.items.length > 0 ? (
+                      <div className="space-y-2">
+                        {purchaseOrder.items.map((item, index) => (
+                          <div key={index} className="text-sm">
+                            <span className="font-medium">{item.productName || item.product}</span>
+                            <p>Quantity: {item.quantity} × {formatCurrency(item.unitPrice)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No items in this order</p>
                     )}
-                    
-                    <div className="mt-4 space-y-1">
-                      <p className="text-sm"><span className="font-medium">Measured By:</span> {purchaseOrder.offloadingDetails.measuredBy}</p>
-                      <p className="text-sm"><span className="font-medium">Role:</span> {purchaseOrder.offloadingDetails.measuredByRole}</p>
-                      <p className="text-sm"><span className="font-medium">Time:</span> {new Date(purchaseOrder.offloadingDetails.timestamp).toLocaleString()}</p>
-                    </div>
                   </div>
                 </div>
                 
-                {purchaseOrder.offloadingDetails.notes && (
+                {purchaseOrder.notes && (
                   <div className="mt-4">
                     <h3 className="font-semibold mb-2">Notes</h3>
-                    <p className="text-sm">{purchaseOrder.offloadingDetails.notes}</p>
+                    <p className="text-sm">{purchaseOrder.notes}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="logs">
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity Log</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {logs && logs.length > 0 ? (
-                <div className="space-y-4">
-                  {logs.map((log) => (
-                    <div key={log.id} className="border-b pb-3">
-                      <p className="font-medium">{log.action}</p>
-                      <p className="text-sm text-gray-500">{log.details}</p>
-                      <p className="text-xs text-gray-400">
-                        {log.timestamp instanceof Date 
-                          ? log.timestamp.toLocaleString() 
-                          : new Date(log.timestamp).toLocaleString()}
-                      </p>
+          </TabsContent>
+          
+          <TabsContent value="delivery">
+            <Card>
+              <CardHeader>
+                <CardTitle>Delivery Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {purchaseOrder.deliveryDetails ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="font-semibold mb-2">Delivery Status</h3>
+                      <Badge className={`${
+                        purchaseOrder.deliveryDetails.status === 'delivered' ? 'bg-green-100 text-green-800' : 
+                        purchaseOrder.deliveryDetails.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {purchaseOrder.deliveryDetails.status?.charAt(0).toUpperCase() + purchaseOrder.deliveryDetails.status?.slice(1) || 'Pending'}
+                      </Badge>
+                      
+                      <div className="mt-4 space-y-1">
+                        <p className="text-sm"><span className="font-medium">Expected Delivery:</span> {purchaseOrder.deliveryDate?.toLocaleDateString() || 'Not specified'}</p>
+                        {purchaseOrder.deliveryDetails.depotDepartureTime && (
+                          <p className="text-sm"><span className="font-medium">Departed Depot:</span> {new Date(purchaseOrder.deliveryDetails.depotDepartureTime).toLocaleString()}</p>
+                        )}
+                        {purchaseOrder.deliveryDetails.expectedArrivalTime && (
+                          <p className="text-sm"><span className="font-medium">Expected Arrival:</span> {new Date(purchaseOrder.deliveryDetails.expectedArrivalTime).toLocaleString()}</p>
+                        )}
+                        {purchaseOrder.deliveryDetails.actualArrivalTime && (
+                          <p className="text-sm"><span className="font-medium">Actual Arrival:</span> {new Date(purchaseOrder.deliveryDetails.actualArrivalTime).toLocaleString()}</p>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-gray-500 py-4">No activity logs for this order</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Analytics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-center text-gray-500 py-4">Analytics for this order are not available yet</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    
+                    <div>
+                      <h3 className="font-semibold mb-2">Transport Details</h3>
+                      <div className="space-y-1">
+                        <p className="text-sm"><span className="font-medium">Driver:</span> {driver?.name || 'Not assigned'}</p>
+                        <p className="text-sm"><span className="font-medium">Vehicle:</span> {truck?.plateNumber || 'Not assigned'}</p>
+                        {purchaseOrder.deliveryDetails.totalDistance && (
+                          <p className="text-sm"><span className="font-medium">Total Distance:</span> {purchaseOrder.deliveryDetails.totalDistance} km</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500">No delivery information available</p>
+                    {purchaseOrder.status === 'active' && (
+                      <Button className="mt-4" asChild>
+                        <Link to={`/assign-driver/${id}`}>Assign Driver & Truck</Link>
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {purchaseOrder.offloadingDetails && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle>Offloading Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="font-semibold mb-2">Volume Information</h3>
+                      <div className="space-y-1">
+                        <p className="text-sm"><span className="font-medium">Initial Tank Volume:</span> {purchaseOrder.offloadingDetails.initialTankVolume} liters</p>
+                        <p className="text-sm"><span className="font-medium">Final Tank Volume:</span> {purchaseOrder.offloadingDetails.finalTankVolume} liters</p>
+                        <p className="text-sm"><span className="font-medium">Loaded Volume:</span> {purchaseOrder.offloadingDetails.loadedVolume} liters</p>
+                        <p className="text-sm"><span className="font-medium">Delivered Volume:</span> {purchaseOrder.offloadingDetails.deliveredVolume} liters</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="font-semibold mb-2">Discrepancy Information</h3>
+                      <Badge className={purchaseOrder.offloadingDetails.isDiscrepancyFlagged ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
+                        {purchaseOrder.offloadingDetails.isDiscrepancyFlagged ? 'Discrepancy Detected' : 'No Discrepancy'}
+                      </Badge>
+                      
+                      {purchaseOrder.offloadingDetails.isDiscrepancyFlagged && (
+                        <p className="text-sm mt-2"><span className="font-medium">Discrepancy Percentage:</span> {purchaseOrder.offloadingDetails.discrepancyPercentage}%</p>
+                      )}
+                      
+                      <div className="mt-4 space-y-1">
+                        <p className="text-sm"><span className="font-medium">Measured By:</span> {purchaseOrder.offloadingDetails.measuredBy}</p>
+                        <p className="text-sm"><span className="font-medium">Role:</span> {purchaseOrder.offloadingDetails.measuredByRole}</p>
+                        <p className="text-sm"><span className="font-medium">Time:</span> {new Date(purchaseOrder.offloadingDetails.timestamp).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {purchaseOrder.offloadingDetails.notes && (
+                    <div className="mt-4">
+                      <h3 className="font-semibold mb-2">Notes</h3>
+                      <p className="text-sm">{purchaseOrder.offloadingDetails.notes}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="logs">
+            <Card>
+              <CardHeader>
+                <CardTitle>Activity Log</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {logs && logs.length > 0 ? (
+                  <div className="space-y-4">
+                    {logs.map((log) => (
+                      <div key={log.id} className="border-b pb-3">
+                        <p className="font-medium">{log.action}</p>
+                        <p className="text-sm text-gray-500">{log.details}</p>
+                        <p className="text-xs text-gray-400">
+                          {log.timestamp instanceof Date 
+                            ? log.timestamp.toLocaleString() 
+                            : new Date(log.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-4">No activity logs for this order</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="analytics">
+            <Card>
+              <CardHeader>
+                <CardTitle>Order Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-gray-500 py-4">Analytics for this order are not available yet</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </div>
       </Tabs>
       
       {isDialogOpen && (
