@@ -165,20 +165,20 @@ const DeliveryAnalytics: React.FC = () => {
     
     // Volume analysis
     const totalVolumeOrdered = filteredOrders.reduce((sum, order) => 
-      sum + order.items.reduce((itemSum, item) => itemSum + Number(item.quantity), 0), 0
+      sum + order.items.reduce((itemSum, item) => itemSum + Number(item.quantity || 0), 0), 0
     );
     
     const totalVolumeDelivered = filteredOrders.reduce((sum, order) => {
       // Use simulated delivered quantity since offloadingDetails.actualQuantity isn't available
-      const orderedQuantity = order.items.reduce((itemSum, item) => itemSum + Number(item.quantity), 0);
+      const orderedQuantity = order.items.reduce((itemSum, item) => itemSum + Number(item.quantity || 0), 0);
       const deliveredQuantity = orderedQuantity * (1 + (Math.random() * 0.1 - 0.05)); // ±5% random variation
       
       return sum + deliveredQuantity;
     }, 0);
     
-    // Calculate discrepancy
+    // Calculate discrepancy with explicit number handling
     const volumeDiscrepancy = totalVolumeOrdered > 0 
-      ? ((totalVolumeDelivered - totalVolumeOrdered) / totalVolumeOrdered) * 100 
+      ? ((Number(totalVolumeDelivered) - Number(totalVolumeOrdered)) / Number(totalVolumeOrdered)) * 100 
       : 0;
     
     // Deliveries by product type
