@@ -176,9 +176,9 @@ const DeliveryAnalytics: React.FC = () => {
       return sum + deliveredQuantity;
     }, 0);
     
-    // Calculate discrepancy with explicit number handling and fallback
+    // Calculate discrepancy with strict number conversion
     const volumeDiscrepancy = totalVolumeOrdered > 0 
-      ? ((Number(totalVolumeDelivered || 0) - Number(totalVolumeOrdered || 0)) / Number(totalVolumeOrdered || 0)) * 100 
+      ? ((totalVolumeDelivered - totalVolumeOrdered) / totalVolumeOrdered) * 100 
       : 0;
     
     // Deliveries by product type
