@@ -165,8 +165,8 @@ const DeliveryAnalytics: React.FC = () => {
       return sum + deliveredQuantity;
     }, 0);
     
-    const volumeDiscrepancy = Number(totalVolumeOrdered) > 0 
-      ? ((Number(totalVolumeDelivered) - Number(totalVolumeOrdered)) / Number(totalVolumeOrdered)) * 100 
+    const volumeDiscrepancy = totalVolumeOrdered > 0 
+      ? ((totalVolumeDelivered - totalVolumeOrdered) / totalVolumeOrdered) * 100 
       : 0;
     
     const deliveriesByProduct = filteredOrders.reduce((acc, order) => {
