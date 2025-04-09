@@ -20,6 +20,7 @@ const AssignDriver: React.FC = () => {
             <h3 className="text-xl font-medium mb-2">Assign Driver Page</h3>
             <p className="text-muted-foreground mb-6 max-w-md">
               Assign drivers to deliveries and manage driver schedules here.
+              Select an order and assign an available driver.
             </p>
           </div>
         </CardContent>

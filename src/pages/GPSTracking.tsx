@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin } from 'lucide-react';
+import { MapPin, Truck } from 'lucide-react';
 
 const GPSTracking: React.FC = () => {
   return (
@@ -20,7 +20,12 @@ const GPSTracking: React.FC = () => {
             <h3 className="text-xl font-medium mb-2">GPS Tracking Page</h3>
             <p className="text-muted-foreground mb-6 max-w-md">
               Track vehicle locations in real-time and monitor delivery routes.
+              View current location and movement history of all active fleet vehicles.
             </p>
+            <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+              <Truck className="h-10 w-10 text-gray-400" />
+              <span className="ml-2 text-gray-500">Map View Loading...</span>
+            </div>
           </div>
         </CardContent>
       </Card>
