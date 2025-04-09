@@ -1,116 +1,129 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/context/AppContext';
+import { Truck, AlertCircle, ClipboardCheck, RefreshCw } from 'lucide-react';
 import { OrderStatus } from '@/types';
-import { useActivityLogger } from '@/hooks/useActivityLogger';
 
-export interface StatusUpdateDialogProps {
+interface StatusUpdateDialogProps {
   orderId: string;
   currentStatus: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  children?: React.ReactNode;
 }
 
-const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({ 
-  orderId, 
-  currentStatus,
-  open,
-  onOpenChange
-}) => {
+export const StatusUpdateDialog: React.FC<StatusUpdateDialogProps> = ({ orderId, currentStatus, children }) => {
   const { toast } = useToast();
   const { updateOrderStatus } = useApp();
-  const { logUserAction } = useActivityLogger();
-  const [status, setStatus] = useState<OrderStatus>(currentStatus as OrderStatus);
-  const [note, setNote] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>('pending');
+  const [notes, setNotes] = useState('');
 
-  const handleSubmit = async () => {
+  const handleUpdateStatus = async () => {
     try {
-      await updateOrderStatus(orderId, status, note);
+      // Convert string status to OrderStatus type
+      const typedStatus = selectedStatus as OrderStatus;
+      const success = await updateOrderStatus(orderId, typedStatus, notes);
       
-      // Log the action using useActivityLogger
-      logUserAction(
-        'update_status',
-        'purchase_order',
-        orderId,
-        `Status updated to ${status}${note ? ` with note: ${note}` : ''}`
-      );
-      
-      toast({
-        title: 'Status updated',
-        description: `Order status has been updated to ${status}`,
-      });
-      
-      onOpenChange(false);
+      if (success) {
+        toast({
+          title: "Status Updated",
+          description: `Order status updated to ${selectedStatus}`,
+        });
+        setIsOpen(false);
+      } else {
+        toast({
+          title: "Update Failed",
+          description: "Failed to update order status. Please try again.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
+      console.error("Error updating status:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to update order status',
-        variant: 'destructive',
+        title: "Update Error",
+        description: "An error occurred while updating the status",
+        variant: "destructive",
       });
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <RefreshCw className="h-4 w-4 text-amber-500" />;
+      case 'active':
+        return <Truck className="h-4 w-4 text-blue-500" />;
+      case 'fulfilled':
+        return <ClipboardCheck className="h-4 w-4 text-green-500" />;
+      default:
+        return <AlertCircle className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-xl transition-all duration-200">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        {children || <Button variant="outline" size="sm">Update Status</Button>}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Update Order Status</DialogTitle>
+          <DialogDescription>
+            Change the status of this purchase order.
+            Current status: <span className="font-semibold">{currentStatus}</span>
+          </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label className="text-right text-sm">Status</label>
+        <div className="flex flex-col gap-4 py-4">
+          <div className="grid gap-2">
+            <label htmlFor="status">New Status</label>
             <Select 
-              value={status} 
-              onValueChange={(value) => setStatus(value as OrderStatus)}
+              value={selectedStatus} 
+              onValueChange={(value) => setSelectedStatus(value as OrderStatus)}
             >
-              <SelectTrigger className="col-span-3 transition-all duration-200 rounded-lg">
-                <SelectValue placeholder="Select new status" />
+              <SelectTrigger>
+                <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-lg">
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectContent>
+                <SelectItem value="pending">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 text-amber-500" />
+                    <span>Pending</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="active">
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-blue-500" />
+                    <span>Active</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="fulfilled">
+                  <div className="flex items-center gap-2">
+                    <ClipboardCheck className="h-4 w-4 text-green-500" />
+                    <span>Fulfilled</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label className="text-right text-sm">Note</label>
+          <div className="grid gap-2">
+            <label htmlFor="notes">Notes</label>
             <Textarea 
-              placeholder="Add a note about this status change" 
-              className="col-span-3 transition-all duration-200 rounded-lg" 
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
+              id="notes" 
+              value={notes} 
+              onChange={(e) => setNotes(e.target.value)} 
+              placeholder="Add any notes about this status change"
             />
           </div>
         </div>
-        <DialogFooter className="gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)}
-            className="transition-all duration-200 rounded-lg"
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit}
-            className="transition-all duration-200 rounded-lg"
-          >
-            Update Status
-          </Button>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+          <Button onClick={handleUpdateStatus}>Update Status</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
-
-export default StatusUpdateDialog;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,7 +85,8 @@ const AssignDriver: React.FC = () => {
     updateGPSData,
     updateOrderStatus,
     assignDriverToDelivery,
-    assignTruckToDelivery
+    assignTruckToDelivery,
+    updatePurchaseOrder
   } = useApp();
   
   const { logUserAction } = useActivityLogger();
